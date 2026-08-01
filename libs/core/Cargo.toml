@@ -1,0 +1,19 @@
+[package]
+name = "mapsift-core"
+version = "0.1.0"
+edition = "2024"
+description = "The Mapsift client logic core: operation queue, optimistic apply, optimistic conflict detection, client geometry. Runs on clients only, never on the server."
+publish = false
+
+[lib]
+# cdylib for wasm-pack and the future FFI library, rlib so `cargo test` can link the pure logic.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+geo = "0.33.1"
+wasm-bindgen = "0.2.126"
+
+[profile.release]
+# The artifact is downloaded by a field tablet on a bad connection (PRD S4).
+opt-level = "s"
+lto = true
