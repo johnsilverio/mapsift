@@ -16,6 +16,9 @@
     "paths": {
       "@mapsift/ui": [
         "./dist/libs/ui"
+      ],
+      "@mapsift/core": [
+        "./libs/core/pkg"
       ]
     }
   },
@@ -31,6 +34,12 @@
     },
     {
       "path": "./libs/ui/tsconfig.spec.json"
+    },
+    {
+      "path": "./apps/web/tsconfig.app.json"
+    },
+    {
+      "path": "./apps/web/tsconfig.spec.json"
     }
   ]
 }

@@ -1,0 +1,23 @@
+<main class="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
+  <h1 class="text-2xl font-semibold">Mapsift</h1>
+
+  <p class="max-w-md text-center text-sm opacity-70">
+    Scaffold smoke surface. It exists to prove the component library and the WebAssembly core are
+    both wired, and the editor replaces it.
+  </p>
+
+  <button ui-button (click)="measure()">Measure a distance in the core</button>
+
+  @if (measurement(); as result) {
+    <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+      <dt class="opacity-70">value</dt>
+      <dd>{{ result.value | number: '1.0-3' }} {{ result.unit }}</dd>
+      <dt class="opacity-70">frame</dt>
+      <dd>{{ result.frame }}</dd>
+      <dt class="opacity-70">authority</dt>
+      <dd>{{ result.authority }}</dd>
+    </dl>
+  }
+
+  <router-outlet />
+</main>

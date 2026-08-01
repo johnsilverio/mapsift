@@ -3,7 +3,9 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "schematicCollections": ["angular-eslint"]
+    "schematicCollections": [
+      "angular-eslint"
+    ]
   },
   "newProjectRoot": "libs",
   "projects": {
@@ -34,8 +36,100 @@
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": ["libs/ui/**/*.ts", "libs/ui/**/*.html"],
+            "lintFilePatterns": [
+              "libs/ui/**/*.ts",
+              "libs/ui/**/*.html"
+            ],
             "eslintConfig": "libs/ui/eslint.config.js"
+          }
+        }
+      }
+    },
+    "web": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "apps/web",
+      "sourceRoot": "apps/web/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/web/src/main.ts",
+            "tsConfig": "apps/web/tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "apps/web/public"
+              }
+            ],
+            "styles": [
+              "apps/web/src/styles.css"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "web:build:production"
+            },
+            "development": {
+              "buildTarget": "web:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "exclude": [
+              "**/*.browser.spec.ts"
+            ]
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "apps/web/**/*.ts",
+              "apps/web/**/*.html"
+            ],
+            "eslintConfig": "apps/web/eslint.config.js"
+          }
+        },
+        "test-browser": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "include": [
+              "**/*.browser.spec.ts"
+            ],
+            "browsers": [
+              "chromium"
+            ]
           }
         }
       }
