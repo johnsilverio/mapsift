@@ -1,0 +1,44 @@
+<div class="flex flex-col gap-4 p-6" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" uiId="alert-dialog" #z="uiId">
+  @if (config.uiTitle || config.uiDescription) {
+    <header class="flex flex-col gap-2 text-center sm:text-left">
+      @if (config.uiTitle) {
+        <h2 data-testid="ui-alert-title" [id]="titleId()" class="text-lg font-semibold">{{ config.uiTitle }}</h2>
+      }
+
+      @if (config.uiDescription) {
+        <p data-testid="ui-alert-description" [id]="descriptionId()" class="text-muted-foreground text-sm">
+          {{ config.uiDescription }}
+        </p>
+      }
+    </header>
+  }
+
+  <main>
+    <ng-template cdkPortalOutlet />
+
+    @if (isStringContent()) {
+      <div data-testid="ui-alert-content" [innerHTML]="config.uiContent"></div>
+    }
+  </main>
+
+  <footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    @if (config.uiCancelText !== null) {
+      <button type="button" data-testid="ui-alert-cancel-button" ui-button uiType="outline" (click)="onCancelClick()">
+        {{ config.uiCancelText || 'Cancel' }}
+      </button>
+    }
+
+    @if (config.uiOkText !== null) {
+      <button
+        type="button"
+        data-testid="ui-alert-ok-button"
+        ui-button
+        [uiType]="config.uiOkDestructive ? 'destructive' : 'default'"
+        [uiDisabled]="config.uiOkDisabled"
+        (click)="onOkClick()"
+      >
+        {{ config.uiOkText || 'Continue' }}
+      </button>
+    }
+  </footer>
+</div>

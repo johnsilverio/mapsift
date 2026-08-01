@@ -1,0 +1,86 @@
+# Mapsift specs index
+
+A one-line catalog of the documents in `specs/`. Read the document itself for its content; this index only
+says what each is and where it lives. It is a convenience, not an authority.
+
+## The ID namespaces
+
+Every prefix used across the canon, so a newcomer does not have to derive the map by reading everything.
+
+| Prefix | Lives in | What it is |
+|---|---|---|
+| **I1 to I11** | foundation section 11 | invariants, each with the scar of the bug it prevents |
+| **OQ-1 to OQ-21** | foundation section 13 | open questions, deliberately not answered |
+| **C1 to C14** | `CLAUDE.md` | the enforceable constraints, one per invariant, each with a pass/fail test |
+| **A to K** | PRD section 1 | Layer 1 capability families (access, map and import, schema, editing, inspect, styling, analysis, collaboration, insight, output, workspace) |
+| **AR1 to AR5** | PRD section 2 | anti-requirements, behaviours deliberately rejected |
+| **T1 to T9** | PRD section 5 | Layer 2, transversal system behaviours |
+| **M1 to M16** | PRD section 6 | Layer 3, the data model and the contracts |
+| **S1 to S10** | PRD section 7 | Layer 4, surfaces and platform |
+| **N1 to N11** | PRD section 8 | non-functional requirements |
+| **U1 to U12** | PRD section 9 | the design system |
+| **ADR-NNNN** | `adr/` | code-shape decisions, superseded rather than edited |
+| **SP-N** | `spikes/` | risk spikes, throwaway code and a surviving ADR |
+| **MC-01 to MC-05** | `market-reserarch.md` | market codes standing in for competitor names |
+| **FAM-xx, REQ-xx, Z.x, DEV-A/B/C** | `market-reserarch.md` | the reverse-engineered competitor catalog those codes index |
+
+A bare "section N" always means the foundation unless it is written as "PRD section N" or names another document.
+
+---
+
+- **`mapsift-foundation.md`** — the constitution and single source of truth: the what and the why, the
+  invariants (I1 to I11, each with a scar), and the open-question log (OQ-1 to OQ-21). Every other document
+  derives from it and must not contradict it. Currently at v0.15.
+- **`PRD.md`** — the product requirements, one layer above code (the how). Derives from the foundation; turns
+  closed decisions into pass/fail requirements and marks open questions as gaps. Drafted: Layer 1 (native
+  capability floor), the anti-requirements, the extension catalog, Layer 2 (transversal system behaviors,
+  T1 to T9), Layer 3 (data model and contracts, M1 to M16), Layer 4 (surfaces and platform, S1 to S10), the
+  non-functional requirements (N1 to N11), and the design system (U1 to U12). The prose is complete; section 10
+  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.11.
+- **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
+  and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
+  - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
+    resync-cursor hole it exposed in PRD M10, in two stages (the database ordering strategy first, with a negative
+    control that had to catch the known sequence trap, then the protocol loop under deliberate chaos). The plan
+    stays on disk so a reader can check that what ran is what was planned; the decision lives in ADR-0004.
+- **`testing.md`** — the canonical method document: Red/Green/Refactor in two clean-context windows, behaviour over
+  implementation, the decision-versus-effect split that makes it possible, the kinds of test in this project
+  (including the shared cross-runtime golden corpus and why measurements are not CI gates), where tests live,
+  and the traceability rule from a requirement ID to a test. Read before writing any test or any code.
+- **`dependencies.md`** — the dependency survey: the canonical home for external-dependency versions and for the
+  particularity of each one that bites, serving the external-dependency rule. Distinguishes a **ratified choice**
+  from a **pinned version** (only a lockfile pins), carries a verification date on every claim, and ends with the
+  dependency-gated ADR agenda.
+- **`data-and-tooling-references.md`** — the reference catalog for the test corpus (data sources, formats,
+  CRS, fixtures) and for per-tool expected behavior (the analysis tools' canonical docs and the CRS rule). A
+  reference, not a test plan; the test plan points here.
+- **`domain-questions.md`** — the questions whose owner is the domain authority rather than software engineering, each one blocking a decision the canon deliberately left open (OQ-8, OQ-5, OQ-1's exit criterion, OQ-11, OQ-12, OQ-20, and the PRD J2 acceptance). Written to be answered asynchronously: every item carries what is **verified** with its source, the **proposal** the software side offers for confirmation or correction, and what is explicitly **not pinned**, so nobody confirms something the software side invented. It asks and decides nothing; the answers close their OQs by the normal fan-out. **It is the one document in `specs/` written in Brazilian Portuguese, and the exception is written rather than assumed** in its own header: the reader is the Brazilian specialist, the norms it cites are in Portuguese, and round-tripping terms like "área de uso consolidado" through English introduces error in the document that arms legal weight. The answers enter the canon in English. It also carries **section V, the verification of the answer round against primary sources**, which is where a claim is graded before it is allowed into the canon; one input failed that grading and did not enter.
+- **`session-handoff.md`** — bootstraps a fresh clean-context session with the working context that lives
+  outside the foundation and PRD: the method, the empirical base, the settled objections, the governance
+  discipline, the Linear workflow, and the .claude inheritance discipline. Section 0 is the live state, updated
+  each window.
+- **`log.md`** — a grep-able derived index of the foundation's section 15 changelog plus the closed decisions
+  that did not bump the foundation. Not a source of truth; the foundation's changelog is.
+- **`market-reserarch.md`** — the internal market-research document that defines the MC-xx codes the specs use
+  in place of competitor names. Internal by nature and kept out of version control (the on-disk filename
+  carries the historical misspelling `reserarch`, referenced as-is by the foundation and CLAUDE.md).
+- **`adr/`** — code-shape decisions in Context/Decision/Consequences form, numbered `NNNN-kebab-title.md`. An
+  accepted ADR is superseded by a later one rather than edited. On disk:
+  - **`adr/0001-architecture-baseline.md`** — the immutable baseline the scaffold is created from: the repository
+    layout by unit of deploy, the language roles, containerised from the first commit, configuration and secrets,
+    generated contracts, the CI gates, test placement, and the explicit list of what must not be scaffolded yet
+    with the gate that unlocks each. It states the ADR conventions, being the first one.
+  - **`adr/0002-code-layout-and-generation.md`** — code shape inside a stack: CLI-first generation in every
+    stack, the Angular component file layout with its bounded inline exception, the countable folder-split
+    threshold, naming from the installed schematic, and the three-level split between the ADR (the decision),
+    the path-scoped `.claude/rules/*.md` (the enforcement), and a per-stack `CLAUDE.md` (operational residue,
+    after the scaffold).
+  - **`adr/0003-angular-project-conventions.md`** — the Angular decisions that are Mapsift's own rather than the
+    official style guide restated: every feature route lazy loaded, signal-based data access as the default with
+    `HttpClient` as the exception, one forms API per surface with an interim no-mixing rule, and library imports
+    from the barrel only. Draws the line between citing an external authority and taking a decision.
+  - **`adr/0004-sync-ordering-strategy.md`** — the ordering strategy the SP-1 spike decided: the per-project
+    version, chosen on failure mode rather than throughput, with the two engineering rules that are part of the
+    decision (allocate the whole range in one statement, take the allocation last), the eliminated candidates and
+    why, and the two conditions that would bring the rejected one back. Delivers the spike's exit and the fifth
+    version axis PRD M10 had declared missing.
