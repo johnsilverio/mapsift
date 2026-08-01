@@ -132,8 +132,10 @@ Thumbs.db
 *.swo
 *~
 .idea/
-.vscode/*
-!.vscode/extensions.json
+# A pattern containing a slash is anchored to the repository root, so `.vscode/*` never reached
+# a nested one such as apps/api/.vscode. The `**/` prefix is what makes it apply at any depth.
+**/.vscode/*
+!**/.vscode/extensions.json
 
 # ---------------------------------------------------------------------------
 # Internal and per-machine files
