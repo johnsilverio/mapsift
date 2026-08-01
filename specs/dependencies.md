@@ -37,8 +37,84 @@
 | PostgreSQL 18 + PostGIS | ratified (foundation v0.14, superseding the 16 of v0.6) | **the major is ratified and the minor always runs current**, per upstream policy. Chosen by remaining support runway: PostgreSQL supports each major for five years from its initial release and **designates no LTS at all**, so the pick is the newest stable major the ecosystem supports, not a nonexistent long-term line. *Verified 2026-07-31 against the upstream versioning policy and release list: 14 through 18 supported, 14 expiring 2026-11-12, current minor 18.4, next major in beta and therefore excluded.* PostGIS 3.6 covers PostgreSQL 12 through 18 (3.6.2 released 2026-02-06), and Django's floor is PostgreSQL 14, so neither constrains the choice. See the particularities below |
 | Redis | ratified | Channels layer and Celery broker. **The Client View Record possibility is closed and this row no longer carries it:** SP-1 eliminated the row-version strategy on read cost, and ADR-0004 ratified the per-project version, whose cursor is an ordinary integer column in PostgreSQL. Redis is therefore off the sync correctness path entirely, which is a better place for it to be |
 
-**Nothing in this section is unsurveyed as of 2026-08-01.** What remains is that a lockfile has to exist before any
-of it is pinned, and the version a lockfile resolves is the authority on behaviour from that moment on.
+**Nothing in this section is unsurveyed as of 2026-08-01, and as of the same day it is PINNED.** The `apps/api`
+scaffold landed with `apps/api/uv.lock`, so from here the lockfile is the authority on behaviour and this section
+records the reasoning and the particularity rather than a second copy of it. Every version the survey predicted is
+what actually resolved, which is the useful part of the result:
+
+| Pinned | Resolved 2026-08-01 | Note |
+|---|---|---|
+| Python | **3.13.13** | Fetched by uv itself; the host runs 3.14.6 and carries no 3.13, so the pin is enforced by the resolver rather than by what happens to be installed. `requires-python = ">=3.13,<3.14"` carries the ceiling with its reason in a comment |
+| Django | **5.2.16** | The LTS line, exactly as chosen above |
+| django-ninja | **1.6.2** | |
+| Pydantic | **2.13.4** | with pydantic-core 2.46.4 |
+| pydantic-settings | **2.14.2** | **New, and not in the survey that preceded it.** It is how config becomes a Pydantic boundary (I5, C5) rather than a pile of `os.environ` reads |
+| psycopg | **3.3.4** (`[binary]`) | The same version SP-1 measured on. **The `binary` extra is a development convenience and is revisited at the container step**, since upstream advises against it for production in favour of the C or pure implementation against a system libpq |
+| mypy | **2.3.0** | with librt 0.13.0 and ast-serialize 0.6.0, which are the mypyc runtime pieces the 2.x line brought |
+| django-stubs | **6.0.7** | with django-stubs-ext 6.0.7 |
+| ruff | **0.16.1** | |
+| pytest | **9.1.1** | with pytest-django 4.12.0 |
+
+**Deliberately not installed yet, and the reason is a rule rather than an oversight:** Celery and Channels are
+ratified and have no consumer in the scaffold, so they arrive with the code that imports them. A dependency in a
+lockfile that nothing imports is a ghost that still has to be upgraded, audited and explained.
+
+### The django-stubs and mypy pairing: ANSWERED, and the preferred branch won
+
+The survey left this as the one empirical question and set the order: try django-stubs 6.0.7 with mypy 2.x against
+Django 5.2 first, fall back to the 5.2 stub line with mypy 1.19 if partial support produces false positives.
+
+**It was tried and `mypy --strict` reports `Success: no issues found in 9 source files`.** So the fallback is not
+needed: the codebase gets Django 5.2 LTS **and** the current mypy, with its stricter defaults and its parallel
+checking. The cost the survey feared did not materialise, and this row stops being a pending decision.
+
+Two mypy plugins are configured together and they do different jobs, which is not obvious from either project's
+documentation: `mypy_django_plugin.main` teaches mypy the ORM and the settings, and `pydantic.mypy` teaches it that
+a model validates and coerces its input. Without the second one, every correct `Environment(secret_key="...")` call
+is an error because the field is declared as a `SecretStr`, and a settings object populated from the environment
+reads as a constructor missing every required argument. `init_typed = false` is what states that in the config.
+
+### The type checker loads Django settings, so the toolchain needs an environment too
+
+This one cost real time and is worth reading before it costs it again. The settings module validates the
+environment with no fallback for `SECRET_KEY` or `DATABASE_URL`, which is what ADR-0001 section 4 asks for. The
+consequence nobody expects is that **django-stubs constructs its mypy plugin by importing those settings**, so a
+missing variable does not arrive as a settings error. It arrives as:
+
+```
+error: INTERNAL ERROR -- Please try using mypy master on GitHub
+Error constructing plugin instance of NewSemanalDjangoPlugin
+```
+
+which reads exactly like a broken type checker and is nothing of the sort. The same class of surprise sits in the
+test suite: **pytest-django sets Django up inside `pytest_load_initial_conftests`, which runs before any
+`conftest.py` is imported**, so a conftest cannot supply those variables in time. Two things follow and both are
+on disk. `config/settings.py` wraps the failure in `ImproperlyConfigured` with a message naming `.env.example`, so
+the toolchain fails legibly instead of cryptically. And `DJANGO_SETTINGS_MODULE` is deliberately absent from the
+pytest configuration while every test is a pure decision that needs neither Django nor a database; the window that
+writes the first ORM test turns it on and supplies the environment the way the suite is actually run.
+
+### Two smaller traps found while wiring the boundary
+
+- **`PostgresDsn` rejects `postgis://`.** The ratified database is always spoken of as PostgreSQL plus PostGIS, so
+  that scheme reads as the obvious one and is not valid. PostGIS is selected by Django's database ENGINE
+  (`django.contrib.gis.db.backends.postgis`); the URL scheme stays `postgresql://`. There is a test for it.
+- **`PostgresDsn` is a multi-host URL**, so there is no `.username`, `.password`, `.host` or `.port` on the object.
+  They live per host in `hosts()[0]`, and reading them off the URL raises `AttributeError` at runtime rather than
+  failing a type check.
+- **A list field needs `NoDecode`.** pydantic-settings JSON-decodes a raw environment value before any validator
+  runs, so the comma-separated form an operator actually writes fails before a splitting validator sees it. The
+  trap only appears on the real environment-variable path, which is why the test exercises that path and not only
+  the constructor.
+
+### `django.contrib.gis` is not in INSTALLED_APPS yet, and that is a decision
+
+The database ENGINE is the PostGIS backend from the first line, because the ratified database is PostgreSQL 18
+with PostGIS and pointing the scaffold at SQLite would be a lie the `.gitignore` already anticipates. But
+`django.contrib.gis` in INSTALLED_APPS loads GDAL and GEOS at import, the developer host is not required to carry
+them (ADR-0001 section 3 puts running in the container and authoring on the host), and this machine has no
+`gdal-config` at all. Verified: with the ENGINE set and the app absent, `manage.py check` passes on a host with no
+GDAL. It goes in with the first geometry model, inside the container.
 
 ### Why the pin is Django 5.2 LTS rather than the 6 line
 
