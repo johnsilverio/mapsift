@@ -163,7 +163,12 @@ specs/domain-questions.md
 #   uv.lock, package-lock.json, Cargo.lock   the pins themselves (specs/dependencies.md)
 #   .python-version                          how the Python 3.13 decision is enforced
 #   .env.example and friends                 templates with no real values are documentation
-#   specs/**                                 the whole authority chain, market research aside
+#   specs/**                                 the authority chain: the foundation, the PRD, the ADRs, the
+#                                            spikes, testing.md, dependencies.md, the reference catalog,
+#                                            index.md and log.md. Three files in specs/ are deliberately
+#                                            OUT and are listed in the internal block above: the market
+#                                            research, the session handoff and the domain questions, all
+#                                            internal working material rather than the contract
 #   the golden corpus for the conflict rule  one shared fixture location consumed by two
 #                                            runtimes (specs/testing.md section 5); ignoring
 #                                            it would leave C10 with nothing to compare
