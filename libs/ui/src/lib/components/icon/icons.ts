@@ -90,13 +90,7 @@ import {
   lucideZap,
 } from '@ng-icons/lucide';
 
-/**
- * A custom icon that Lucide does not ship: the half-filled circle used for the
- * dark-mode control. It is written in the same shape as a Lucide icon (24 by 24 box,
- * no fill, `currentColor` stroke, round caps) and it reads the same stroke-width
- * custom property, so it responds to the size and stroke inputs exactly like the rest
- * and never looks like a foreign body next to them.
- */
+/** A half-filled circle for the dark-mode control, shaped like a Lucide icon so it sizes and strokes like one. */
 const darkMode =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
   ' stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--ng-icon__stroke-width, 2)">' +
@@ -108,11 +102,9 @@ const darkMode =
   '</svg>';
 
 /**
- * The icon set the library ships, keyed by the stable name a consumer writes.
- *
- * The key is the public contract and it does not change when the icon behind it does,
- * which is why `trash` maps to Lucide's `Trash2` rather than exposing the vendor's
- * numbering. Values are SVG strings, which is what the icon registry consumes.
+ * The icon set this library ships, keyed by the stable name a consumer writes. The key is the
+ * public contract, which is why `trash` maps to Lucide's `Trash2` rather than exposing the
+ * vendor's numbering.
  */
 export const UI_ICONS = {
   house: lucideHouse,

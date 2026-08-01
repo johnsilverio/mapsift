@@ -3,15 +3,9 @@ import { TestBed } from '@angular/core/testing';
 import { UiPaginationComponent } from './pagination.component';
 
 /**
- * A regression test for a defect this library shipped with: `uiPageIndex` is a `model`, so
- * Angular already exposes `uiPageIndexChange` and emits it on every `set`, and the component
- * also declared that output explicitly and emitted it by hand. The v22 compiler rejects the
- * duplicate outright (NG1054), but the interesting half is what it did before that: every page
- * change reached the consumer twice, so anything counting changes or fetching per change did
- * the work twice and nothing in the type system objected.
- *
- * Asserting the emission count, rather than the value, is the point. A test that only checked
- * the value would have passed happily against the bug.
+ * Regression: `uiPageIndex` is a `model`, which already emits `uiPageIndexChange`, and the
+ * component also declared and emitted that output by hand, so every page change reached the
+ * consumer twice. These assert the emission COUNT, because asserting the value passes on the bug.
  */
 describe('UiPaginationComponent', () => {
   it('emits one page change per navigation, not one per binding', () => {

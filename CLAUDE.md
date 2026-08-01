@@ -422,6 +422,25 @@ pre-generation). Imagery: Copernicus Data Space / openEO. CRDTs (Yjs) are demote
 > it, say so. A dependency survey doc (`specs/dependencies.md`, like Hort's) is the canonical place for
 > versions and particularities.
 
+## Comments: a trap earns one, an explanation does not
+
+Code is self-explanatory through naming, and this repository has a stronger reason than usual to keep
+comments scarce: it carries a full authority chain (foundation, PRD, ADRs, `dependencies.md`, `log.md`) with
+a fan-out rule whose whole purpose is to stop a decision existing as two copies that drift. **Reasoning
+copied into a comment is exactly that second copy, and it is outside the fan-out**, so it ages against the
+foundation with nobody noticing.
+
+- **An inline comment earns its place only as a trap:** the correct code looks wrong, or the wrong code looks
+  right, and without the note someone "fixes" it and reintroduces the defect. The worked example is
+  `geodesic_area_unsigned`, whose obvious-looking name returns the rest of the planet for a reversed ring.
+  Anchor it to the line it protects, three lines at most.
+- **Documentation is a different thing and is wanted:** a docstring, rustdoc or TSDoc on a public API, one to
+  three lines, saying what the thing guarantees. The product may be opened one day and the public surface has
+  to read on its own.
+- **Never restate the canon.** Cite the decision by its identifier (M5, C11, ADR-0004) and let the document
+  hold the reasoning, the same way `specs/testing.md` section 6 already has a test name its requirement ID.
+- **An explanation of what the code does is a naming failure**, so fix the name instead.
+
 ## Process & tracking
 
 Authority chain: `specs/mapsift-foundation.md` (constitution, v0.15, the what and the why) → `specs/PRD.md`

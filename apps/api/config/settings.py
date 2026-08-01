@@ -20,19 +20,13 @@ from config.env import Environment
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Everything environment-shaped is read and validated once, here, through the boundary in
-# config/env.py (I5, C5). ADR-0001 section 4: configuration comes from the environment and
-# never from a checked-in file with real values, which is why the generated SECRET_KEY that
-# `django-admin startproject` wrote into this file was removed before the first commit rather
-# than after the first leak.
+# ADR-0001 section 4: configuration comes from the environment. The SECRET_KEY that
+# `startproject` wrote into this file was removed before the first commit.
 try:
     env = Environment()
 except ValidationError as error:
-    # Without this, an incomplete environment surfaces wherever the settings module happens to
-    # be imported, and the loudest of those is the type checker: django-stubs constructs its
-    # plugin by loading these settings, so a missing variable arrives as `INTERNAL ERROR --
-    # Error constructing plugin instance`, which tells a newcomer nothing at all. The failure
-    # is correct and stays a failure; only the message becomes actionable.
+    # Anything that loads Django surfaces this, and django-stubs surfaces it as
+    # `INTERNAL ERROR -- Error constructing plugin instance`, which tells a newcomer nothing.
     raise ImproperlyConfigured(
         "The API environment is incomplete or invalid.\n"
         "Copy apps/api/.env.example to apps/api/.env and fill it in, or export the variables.\n"

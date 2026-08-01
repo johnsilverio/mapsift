@@ -243,9 +243,6 @@ export class UiPaginationComponent {
 
   readonly class = input<ClassValue>('');
 
-  // `uiPageIndex` is a model, so Angular already exposes `uiPageIndexChange` and emits it on
-  // every `set`. Declaring the output again shadowed that one, which the v22 compiler rejects
-  // outright (NG1054), and it also made every page change arrive at the consumer twice.
   readonly Math = Math;
 
   protected readonly classes = computed(() => mergeClasses(paginationVariants(), this.class()));

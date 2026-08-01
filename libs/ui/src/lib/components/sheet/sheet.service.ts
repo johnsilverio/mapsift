@@ -25,11 +25,7 @@ export class UiSheetService {
     const overlayRef = this.createOverlay();
 
     if (!overlayRef) {
-      // An inert reference for an environment with no DOM to attach an overlay to. The two
-      // casts are deliberate and are the justification CLAUDE.md requires for an `any`: this
-      // object exists precisely so the caller gets something with the right shape and no
-      // behaviour, and typing the constructor to accept a missing overlay would push that
-      // absence into every method that legitimately has one.
+      // An inert reference for an environment with no DOM: right shape, no behaviour.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inert reference, see above
       return new UiSheetRef(undefined as any, config, undefined as any, this.platformId);
     }
@@ -85,10 +81,6 @@ export class UiSheetService {
     if (componentOrTemplateRef instanceof TemplateRef) {
       sheetContainer.attachTemplatePortal(
          
-        // The portal's context is typed as the template's own `T`, while what is handed in is
-        // the sheet reference the template consumes through its `let-` bindings. Reconciling
-        // the two properly means giving the template context a declared type, which is a public
-        // API change to this component rather than a cast to remove here.
         new TemplatePortal<T>(componentOrTemplateRef, null!, {
           sheetRef: sheetRef,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- template context, see above

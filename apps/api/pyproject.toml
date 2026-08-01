@@ -2,11 +2,7 @@
 name = "mapsift-api"
 version = "0.1.0"
 description = "Mapsift backend: the one Django service. Truth, auth, tenant isolation, ordering, and the authoritative conflict resolution."
-# The ceiling is deliberate and it is not a Python or Django limitation. Celery's own
-# supported-versions list stops at 3.13 while its release notes claim initial 3.14 support,
-# and the heavy-analysis job queue is not where unlisted support gets tried first.
-# Surveyed 2026-08-01, recorded in specs/dependencies.md with the re-check trigger:
-# when Celery's supported list names 3.14, this ceiling is revisited.
+# Ceiling capped by Celery, whose supported list stops at 3.13 (specs/dependencies.md).
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "django~=5.2.0",
@@ -23,11 +19,7 @@ dev = [
     "ruff>=0.16.1",
 ]
 
-# ---------------------------------------------------------------------------
-# The gates (ADR-0001 section 6). They exist before there is meaningful code in
-# them, because a gate added later is a gate that arrives after the violations.
-# CI blocks on every one of these; pre-commit runs the fast subset.
-# ---------------------------------------------------------------------------
+# The gates of ADR-0001 section 6.
 
 [tool.ruff]
 line-length = 100
@@ -46,35 +38,29 @@ select = [
     "DTZ",     # naive datetimes, which matter where created-at and applied-at are distinct (T5.3)
     "T20",     # no stray print, since the observability rule is structured logging (N9)
     "RUF",
-    "ANN",     # every signature complete, which is C5 expressed as a lint rule
+    "ANN",     # C5 as a lint rule: every signature complete
 ]
-# Django's own generated migrations are excluded above rather than fought with.
 
 [tool.ruff.lint.per-file-ignores]
-# A test may assert on a value without annotating every fixture into oblivion.
 "**/tests/**" = ["ANN201", "ANN001"]
 
 [tool.mypy]
 strict = true
-# Both plugins are needed and they do different jobs. The Django one teaches mypy the ORM and
-# the settings; the Pydantic one teaches it that a model validates and coerces its input, which
-# is what makes `Environment(secret_key="...")` legal even though the field is a SecretStr.
+# Two plugins, two jobs: the Django one teaches the ORM and the settings, the Pydantic one
+# teaches that a model coerces its input.
 plugins = ["mypy_django_plugin.main", "pydantic.mypy"]
 python_version = "3.13"
 exclude = ["\\.venv"]
-# No Any without a comment justifying it (CLAUDE.md, C5). These make the escape visible.
 disallow_any_explicit = false
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-# The generated Django project files are the framework's shape, not ours.
 module = ["config.wsgi", "config.asgi"]
 disallow_untyped_defs = false
 
 [tool.pydantic-mypy]
 # A settings object is populated from the environment, so its constructor legitimately takes
-# no arguments and legitimately accepts the raw forms it coerces. Typing the generated
-# __init__ strictly would make every correct call site an error.
+# no arguments and accepts the raw forms it coerces.
 init_typed = false
 init_forbid_extra = false
 warn_required_dynamic_aliases = true
@@ -86,17 +72,6 @@ django_settings_module = "config.settings"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q --strict-markers --strict-config"
-# DJANGO_SETTINGS_MODULE is deliberately absent until the first test needs the ORM, and the
-# reason is worth reading before someone "fixes" it by adding the line back.
-#
-# The settings module reads a validated environment with no fallback for SECRET_KEY or
-# DATABASE_URL, which is the behaviour ADR-0001 section 4 asks for. Setting this key makes
-# pytest-django call django.setup() inside its pytest_load_initial_conftests hook, which runs
-# BEFORE any conftest.py is imported, so no conftest can supply those variables in time. The
-# suite would then need an environment to run tests that never touch Django.
-#
-# Today every test here is a pure decision (specs/testing.md section 3) and needs neither. The
-# window that writes the first ORM-dependent test turns this on and supplies the environment
-# the way the suite is actually run: from compose in the container, or from an exported
-# environment or a local .env on the host. That is a real choice with a real trade-off, and it
-# belongs to the window that has a reason to make it.
+# DJANGO_SETTINGS_MODULE is deliberately absent while every test is a pure decision. Setting it
+# makes pytest-django call django.setup() before any conftest.py loads, so nothing can supply the
+# environment the settings module requires. The first ORM-dependent test turns it on.

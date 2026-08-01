@@ -9,12 +9,9 @@ import { iconVariants, type UiIconSizeVariants } from './icon.variants';
 import { UI_ICONS, type UiIcon } from './icons';
 
 /**
- * The one icon primitive. Every other component in this library renders its icons through
- * it, so the set, the sizing scale and the stroke behave identically everywhere.
- *
- * The icon set is registered here rather than by the consuming application, which keeps the
- * library self-contained: importing a component that happens to render a chevron never
- * obliges the application to know that, or to provide anything for it.
+ * The one icon primitive every other component in this library renders through. Icons are
+ * registered here, so consuming an icon-bearing component obliges the application to provide
+ * nothing.
  */
 @Component({
   selector: 'ui-icon, [ui-icon]',
