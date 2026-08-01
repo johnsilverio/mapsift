@@ -28,7 +28,7 @@ export class UiCarouselPluginsService {
       return Autoplay(options);
     } catch (err) {
       console.error('Error loading Autoplay plugin:', err);
-      throw new Error('Make sure embla-carousel-autoplay is installed.');
+      throw new Error('Make sure embla-carousel-autoplay is installed.', { cause: err });
     }
   }
 
@@ -73,7 +73,7 @@ export class UiCarouselPluginsService {
       return ClassNames(options);
     } catch (err) {
       console.error('Error loading ClassNames plugin:', err);
-      throw new Error('Make sure embla-carousel-class-names is installed.');
+      throw new Error('Make sure embla-carousel-class-names is installed.', { cause: err });
     }
   }
 
@@ -92,7 +92,7 @@ export class UiCarouselPluginsService {
       return WheelGesturesPlugin(options);
     } catch (err) {
       console.error('Error loading WheelGestures plugin:', err);
-      throw new Error('Make sure embla-carousel-wheel-gestures is installed.');
+      throw new Error('Make sure embla-carousel-wheel-gestures is installed.', { cause: err });
     }
   }
 }

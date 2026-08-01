@@ -103,12 +103,12 @@ export class UiToggleComponent implements ControlValueAccessor {
     this.value.set(val ?? this.uiDefault());
   }
 
-  registerOnChange(fn: any): void {
+  registerOnChange(fn: (value: boolean) => void): void {
     this.onChangeFn = fn;
     this.isUsingNgModel.set(true);
   }
 
-  registerOnTouched(fn: any): void {
+  registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
   }
 

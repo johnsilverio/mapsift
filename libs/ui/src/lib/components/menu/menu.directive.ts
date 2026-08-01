@@ -51,7 +51,7 @@ export class UiMenuDirective implements OnInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
 
   private closeTimeout: ReturnType<typeof setTimeout> | null = null;
-  private readonly cleanupFunctions: Array<() => void> = [];
+  private readonly cleanupFunctions: (() => void)[] = [];
 
   readonly uiMenuTriggerFor = input.required<TemplateRef<void>>();
   readonly uiDisabled = input<boolean, BooleanInput>(false, { transform: booleanAttribute });

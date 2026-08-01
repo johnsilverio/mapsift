@@ -273,6 +273,51 @@ The client core uses the pure-Rust **`geo`** crate (GeoRust): planar geometries,
 | `@mapsift/ui` | ratified (foundation, handoff section 10) | a vendorized ZardUI fork at `libs/ui`, built with ng-packagr, consumed by package name only (PRD U10) |
 | The component catalog tool (Storybook or equivalent) | not decided, ADR (foundation 9.6.5, PRD U12) | its scope includes the platform-neutral token export |
 
+### PINNED 2026-08-01 by the workspace scaffold
+
+The Angular workspace exists and `package-lock.json` is the authority from here. Generated with the **current**
+CLI (22.1.2) rather than the 22.0.0 installed globally, because generating with an older CLI reproduces an older
+schematic shape, which is the whole reason ADR-0002 makes generation CLI-first.
+
+| Pinned | Resolved | Note |
+|---|---|---|
+| @angular/core | **22.1.0** | with CLI and `@angular/build` at 22.1.2 |
+| TypeScript | **6.0.2** | see the strict finding below |
+| ng-packagr | **22.1.0** | the `@angular/build:ng-packagr` builder |
+| @angular/cdk | **22.1.0** | the library uses it in 42 files |
+| Vitest | **4.0.8** | the `@angular/build:unit-test` default runner, with jsdom |
+| angular-eslint | **22.1.0** | added with `ng add`, because `ng new` ships no linter and ADR-0001 section 6 requires one |
+| @ng-icons/core and /lucide | **34.0.0** | replaces lucide-angular, see below |
+| clsx, class-variance-authority, tailwind-merge | current | what the library actually imports, in 65, 45 and 2 files, which is the structural Tailwind dependency this document already recorded |
+
+### TypeScript 6 turns `strict` on by default, and the hazard is the inverse of the obvious one
+
+The generated `tsconfig.json` contains **no `"strict": true`**, which reads like a missing gate against C5 and is
+not one. Verified empirically rather than assumed: compiling with the generated config rejects an implicit `any`
+and a null assignment exactly as `--strict` forced does. TypeScript 6 made it the default, which is why the
+schematic stopped writing it.
+
+**So the thing to watch is the opposite of what it looks like.** Adding the line back is harmless noise;
+**pinning TypeScript below 6 would silently turn strict off across the whole front end**, with nothing in the
+configuration showing it. Anyone considering a downgrade owns that consequence.
+
+### lucide-angular is incompatible with Angular 22 in every published version
+
+Its peer is pinned at `13.x - 21.x` including in its 1.0.0, so this is blocked upstream rather than a version to
+pick. The icon module moved to **@ng-icons/core and @ng-icons/lucide**, which declare peer `>=21.0.0` and which
+**the ratified editor prototype already runs on Angular 22**, so the combination is proven inside this repository
+rather than assumed. Same Lucide artwork, same public API on `ui-icon`. All 89 icon names were verified against
+the installed package's real exports instead of translated by naming convention, and the one custom icon was
+rewritten as an SVG string. `uiAbsoluteStrokeWidth` was dropped: ng-icons has no equivalent and no consumer used it.
+
+### The library's own debt, recorded rather than silently carried
+
+Found while making the workspace green, and deliberately **not** fixed here because it is design-system work under
+PRD section 9: **69 components use an inline template**, against ADR-0002 section 2 and its bounded exception;
+**four directives remain on a camelCase selector** while the library's majority convention is kebab-case, and they
+are enumerated by file in `libs/ui/eslint.config.js` so the debt stays countable; and the library had **no tests at
+all** until the three added with this scaffold.
+
 ### Versions observed in the prototype (evidence, not pins)
 
 The editor prototype ran this combination successfully, which is useful as a starting point for the scaffold's own resolution and is **not a decision and not a pin**: Angular 22.0.0 with CDK 22.0.2, TypeScript 6.0.2, MapLibre GL JS 5.24.0, Terra Draw 1.31.2 with its MapLibre adapter 1.4.1, Turf 7.3.5, PMTiles 4.4.1, Protomaps basemaps 5.7.2, Tailwind CSS 4.1.12, ng-icons 33.3.0. The scaffold resolves its own versions and pins them in lockfiles; this row exists so nobody has to excavate the prototype to know what was known to work.

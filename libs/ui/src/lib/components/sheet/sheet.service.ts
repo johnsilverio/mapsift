@@ -7,7 +7,7 @@ import { UiSheetRef } from './sheet-ref';
 import { UiSheetComponent, UiSheetOptions } from './sheet.component';
 
 type ContentType<T> = ComponentType<T> | TemplateRef<T> | string;
-export const Z_SHEET_DATA = new InjectionToken<any>('Z_SHEET_DATA');
+export const UI_SHEET_DATA = new InjectionToken<unknown>('UI_SHEET_DATA');
 
 @Injectable({
   providedIn: 'root',
@@ -25,7 +25,12 @@ export class UiSheetService {
     const overlayRef = this.createOverlay();
 
     if (!overlayRef) {
-      // Return a mock sheet ref for SSR environments
+      // An inert reference for an environment with no DOM to attach an overlay to. The two
+      // casts are deliberate and are the justification CLAUDE.md requires for an `any`: this
+      // object exists precisely so the caller gets something with the right shape and no
+      // behaviour, and typing the constructor to accept a missing overlay would push that
+      // absence into every method that legitimately has one.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inert reference, see above
       return new UiSheetRef(undefined as any, config, undefined as any, this.platformId);
     }
 
@@ -79,9 +84,14 @@ export class UiSheetService {
 
     if (componentOrTemplateRef instanceof TemplateRef) {
       sheetContainer.attachTemplatePortal(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+         
+        // The portal's context is typed as the template's own `T`, while what is handed in is
+        // the sheet reference the template consumes through its `let-` bindings. Reconciling
+        // the two properly means giving the template context a declared type, which is a public
+        // API change to this component rather than a cast to remove here.
         new TemplatePortal<T>(componentOrTemplateRef, null!, {
           sheetRef: sheetRef,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- template context, see above
         } as any),
       );
     } else if (typeof componentOrTemplateRef !== 'string') {
@@ -100,7 +110,7 @@ export class UiSheetService {
       parent: this.injector,
       providers: [
         { provide: UiSheetRef, useValue: sheetRef },
-        { provide: Z_SHEET_DATA, useValue: config.uiData },
+        { provide: UI_SHEET_DATA, useValue: config.uiData },
       ],
     });
   }

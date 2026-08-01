@@ -16,7 +16,7 @@ import { UiDialogComponent, UiDialogOptions } from './dialog.component';
 
 type ContentType<T> = ComponentType<T> | TemplateRef<T> | string;
 
-export const Z_MODAL_DATA = new InjectionToken<any>('Z_MODAL_DATA');
+export const UI_MODAL_DATA = new InjectionToken<unknown>('UI_MODAL_DATA');
 
 @Injectable({
   providedIn: 'root',
@@ -117,7 +117,7 @@ export class UiDialogService {
       parent: this.injector,
       providers: [
         { provide: UiDialogRef, useValue: dialogRef },
-        { provide: Z_MODAL_DATA, useValue: config.uiData },
+        { provide: UI_MODAL_DATA, useValue: config.uiData },
       ],
     });
   }

@@ -77,6 +77,10 @@ node_modules/
 dist/
 .angular/
 *.tsbuildinfo
+# The Angular workspace writes TypeScript build output here, outside dist/, and the Vitest
+# runner writes browser-mode screenshots here. Both are produced by a build or a test run.
+out-tsc/
+__screenshots__/
 .npm/
 npm-debug.log*
 yarn-error.log*

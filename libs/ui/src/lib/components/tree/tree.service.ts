@@ -3,7 +3,7 @@ import { computed, Injectable, signal } from '@angular/core';
 import type { FlatTreeNode, TreeCheckState, TreeNode } from './tree.types';
 
 @Injectable()
-export class UiTreeService<T = any> {
+export class UiTreeService<T = unknown> {
   readonly expandedKeys = signal<Set<string>>(new Set());
   readonly selectedKeys = signal<Set<string>>(new Set());
   readonly checkedKeys = signal<Set<string>>(new Set());

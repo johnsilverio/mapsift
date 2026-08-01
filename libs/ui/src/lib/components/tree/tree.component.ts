@@ -76,7 +76,7 @@ import { treeVariants } from './tree.variants';
   },
   exportAs: 'uiTree',
 })
-export class UiTreeComponent<T = any> {
+export class UiTreeComponent<T = unknown> {
   readonly treeService = inject(UiTreeService<T>);
   private readonly elementRef = inject(ElementRef);
 

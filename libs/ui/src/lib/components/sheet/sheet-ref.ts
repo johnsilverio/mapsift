@@ -11,7 +11,7 @@ const enum eTriggerAction {
   OK = 'ok',
 }
 
-export class UiSheetRef<T = any, R = any, U = any> {
+export class UiSheetRef<T = unknown, R = unknown, U = unknown> {
   private destroy$ = new Subject<void>();
   private isClosing = false;
   protected result?: R;

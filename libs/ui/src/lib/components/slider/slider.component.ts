@@ -333,7 +333,9 @@ export class UiSliderComponent implements ControlValueAccessor, AfterViewInit, O
     const rawValue = this.uiMin() + ((this.uiMax() - this.uiMin()) * percent) / 100;
     const currentValue = roundToStep(rawValue, this.uiMin(), this.uiStep());
 
-    let newValue = currentValue;
+    // Every branch below either assigns or returns, so an initial value here would only
+    // be dead. Declaring without one lets the compiler prove that instead of hiding it.
+    let newValue: number;
 
     const { key } = event as KeyboardEvent;
 

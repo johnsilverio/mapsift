@@ -84,6 +84,6 @@ export class UiAccordionComponent implements AfterContentInit {
   }
 
   private countOpenItems(): number {
-    return this.items().reduce((counter, item) => (item.isOpen() ? ++counter : counter), 0);
+    return this.items().reduce((counter, item) => (item.isOpen() ? counter + 1 : counter), 0);
   }
 }

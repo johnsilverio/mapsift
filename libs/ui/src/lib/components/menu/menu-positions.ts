@@ -1,6 +1,6 @@
 import type { ConnectedPosition } from '@angular/cdk/overlay';
 
-export const MENU_POSITIONS_MAP: { [key: string]: ConnectedPosition[] } = {
+export const MENU_POSITIONS_MAP: Record<string, ConnectedPosition[]> = {
   bottomLeft: [
     {
       originX: 'start',

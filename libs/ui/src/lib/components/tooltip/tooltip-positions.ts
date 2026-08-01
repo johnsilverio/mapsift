@@ -1,6 +1,6 @@
 import type { ConnectedPosition } from '@angular/cdk/overlay';
 
-export const TOOLTIP_POSITIONS_MAP: { [key: string]: ConnectedPosition } = {
+export const TOOLTIP_POSITIONS_MAP: Record<string, ConnectedPosition> = {
   top: {
     originX: 'center',
     originY: 'top',

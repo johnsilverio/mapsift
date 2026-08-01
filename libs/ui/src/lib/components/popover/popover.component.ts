@@ -30,7 +30,7 @@ import { popoverVariants } from './popover.variants';
 export type UiPopoverTrigger = 'click' | 'hover' | null;
 export type UiPopoverPlacement = 'top' | 'bottom' | 'left' | 'right';
 
-const POPOVER_POSITIONS_MAP: { [key: string]: ConnectedPosition } = {
+const POPOVER_POSITIONS_MAP: Record<string, ConnectedPosition> = {
   top: {
     originX: 'center',
     originY: 'top',

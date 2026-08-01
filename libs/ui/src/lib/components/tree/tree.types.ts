@@ -1,4 +1,4 @@
-export interface TreeNode<T = any> {
+export interface TreeNode<T = unknown> {
   key: string;
   label: string;
   data?: T;
@@ -18,7 +18,7 @@ export interface TreeNodeTemplateContext<T = unknown> {
 
 export type TreeCheckState = 'checked' | 'unchecked' | 'indeterminate';
 
-export interface FlatTreeNode<T = any> {
+export interface FlatTreeNode<T = unknown> {
   node: TreeNode<T>;
   level: number;
   expandable: boolean;

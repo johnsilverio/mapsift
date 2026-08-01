@@ -115,7 +115,7 @@ import {
   },
   exportAs: 'uiTreeNode',
 })
-export class UiTreeNodeComponent<T = any> {
+export class UiTreeNodeComponent<T = unknown> {
   readonly treeService = inject(UiTreeService);
 
   readonly node = input.required<TreeNode<T>>();
