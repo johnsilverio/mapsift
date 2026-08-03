@@ -9,12 +9,13 @@ internal by nature.
 
 ## Project status
 
-Mapsift is **pre-implementation**: no application code or scaffold exists yet, but the foundation and a
-first PRD draft do. `specs/mapsift-foundation.md` is at **v0.15** and is the **live source of truth** (the
-constitution: the what and the why). `specs/PRD.md` is a living document at **v0.11**, and its **prose is complete**
+Mapsift is **early**: a scaffold exists and runs (four ecosystems building, type checking and testing green,
+containerised, with the task runner and the CI gates in place) and **no product capability is built yet**.
+`specs/mapsift-foundation.md` is at **v0.17** and is the **live source of truth** (the
+constitution: the what and the why). `specs/PRD.md` is a living document at **v0.12**, and its **prose is complete**
 (Layer 1 the native capability floor with the anti-requirements and the extension catalog, Layer 2 the transversal
 system behaviors T1 to T9, Layer 3 the data model and contracts M1 to M16, Layer 4 the surfaces and platform
-S1 to S10, section 8 the non-functional requirements N1 to N11, and section 9 the design system U1 to U12; PRD
+S1 to S10, section 8 the non-functional requirements N1 to N12, and section 9 the design system U1 to U12; PRD
 section 10 is the gap list of what is left, which is decisions, artifacts, and measurements rather than text):
 it is the *how* (one layer above code), derives from the
 foundation, and must not contradict it. Nine PRD rules that bind implementation and that an agent gets wrong on
@@ -158,7 +159,7 @@ This is the architectural core. Get it wrong and nothing else makes sense.
 
 ## Non-negotiable constraints
 
-Derived from the foundation (v0.15). Each is load-bearing and pairs with a pass/fail acceptance test (the
+Derived from the foundation (v0.17). Each is load-bearing and pairs with a pass/fail acceptance test (the
 Hort C-equivalents). Breaking one is a regression, not a tradeoff. CI and review enforce them.
 
 - **C1, offline write path (foundation I1).** An element edit commits locally (op queue, IndexedDB/OPFS)
@@ -248,7 +249,7 @@ protection on the device (OQ-17), the offline authorship-proof mechanism
 (OQ-18), agent-write governance (OQ-19), legal-weight retention and project deletion, whose retention half is
 per-jurisdiction policy rather than one global period (OQ-20), and whether the shipped desktop and mobile builds
 carry product obligations the web tier does not, the clock starting on distribution and nothing distributed today
-(OQ-21).
+(OQ-21), and the three operational questions opened in v0.16 and deliberately not scheduled: edge caching with a content delivery network and tile invalidation (OQ-22), rate limiting and quota (OQ-23), and horizontal scale-out with what balances in front of it (OQ-24).
 
 **Security and privacy posture (foundation section 9):** data is encrypted in transit (TLS) and at rest for
 production data; collection is minimized to what environmental analysis needs; production data never leaves
@@ -329,6 +330,19 @@ rules) is deferred to the PRD and is NOT pre-decided here.
   Resolution authority is the server's alone; the client's resolution is an optimistic preview reconciled on
   sync. The rule is versioned in the protocol so an old client meeting a new server is reconciled, not silently
   trusted. Do NOT run the Rust core on the server (no PyO3) and do NOT decide legal-weight data on the client.
+- **Observability and availability are structural where they are free, and deferred where they are a hunch
+  (foundation section 10, v0.16; PRD N9 and N12).** Three things bind from the first line of code, because
+  none of them can be retrofitted cheaply. **Logs are structured and carry their correlation keys** (operation
+  identifier, clientID, tenant, request or task), bound once per request and per background task rather than
+  passed by hand, because PRD N9 requires a user's report to be reconstructible end to end and a join cannot
+  be added to free text later. **Redaction lives on the logging path**, never in each caller's diligence: no
+  geometry payload and no personal data reaches a log. And **liveness and readiness are different probes**,
+  liveness touching no dependency (a probe that fails on a slow query restarts a healthy service and turns a
+  hiccup into an outage), readiness checking what it needs. Telemetry is emitted vendor-neutral so the backend
+  stays swappable; the backend itself, the sampling, the dashboards and the alerting are an ADR whose trigger
+  is the first real users, and the **OpenTelemetry Python logs SDK was still in development as of May 2026**,
+  so the log path runs through the standard library with trace identifiers injected. Do NOT pick a telemetry
+  vendor in application code, and do NOT let a capability fail without both a user-visible signal and a record.
 - **Type-safe end to end.** mypy `--strict` with django-stubs on the backend; TypeScript strict on the
   frontend; Pydantic at every boundary (API input, WebSocket messages, config). No function without a
   complete signature. No `Any` without a justifying comment. CI blocks a PR if mypy or ruff fail.
@@ -443,12 +457,25 @@ foundation with nobody noticing.
 
 ## Process & tracking
 
-Authority chain: `specs/mapsift-foundation.md` (constitution, v0.15, the what and the why) → `specs/PRD.md`
+Authority chain: `specs/mapsift-foundation.md` (constitution, v0.17, the what and the why) → `specs/PRD.md`
 (the how, one layer above code) and this file (the constraints-and-behaviors digest), both derived from the
 foundation → ADRs (code-shape) → spec-per-task in git (what the agent reads to implement). **git owns the contract;
 Linear owns execution state; the task ID bridges them.** The procedure for working with Linear (the
-git↔Linear boundary, when an issue may be created, the Workspace/Team/Project/Milestone/Issue structure, the
-GitHub status automation, the local-scope MCP isolation) lives in the **`linear-workflow` skill**, not here.
+git↔Linear boundary, when an issue may be created and what one issue is, the status lifecycle with the
+two-window protocol inside it, the definition of done, priority meanings, how more than one person works in
+parallel, the project and milestone lifecycle, and the local-scope MCP isolation) lives in the
+**`linear-workflow` skill**, not here. Everything from the branch onward (branch name, the pre-commit gate,
+commit format, the PR flow) is the **`dev-workflow` skill**, and the two do not restate each other.
+
+**The method is XP-shaped with three practices deliberately replaced, and the replacements are not
+shortcuts.** The **planning game** is replaced by the closed canon, since scope is decided in the foundation
+and the PRD before it reaches a tracker. **Pair programming** is replaced by the **two-window protocol**,
+which buys the same independent-check property. **The on-site customer** is the embedded domain engineer,
+whose open questions are marked in the canon rather than guessed at. Story points, velocity, iteration
+commitments and burndown are dropped, because all four forecast a scope that is still being negotiated and
+this one is closed. An issue is **Done** only when the behaviour is proven by tests written first, `just
+check` is green, the PR is merged through the normal flow, any ADR it owed exists, and any decision it closed
+has finished its fan-out.
 
 ## Commands
 

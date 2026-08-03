@@ -1,6 +1,6 @@
 # Mapsift Foundation
 
-> **Status:** living document, foundation v0.15 (2026-07-31). Supersedes v0.14; revisions in section 15.
+> **Status:** living document, foundation v0.17 (2026-08-03). Supersedes v0.16; revisions in section 15.
 > **Authority:** this is the single source of truth for Mapsift. Every other document
 > (PRD, ADRs, per-task specs, CLAUDE.md constraints, Linear issues) derives from this
 > file and must not contradict it. When a derived document and this file disagree, this
@@ -16,7 +16,8 @@
 
 ## 0. How to read this document
 
-Mapsift is in **pre-implementation**. No production code exists yet. This document exists
+Mapsift is **early**. A scaffold exists and runs, containerised, with the four ecosystems building, type
+checking and testing green, and no product capability is built yet. This document exists
 so that a person or an LLM can read it cold and understand what Mapsift is, who it is for,
 what problem it solves, and which architectural decisions are already closed (with the
 reasoning and tradeoffs behind them) versus which are still open.
@@ -1469,6 +1470,89 @@ cannot answer in one release.
 > measurement rather than the intention. Where the research finds nothing usable, that is recorded too, the
 > same way a spike that fails is a result.
 
+#### Observability and availability: structural now, the rest waits for a measured need
+
+**Context.** The rule above splits work into what is free at design time and what is bought with a
+measurement, and observability and availability split along the same line. The split is worth stating because
+both words usually arrive as a shopping list of tools, and the tools are the part that waits. What is
+structural is small: a log line that cannot be joined to the operation it describes is not made joinable later
+without touching every call site, and a backup nobody has restored is a claim rather than a capability.
+
+This product has a reason to care that is stronger than operational pride, and it is the moral line. Section 4
+promises that a legal-weight edit is never silently discarded, and the PRD turns that into a requirement that
+nothing fails silently and that a user's report about a lost edit is reconstructible end to end. A system that
+cannot explain what it did to a legal-weight feature cannot honour that promise in front of the person asking,
+and no amount of correct sync logic substitutes for it.
+
+> **Decision (closed 2026-08-03, v0.16), observability, three properties that are free at design time:**
+> - **Every log line carries the keys that join it to the work it describes**, and logs are structured rather
+>   than free text from the first line of code, because the join is what the reconstruction requirement needs
+>   and it cannot be added afterwards without editing every call site.
+> - **Redaction is a property of the logging path rather than of each caller's diligence.** Geometry payloads
+>   and personal data never reach a log (section 9, and the PRD's privacy requirement), and a discipline that
+>   depends on every author remembering is a leak with a date on it.
+> - **Telemetry is emitted in a vendor-neutral shape and the backend is swappable**, which is the same
+>   decision as the pluggable data provider in section 6 and for the same reason: a business relationship
+>   fused into the architecture is expensive exactly when it needs to change.
+>
+> **The dated caveat that shapes the mechanism, recorded because it will expire.** As of May 2026 the
+> OpenTelemetry Python traces and metrics SDKs are stable and its **logs** SDK is still in development, while
+> the logs signal itself is stable in the specification and in other languages. So the log path runs through
+> the standard library with the trace identifiers injected into it, and does not depend on an unstable SDK to
+> produce the record that a compliance question is answered from. Re-check when the Python logs SDK reaches
+> stable; the shape above does not change, only what carries it.
+>
+> **One payoff is not obvious and is worth stating, because it changes what the client emits.** The
+> performance budgets of PRD N1 are defined in the same terms a browser already reports (a main-thread task
+> over the long-task line, an interaction past the perceived-lag threshold at the 75th percentile), and the
+> PRD records those budgets as measurements owed on named reference devices. Client telemetry from real users
+> on real hardware is **stronger evidence than a bench**, so the observability path and the N1 measurement
+> protocol are one mechanism rather than two, and the field tablet that is hardest to bench is exactly the
+> device that reports itself.
+>
+> **What this buys:** the requirement that nothing fails silently becomes answerable rather than aspirational,
+> it costs nothing today because there is no code to retrofit yet, and the budgets the product owes itself get
+> a source of real-device numbers.
+>
+> **What this costs:** slightly more ceremony at every boundary that logs, and one dated caveat to revisit.
+>
+> **Deferred, with a trigger rather than a shrug:** the telemetry backend, the sampling policy, the dashboards
+> and the alerting are an **ADR, and its trigger is the first real users**, because that is the moment
+> telemetry starts answering questions instead of describing an empty system, and it is also the moment a bug
+> costs someone other than a developer. Choosing the backend earlier buys nothing; choosing it later means the
+> first users hit problems nobody can see. The one property that must hold whatever wins is the vendor
+> neutrality above, so the choice stays reversible.
+
+> **Decision (closed 2026-08-03, v0.16), availability, three properties that are also free at design time:**
+> - **Liveness and readiness are different questions and are never conflated.** Liveness asks whether the
+>   process should be restarted and therefore touches no dependency, because a probe that fails on a slow
+>   query restarts a healthy service and turns a hiccup into an outage. Readiness asks whether this instance
+>   should receive traffic and therefore does check its dependencies.
+> - **Degradation is announced, never silent.** Section 5 already requires that a capability unavailable
+>   offline is refused with a reason rather than failing quietly; the same holds when the missing piece is
+>   server-side. An outage that presents as a wrong answer is the silent-discard sin wearing a different hat.
+> - **A backup is a backup only once a restore has been rehearsed**, and the rehearsal is recorded with its
+>   date, its versions and what came back, on the same discipline as a measurement (PRD N1). The shape is
+>   continuous archiving with point-in-time recovery rather than a periodic dump alone, because the data this
+>   product loses in an incident is legally consequential and the acceptable loss window is the last operation
+>   rather than the last night. The tool is an ADR.
+>
+> **Two consequences specific to this product, recorded so a generic guide does not overwrite them.** ADR-0004
+> already made a **logical restore into a new cluster** a survivable event rather than a silent catastrophe,
+> because the resync cursor is ordinary data in an ordinary column; that property is load-bearing for the
+> restore plan and must not be traded away. And the operation log is append-only (PRD M15), so backup size and
+> the retention policy of OQ-20 are one conversation rather than two.
+>
+> **What this buys:** the recovery path exists before the incident that needs it, which is the only order in
+> which it is cheap.
+>
+> **What this costs:** a rehearsal on the calendar, and the honesty to record what the rehearsal actually
+> restored.
+>
+> **Deferred, and deliberately so:** the availability target, the replica and failover topology, and any
+> multi-region posture wait for a measured need and for a commercial commitment that makes a target mean
+> something. Naming a number today would be a promise to nobody.
+
 ---
 
 ## 11. Non-negotiable invariants (candidates for acceptance tests)
@@ -1624,9 +1708,29 @@ covered domain is not scope creep.
 - **OQ-3: Copernicus cost model.** Satellite imagery via Copernicus / openEO carries a real per-use cost in
   processing units. No feature may be offered as "unlimited imagery/analysis" until this cost is modeled. The
   cost model gates the pricing of any imagery-dependent feature.
-- **OQ-4: the first vertical slice.** Which service in `apps/` is built first, and what is the smallest
-  end-to-end slice that proves the section 2 thesis (an element created offline on one client, synced,
-  appearing on another). This is the next planning step and drives the scaffold order. Not decided here.
+- **OQ-4: the first vertical slice. CLOSED 2026-08-03, v0.17.** The slice is the one this question already
+  named as the candidate: **an element created offline on one client, flushed on reconnect, and appearing on
+  another client.** It is chosen for one reason and it is not enthusiasm: it is the smallest slice that
+  exercises I1, I2, I3 and I9 together with the section 10 ordering authority, and each of those becomes a
+  test that holds for the life of the product rather than a demo that is thrown away.
+  - *Inside the slice:* the account tree only as deep as isolation needs it (tenant, workspace, project,
+    layer, feature) with the wall enforced in the database; client-generated identity; the versioned operation
+    envelope; the operation catalog restricted to what the slice uses (create a feature, set its geometry);
+    the transactional flush with the per-project version allocated under the two ADR-0004 rules; the
+    per-client mutation number with dedup, contiguity and the echoed cursor; the operation queue and
+    optimistic apply in the Rust client core; the persistent store behind its interface on the web client;
+    and change notification over WebSocket with gap detection and resync from the database.
+  - *Outside it, named so nobody drifts in:* conflict resolution beyond the trivial path, and with it
+    preserve-not-discard, which is the next slice and not this one; the legal-weight classification, which is
+    OQ-8 and is not ours to invent; presence and cursors; anything on the served tile path; styling; analysis;
+    the public capability surface, extensions, and the agent. **The moral line is not proven by this slice**,
+    and saying so is the point: I2 and I9 are proven, C7 and I8 are not, and the sequence is deliberate
+    because a conflict rule with nothing to order is untestable.
+  - *What it forces to be decided, which is how it drives the order:* the tenant-isolation mechanism and the
+    identifier variant are settled by the first migration rather than in the abstract, the client store is
+    settled by the first persisted queue, and ADR-0004's three consequences (the narrow version table, its
+    autovacuum settings, and the version as the resync cursor) land on that same first migration. The SP-1
+    Stage B cases become real tests in `apps/api` here, which is where that spike's obligation is discharged.
 - **OQ-5: supported formats and the native-kit boundary.** The exact list of accepted vector/raster formats is
   a PRD concern, informed by the embedded domain engineer. The native-kit boundary (which analysis capabilities
   are native versus extensible) is also a PRD concern, but the criterion is no longer open: it is the
@@ -1756,6 +1860,64 @@ covered domain is not scope creep.
   and for the support commitment. This is opened rather than answered because it needs qualified review the same
   way OQ-16 does, and because both surfaces are gated and unbuilt (section 10), so the cost of deciding now is
   high and the cost of deciding late is a release blocked at the border. Links to OQ-16 and to OQ-9.
+- **OQ-22 through OQ-24 share a standing rule, written once here rather than repeated three times.** These
+  three are **opened so they have a home and a set of constraints, and they are deliberately not scheduled**.
+  None of them is decided until a **measured need** appears, and the reason is the rule of section 10: each is
+  an optimisation that adds complexity somebody maintains forever, so each waits for a number rather than for
+  a hunch about growth. What each one carries now is the part that is genuinely useful before the decision,
+  which is the set of invariants that already narrow its answer, so whoever opens it later starts with half
+  the design space already eliminated instead of a blank page. **Deciding one early is the error, not the
+  delay.**
+- **OQ-22: edge caching, a content delivery network, and tile invalidation.** Two questions in one, and the
+  second is the one that bites first in a multiplayer product. **Invalidation:** section 6 decides HTTP tile
+  caching on the dynamic MVT path and never says how a cached tile stops being served when an edit lands, so
+  two people on one project can see different truth for as long as the cache lives. **Edge:** whether a
+  content delivery network sits in front of any part of the tile or asset path at all.
+  - *What already narrows the answer, and it narrows it a lot.* I4 puts tenant isolation in the database and
+    covers the direct-to-PostGIS tile reader, which the PRD turns into a test that the tile role connects
+    non-privileged and sets the tenant on its session. A tenant's vector tile sitting in a shared edge cache is
+    a cross-tenant read waiting to happen, which is I4's own scar in a new costume. The PRD's rule that
+    **access denial is revocation rather than concealment** closes the other half: a tile cached at an edge
+    that outlives a revoked grant leaves the resource reachable by a path after access was removed, which that
+    requirement forbids by name. And the multi-regime privacy posture makes data residency a per-tenant
+    deployment dimension, which constrains anything multi-region.
+  - *So the shape that survives those constraints, before anyone designs it:* an edge is available for
+    **public or shared** content (a basemap, sponsored imagery, a pre-generated archive of non-tenant data)
+    and is not available for tenant geometry without a per-tenant, short-lived, signed mechanism whose
+    invalidation on revocation is part of the design rather than an afterthought. For tenant data the cheap
+    path is the one section 6 already gates: pre-generated tiles for the stable bulk, which is a cache with no
+    server in the middle.
+  - *Material that exists and has no authority behind it:* `data-and-tooling-references.md` section 1.5
+    carries the serving-cost reality (egress dominates a tile product, and the lever is a zero-egress
+    provider) and states a decision **shape**. It is a reference rather than a decision, and this OQ is where
+    that shape would be ratified if it ever is.
+  - *The gate:* a measured need, which here means the I6 per-tile budget being crossed, or an egress cost that
+    shows up in a real bill, or a user-visible staleness complaint on a shared project.
+- **OQ-23: rate limiting, quota, and abuse control.** The mechanism that makes a limit real, per tenant and
+  per client instance, across the three paths that can be flooded: the operation flush, the tile reader, and
+  the analysis job queue. This is opened rather than answered because there is no public surface and no
+  paying surface, and a limit with nobody on the other side of it is configuration nobody has tuned.
+  - *What already narrows the answer.* OQ-3 forbids offering an imagery-dependent capability as unlimited
+    until its cost is modelled, so a quota is the enforcement half of a promise the constitution already
+    makes, and it lands with that model rather than before it. And the shape of the refusal is not free
+    either: a rejected operation must be a **typed refusal the client can retry**, never a dropped operation,
+    because the queue is persistent and append-only and a silently discarded flush is the one thing this
+    product refuses (section 4, I9).
+  - *The gate:* a public or paying surface, or an incident.
+- **OQ-24: horizontal scale-out and what sits in front of it.** How the API tier and the WebSocket tier run as
+  more than one instance, and what balances across them.
+  - *What is already settled without the word ever appearing, and it is the expensive half.* Section 10 moved
+    the ordering authority into PostgreSQL and out of any in-memory document server, so **the application tier
+    holds no authoritative state and is horizontally scalable by construction**. That decision was taken for
+    convergence (I2, and the Channels at-most-once scar) and the scale-out property came free with it.
+    ADR-0004 then measured the ceiling and, more usefully, its **shape**: writes serialise per project, the
+    contention is local, proportional and diagnosable, and there is no atomicity across projects. Section 10
+    also names the fallback for the regime where that stops being enough, which is a dedicated sync service in
+    Rust, Go or Elixir rather than Channels carrying a document.
+  - *What is genuinely open:* the WebSocket tier under more than one instance (the channel layer's backing
+    store, and whether a connection needs affinity), the placement of the tile reader relative to the
+    database, and the balancer itself, none of which can be chosen sensibly before a deployment target exists.
+  - *The gate:* measured load, or a deployment topology that forces the question.
 
 ---
 
@@ -2131,6 +2293,66 @@ state, so the two never diverge. The procedure lives in the project's tracking s
     constitution, where it still read as a costed consequence of a closed decision. It now carries its own
     warning: no source, no date, illustration only, and Hort is the real evidence while not measuring the
     cross-runtime boundary at all.
+- **2026-08-03, foundation v0.17 (the first vertical slice is chosen, so OQ-4 closes).** A one-change round,
+  logged as a round rather than a patch because it closes an open question that the document itself called the
+  next planning step. No other decision was reopened.
+  - **OQ-4 closed (section 13).** The slice is the candidate the question already named: an element created
+    offline on one client, flushed on reconnect, appearing on another. The reason is that it is the smallest
+    slice exercising **I1, I2, I3 and I9 with the section 10 ordering authority at once**, so every part of it
+    becomes a permanent test rather than a demo. The boundary is written in both directions, and the excluded
+    half matters more than the included one: conflict resolution and preserve-not-discard are the **next**
+    slice, the legal-weight classification stays OQ-8, and presence, tiles, styling, analysis, the public
+    capability surface, extensions and the agent are all out. **The moral line is deliberately not proven by
+    this slice**, which is said out loud so nobody reads a green build as compliance; a conflict rule with
+    nothing to order is untestable, so ordering comes first.
+  - **What the closure schedules, which is the practical half.** The tenant-isolation mechanism and the
+    identifier variant stop being abstract ADRs and become decisions the first migration takes; the client
+    store is decided by the first persisted queue; ADR-0004's three consequences land on that same migration;
+    and the SP-1 Stage B cases become real tests in `apps/api`, discharging the obligation that spike left.
+  - **Fan-out:** the first Linear project is created from this decision rather than the reverse, since git owns
+    the contract and Linear owns execution state; `CLAUDE.md`, `index.md`, `log.md` and the handoff follow.
+- **2026-08-03, foundation v0.16 (observability and availability are put on the record; three system-design
+  questions are opened and deliberately not scheduled).** One round, raised by the owner asking what the canon
+  already said about the operational layer (cache, content delivery, queues, balancing) and finding that it said
+  a great deal by implication and almost nothing by name. No spine decision was reopened.
+  - **Observability and availability, section 10 (Change A).** Both are split by the rule the same section
+    already uses for performance, into what is free at design time and what waits for a number. Three
+    observability properties are closed as structural: every log line carries the keys that join it to the work
+    it describes and logs are structured from the first line of code, because the reconstruction requirement the
+    PRD already imposes cannot be retrofitted onto free text; redaction lives on the logging path rather than in
+    each caller's diligence; and telemetry is emitted vendor-neutral with a swappable backend, the same shape as
+    the pluggable data provider of section 6 and for the same reason. Three availability properties are closed on
+    the same footing: liveness and readiness are different questions and are never conflated, degradation is
+    announced rather than silent (the section 5 rule generalised from an offline client to a server-side outage),
+    and a backup counts only once a restore has been rehearsed and recorded with its date and its numbers, on the
+    discipline the PRD already applies to a measurement. **The dated caveat that shapes the mechanism** is
+    recorded because it expires: as of May 2026 the OpenTelemetry Python traces and metrics SDKs are stable and
+    its logs SDK is still in development, so the log path runs through the standard library with trace
+    identifiers injected rather than depending on an unstable SDK for the record a compliance question is
+    answered from. **The payoff that changes what the client emits** is that PRD N1's budgets are defined in the
+    terms a browser already reports, so real-user telemetry and the N1 measurement protocol are one mechanism,
+    and the field tablet that is hardest to bench is the device that reports itself. What is deferred is the
+    backend, the sampling, the dashboards and the alerting, as an ADR **triggered by the first real users**
+    rather than by a shrug, plus the availability target and the replica and failover topology, which wait for a
+    measured need and for a commercial commitment that would make a target mean something.
+  - **OQ-22, OQ-23 and OQ-24 opened, under a standing rule written once (Change B, section 13).** Edge caching
+    with a content delivery network and tile invalidation; rate limiting, quota and abuse control; and horizontal
+    scale-out with what balances in front of it. **None is scheduled**, and each is decided only when a measured
+    need appears, because each is an optimisation that adds complexity somebody maintains forever. What each
+    carries now is the part that is useful before the decision, which is the set of invariants that already
+    narrow it: I4 and the access-denial rule together forbid a shared edge cache in front of tenant geometry and
+    leave a clear shape for one in front of public content; OQ-3's no-unlimited rule makes a quota the
+    enforcement half of a promise already made, and a refusal must be typed and retryable rather than a dropped
+    operation; and the application tier is already horizontally scalable by construction, because section 10 put
+    the ordering authority in PostgreSQL, with ADR-0004 having measured the ceiling and its shape.
+  - **Status corrected (Change C).** Section 0 said no production code existed, which stopped being true on
+    2026-08-01 when the scaffold landed and again on 2026-08-03 when the containers, the task runner and the CI
+    gates did. It now says what is true, which is that a scaffold exists and runs and no product capability is
+    built.
+  - **Fan-out (Change D):** the PRD gains the mechanism half of N9 and a new N12 for availability; `CLAUDE.md`
+    carries the status correction and the version pointers; `specs/dependencies.md` gains the observability
+    survey with its dates and the ADR-agenda entries, including the owner's stated preference for Grafana
+    recorded where a tool belongs; `index.md` widens the OQ range; `log.md` and the handoff follow.
 - **2026-07-31, foundation v0.15 (performance is engineered; the sync-ordering question closes).** One round with
   one added decision and one open question retired, raised from the SP-1 spike and from the owner's instruction
   that pursuing performance deliberately is a competitive position rather than a nicety.

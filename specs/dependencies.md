@@ -335,6 +335,22 @@ The editor prototype ran this combination successfully, which is useful as a sta
 | Docker and compose | ratified by ADR-0001 | containerised from the first commit, development and deployment alike; compose kept to the OCI-standard surface so a Podman host runs it unchanged |
 | Copernicus Data Space and openEO | ratified as the imagery source | the free tier is metered and the cost model is **OQ-3**; the quota figures and the serving-cost reasoning live in `data-and-tooling-references.md` section 1.5 and are not duplicated here |
 
+### 4.1 Observability, surveyed 2026-08-03
+
+The foundation closed the *properties* in v0.16 and left the *tools* to an ADR whose trigger is the first real
+users, which is the same split section 9.6.5 uses for the component catalog. This subsection is the survey that
+ADR walks through. Nothing here is installed.
+
+| Dependency | Status | Notes |
+|---|---|---|
+| OpenTelemetry Python, traces and metrics | **candidate**, and it is what the vendor-neutrality property means concretely | the traces and metrics SDKs are **stable**; the Django and Celery instrumentations were both released 2026-06-24, so they are current rather than abandoned. *Verified 2026-08-03.* |
+| OpenTelemetry Python, **logs** | **not usable as the log path yet, and this is the load-bearing row** | as of **May 2026** the language-status table lists Python logs as **Development**, while Java, .NET, C++ and PHP are stable and Go and Rust are beta. The logs signal itself is stable in the specification, so this is an SDK gap rather than a design gap. The log path therefore runs through the standard library with trace identifiers injected, and this row carries the **re-check trigger**: when Python logs reach stable, revisit the mechanism, never the property. *Verified 2026-08-03.* |
+| A structured-logging library (`structlog` with `django-structlog`, against the standard library plus a JSON formatter) | **not decided**, part of the same ADR | Django's own components all log through the standard library and its `LOGGING` dict maps to `dictConfig`, which is the argument for staying there; `django-structlog` binds a request identifier and a user per request and **supports django-ninja and Celery by name**, which is exactly the two surfaces PRD N9 requires the correlation keys on, which is the argument against hand-rolling it. Decide with the first code that logs. *Verified 2026-08-03.* |
+| **Grafana** as the backend, with Alloy as the collector | **the owner's stated preference (2026-08-03), recorded here rather than in the foundation**, because a tool is an ADR and not a constitutional decision (the 9.6.5 precedent) | it composes with the neutrality property rather than fighting it: Alloy speaks OTLP, so the application emits the same telemetry whether Grafana or anything else consumes it. Two deployment shapes to weigh in the ADR: **Grafana Cloud free** (10,000 active series, 50 GB logs, 50 GB traces, 14-day retention, three users, no card) which costs no operational time, against a **self-hosted LGTM** stack, whose own documentation presents the `docker-otel-lgtm` image as development and demo rather than production. *Verified 2026-08-03.* |
+| **Grafana Faro** (browser SDK) | **candidate, and it is the piece that answers the owner's actual question** | it collects Core Web Vitals, errors, exceptions, logs and user events from the browser and integrates with OpenTelemetry-JS. Two payoffs rather than one: it is what catches a first user's bug on a device nobody owns, and its web-vitals output is the same class of number PRD N1 defines its budgets in, which makes it a real-device source for the 10.5 measurements. **The caveat is the privacy one:** browser telemetry leaks identifiers through URLs and user events unless the path strips them, and PRD N9's redaction rule applies to it in full. *Verified 2026-08-03.* |
+| A dedicated error tracker (GlitchTip, self-hosted Sentry) | **candidate, deliberately second** | GlitchTip speaks the Sentry SDK protocol, so it is a DSN change rather than a code change, and it fits in 1 to 2 GB of RAM, while self-hosted Sentry wants Postgres, Redis and Kafka. Do not run two observability systems on day one: reach for this only if the Grafana error view proves insufficient. *Verified 2026-08-03.* |
+| PostgreSQL backup tooling (pgBackRest, Barman, WAL-G, or `pg_dump` alone) | **not decided**, ADR gated on a deployment target | PRD N12 fixes the shape as continuous archiving with point-in-time recovery rather than a periodic dump alone, and fixes that a rehearsed restore is what makes it a backup. `pg_dump` stays useful for object-level recovery and migration and is not the disaster-recovery plan. *Verified 2026-08-03.* |
+
 ---
 
 ## 5. External standards and norms the code depends on
@@ -366,7 +382,16 @@ Each of these is a decision that this survey must feed before it can be made wit
 12. External GNSS integration for field capture.
 13. Field-trip preparation semantics (what a prepared trip downloads and how it is bounded).
 14. The docking model beyond a single rail.
-15. **How the geospatial fixture corpus is stored** (added 2026-08-01, surfaced by writing the `.gitignore`).
+15. **The observability toolchain** (added 2026-08-03, foundation v0.16). One ADR covering four choices that
+    belong together: the structured-logging library, the client telemetry SDK, the backend and its collector,
+    and the sampling and alerting policy. **Its trigger is the first real users**, not a date and not a
+    deployment for its own sake. The survey it walks through is section 4.1 above, and the constraint it may
+    not relax is the vendor neutrality the foundation closed, so whatever wins stays swappable.
+16. **PostgreSQL backup and recovery** (added 2026-08-03, foundation v0.16, PRD N12). The tool, the schedule,
+    the recovery-point and recovery-time targets, and where the archive lives. Gated on a deployment target
+    existing. The shape is already fixed by N12 and is not this ADR's to reopen: continuous archiving with
+    point-in-time recovery, and a rehearsed restore recorded with its date and its numbers.
+17. **How the geospatial fixture corpus is stored** (added 2026-08-01, surfaced by writing the `.gitignore`).
     The corpus in `data-and-tooling-references.md` Part 1 includes rasters, git handles large binaries badly,
     and the three options (tracked directly, carried by an LFS-class mechanism, or fetched by a script from a
     recorded source) differ in whether a fresh clone can run the suite offline. Nothing in `.gitignore` excludes

@@ -10,14 +10,14 @@ Every prefix used across the canon, so a newcomer does not have to derive the ma
 | Prefix | Lives in | What it is |
 |---|---|---|
 | **I1 to I11** | foundation section 11 | invariants, each with the scar of the bug it prevents |
-| **OQ-1 to OQ-21** | foundation section 13 | open questions, deliberately not answered |
+| **OQ-1 to OQ-24** | foundation section 13 | open questions, deliberately not answered |
 | **C1 to C14** | `CLAUDE.md` | the enforceable constraints, one per invariant, each with a pass/fail test |
 | **A to K** | PRD section 1 | Layer 1 capability families (access, map and import, schema, editing, inspect, styling, analysis, collaboration, insight, output, workspace) |
 | **AR1 to AR5** | PRD section 2 | anti-requirements, behaviours deliberately rejected |
 | **T1 to T9** | PRD section 5 | Layer 2, transversal system behaviours |
 | **M1 to M16** | PRD section 6 | Layer 3, the data model and the contracts |
 | **S1 to S10** | PRD section 7 | Layer 4, surfaces and platform |
-| **N1 to N11** | PRD section 8 | non-functional requirements |
+| **N1 to N12** | PRD section 8 | non-functional requirements |
 | **U1 to U12** | PRD section 9 | the design system |
 | **ADR-NNNN** | `adr/` | code-shape decisions, superseded rather than edited |
 | **SP-N** | `spikes/` | risk spikes, throwaway code and a surviving ADR |
@@ -29,14 +29,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
 ---
 
 - **`mapsift-foundation.md`** — the constitution and single source of truth: the what and the why, the
-  invariants (I1 to I11, each with a scar), and the open-question log (OQ-1 to OQ-21). Every other document
-  derives from it and must not contradict it. Currently at v0.15.
+  invariants (I1 to I11, each with a scar), and the open-question log (OQ-1 to OQ-24). Every other document
+  derives from it and must not contradict it. Currently at v0.17.
 - **`PRD.md`** — the product requirements, one layer above code (the how). Derives from the foundation; turns
   closed decisions into pass/fail requirements and marks open questions as gaps. Drafted: Layer 1 (native
   capability floor), the anti-requirements, the extension catalog, Layer 2 (transversal system behaviors,
   T1 to T9), Layer 3 (data model and contracts, M1 to M16), Layer 4 (surfaces and platform, S1 to S10), the
-  non-functional requirements (N1 to N11), and the design system (U1 to U12). The prose is complete; section 10
-  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.11.
+  non-functional requirements (N1 to N12), and the design system (U1 to U12). The prose is complete; section 10
+  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.12.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
