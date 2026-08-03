@@ -59,6 +59,8 @@ tablet-first for the field). The interface is rewritten per platform. The logic 
 whether it has the capability, it is whether the professional gets the full power without the beginner
 drowning in it. Depth exists; the surface decides how much of it lands on you before you ask.
 
+<img width="1920" height="1080" alt="Screenshot From 2026-06-27 00-54-02" src="https://github.com/user-attachments/assets/1b5494ec-d2a4-498d-a51e-8f8b09a27755" />
+
 <br>
 
 ## The one idea everything derives from
