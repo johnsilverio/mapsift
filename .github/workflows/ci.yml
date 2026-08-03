@@ -1,0 +1,95 @@
+# The gates of ADR-0001 section 6, which exist before there is meaningful code in them because a
+# gate added later is a gate that arrives after the violations.
+#
+# Every job runs its checks inside the same image the developer runs, built from the same
+# Dockerfile (ADR-0001 section 3). CI does not use infra/compose.yaml: that file bind-mounts the
+# source for hot reload and runs as uid 1000, neither of which is true of a runner. What has to
+# match is the environment, and the environment is the image.
+#
+# Not cached yet, deliberately. Layer caching across runs needs a registry or the buildx GitHub
+# cache backend, which is complexity bought with a measurement rather than a hunch (foundation
+# section 10), and the measurement is the first real run of this workflow.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: apps/api
+    runs-on: ubuntu-latest
+    env:
+      # Fake values, and they are required rather than convenient: the settings module validates
+      # its environment at import, and django-stubs builds its mypy plugin by importing that
+      # module, so a missing variable surfaces as `INTERNAL ERROR -- Error constructing plugin
+      # instance`, which reads like a broken type checker and is nothing of the sort. Nothing
+      # here connects to a database, and no production value exists outside production (C6, I7).
+      SECRET_KEY: ci-not-a-secret
+      DATABASE_URL: postgresql://ci:ci@db.invalid:5432/ci
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the API image
+        run: docker build --target dev -f infra/docker/api.Dockerfile -t mapsift-api .
+
+      - name: Lint
+        run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api ruff check .
+
+      - name: Format check
+        run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api ruff format --check .
+
+      - name: Type check
+        run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api mypy --strict .
+
+      - name: Test
+        run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api pytest
+
+  core:
+    name: libs/core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Building this target runs wasm-pack, so the WebAssembly artifact and the TypeScript
+      # definitions generated from the Rust types are proven by the build itself. That is the
+      # core half of the generated-contract rule (ADR-0001 section 5, PRD M12); the OpenAPI half
+      # has no artifact yet, because apps/api has no schema consumer.
+      - name: Build the core image, which compiles the wasm package
+        run: docker build --target core-build -f infra/docker/client.Dockerfile -t mapsift-core .
+
+      - name: Format check
+        run: docker run --rm mapsift-core cargo fmt --check
+
+      - name: Lint
+        run: docker run --rm mapsift-core cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Test
+        run: docker run --rm mapsift-core cargo test --locked
+
+  web:
+    name: apps/web and libs/ui
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # This target runs `ng build ui && ng build web`, and `ng build` is the strict tsc pass, so
+      # a type error fails the image build rather than a later step (C5).
+      - name: Build the client image, which builds the library and the web client
+        run: docker build --target web -f infra/docker/client.Dockerfile -t mapsift-web .
+
+      # `ng build` is not the linter, and ADR-0001 section 6 blocks a change on both.
+      - name: Lint
+        run: docker run --rm mapsift-web npx ng lint
+
+      - name: Test
+        run: docker run --rm mapsift-web npx ng test --watch=false

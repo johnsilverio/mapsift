@@ -1,0 +1,51 @@
+# Mapsift build-context filter.
+#
+# Same rule as .gitignore: exclude what a tool regenerates inside the image, and exclude what
+# must never enter an image at all. The difference is the failure mode, so it is worth stating:
+# an over-broad entry here is not noise, it is a build that fails at a COPY, or worse, an image
+# that silently ships a host-built artifact. Everything a Dockerfile copies has to survive this
+# file.
+
+.git
+.github
+
+# Secrets never enter an image (ADR-0001 section 4, I7, C6, PRD N3). The templates carry no real
+# values and are documentation, so they stay.
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.p12
+
+# Built inside the image, from the lockfiles that are copied in. Copying a host build in is how a
+# container ends up running binaries linked against the host's libraries: node_modules carries
+# compiled native modules, .venv hard-codes the interpreter path it was created with, and
+# target/ and pkg/ are the Rust and wasm outputs the core stage produces itself.
+node_modules
+dist
+.angular
+out-tsc
+**/target
+**/pkg
+**/.venv
+**/__pycache__
+**/*.py[cod]
+
+# Tool caches, every one rebuilt from what it describes.
+.mypy_cache
+.ruff_cache
+.pytest_cache
+coverage
+htmlcov
+*.log
+
+# In no image: the authority chain and the agent configuration are read by people and by Claude
+# Code, never by a running service, and the editor prototype carries its own node_modules, its
+# own .angular cache and its own git history (PRD section 9 makes it a visual reference, never a
+# scaffold).
+specs
+.claude
+tests/prototypes
+README.md
+CLAUDE.md

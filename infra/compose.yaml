@@ -1,0 +1,103 @@
+# Mapsift, development (ADR-0001 section 3: containerised from the first commit, in development
+# as well as in deployment, with the whole system coming up in one command).
+#
+# What is here and what is not, stated rather than left to be guessed:
+#
+#   * `db` is the ratified database, PostgreSQL 18 with PostGIS (foundation v0.14). The major is
+#     ratified and the minor runs current, which is why the tag names no minor.
+#   * `api`, `web` and `core` are the code this repository writes. `core` is a toolchain rather
+#     than a service, so it carries a profile and does not start with `up`.
+#   * Redis and object storage are ratified (foundation v0.7) and are deliberately absent, on the
+#     same rule that kept Celery and Channels out of the lockfile: nothing imports them yet, and a
+#     service nobody connects to is a container nobody notices breaking. They land in the same
+#     change as the code that uses them.
+#   * The tile servers are absent because the choice is an open ADR (specs/dependencies.md
+#     section 6), and ADR-0001 section 8 forbids scaffolding a decision that has not been taken.
+#
+# Run it through the justfile rather than by hand: the recipes pass `--env-file infra/.env`,
+# which compose does not find on its own from the repository root.
+
+name: mapsift
+
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mapsift}
+      POSTGRES_USER: ${POSTGRES_USER:-mapsift}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mapsift}
+    ports:
+      # 5433 on the host, not 5432. The API reaches the database over the compose network on
+      # 5432, so this mapping exists only for a psql session or a GUI from the host, and a
+      # developer machine very often already runs a system PostgreSQL on the usual port. This
+      # machine does, and the default that looks right would fail on `up` with a bind error.
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      # PostgreSQL 18 moved the data directory, and the path every older tutorial gives
+      # (/var/lib/postgresql/data) still mounts happily here: it just is not where 18 keeps the
+      # cluster, so the database silently starts empty on every recreate.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mapsift} -d ${POSTGRES_DB:-mapsift}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+      target: dev
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # These beat apps/api/.env, which is bind-mounted in with the source: pydantic-settings
+      # ranks environment variables above the dotenv file. Editing that file and expecting the
+      # container to follow is the trap, and it points at localhost by design because it is the
+      # host's configuration.
+      SECRET_KEY: ${API_SECRET_KEY:-development-only-not-a-production-secret}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mapsift}:${POSTGRES_PASSWORD:-mapsift}@db:5432/${POSTGRES_DB:-mapsift}
+      DEBUG: "true"
+      ALLOWED_HOSTS: localhost,127.0.0.1,api
+    volumes:
+      - ../apps/api:/app
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/client.Dockerfile
+      target: web-deps
+    volumes:
+      # The whole workspace, because the Angular build reads angular.json and both projects, and
+      # writes dist/libs/ui and libs/core/pkg back where the tsconfig aliases expect them.
+      - ..:/workspace
+      # Named volumes over the two directories the bind mount would otherwise shadow. Both are
+      # seeded from the image on first use, so a dependency change means `just build` followed by
+      # `just reset-deps`, which is the friction ADR-0001 section 3 accepted in writing.
+      - web-node-modules:/workspace/node_modules
+      - web-angular-cache:/workspace/.angular
+    ports:
+      - "${WEB_PORT:-4200}:4200"
+
+  core:
+    build:
+      context: ..
+      dockerfile: infra/docker/client.Dockerfile
+      target: core
+    # A toolchain, not a service: `up` must not start it, and every use is `run --rm`.
+    profiles: [tools]
+    volumes:
+      - ..:/workspace
+      - core-cargo-registry:/usr/local/cargo/registry
+      - core-target:/workspace/libs/core/target
+
+volumes:
+  db-data:
+  web-node-modules:
+  web-angular-cache:
+  core-cargo-registry:
+  core-target:
