@@ -59,6 +59,12 @@ Status lives only in Linear. The flow is deliberately short, and the interesting
 
 **Prefer git-driven status.** The Linear ID rides in the branch name, so the GitHub integration moves the issue on open, merge and close. Direction is git to Linear, unidirectional, with no loop to maintain. Moving a status by hand is for the cases the integration cannot see.
 
+**The automation is configured to this mapping, which is not Linear's default.** Under the team's pull-request automations, a PR opened moves the issue to **In Review** and a PR merged moves it to **Done**. Linear ships with "opened moves to In Progress", and that is wrong here: In Progress means the two windows are working, and a PR is open only after they finished. Nothing moves an issue **into** In Progress automatically, because starting work is a human act.
+
+**The GitHub side is configured to have one tracker, not two (2026-08-03).** The repository has **Issues, Projects and Wiki turned off**, and each for a reason worth keeping. Issues would be a second inbox that nobody triages, on a public repository, colliding with the rule that an issue exists only when it traces to the canon. Projects would be a second board, and status in two places diverges every time. The Wiki is the worst of the three, because documentation duplicated there does not fail loudly, it simply ages against the foundation in silence, which is the exact drift the fan-out rule exists to prevent. **The revisit trigger for Issues is the first real users**, the same trigger the observability backend carries: today that channel has nobody on the other end, and a support surface with no support behind it is worse than none.
+
+**GitHub Issues Sync stays off, and it is a different feature from the one above.** It is a two-way sync that creates and mirrors issues, titles, descriptions, statuses and comments between GitHub and Linear. Turning it on would put the contract and the execution state on both sides of a loop, which is exactly what the boundary at the top of this document forbids. The PR linking is unidirectional and is all this project wants.
+
 ## Definition of done
 
 An issue is Done when **all** of these hold. Anything less is In Review at best.
