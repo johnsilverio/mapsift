@@ -452,5 +452,23 @@ GitHub status automation, the local-scope MCP isolation) lives in the **`linear-
 
 ## Commands
 
-[To fill once the scaffold exists. Backend: `mypy --strict backend`, `ruff check backend`, `pytest`.
-Frontend: `ng build`, `ng test`. Pin the real commands here when the scaffold is in.]
+Everything runs in a container (ADR-0001 section 3): the container is the source of truth for **running**,
+the host toolchain is for **authoring**. The `justfile` at the root is the entry point, and it is not
+optional ceremony, because each recipe passes `--env-file infra/.env`, which compose does not find on its
+own from the repository root. `just` is a host requirement (`dnf install just` on Fedora).
+
+| Recipe | What it does |
+|---|---|
+| `just setup` | create `infra/.env` and `apps/api/.env` from their tracked templates |
+| `just dev` | build the wasm core and the component library, then bring the whole stack up |
+| `just check` | the full gate set: `lint`, `typecheck`, `test`, `contracts` |
+| `just manage <cmd>` | a Django management command; `just migrate` and `just psql` are shortcuts |
+| `just build` / `just reset` | rebuild the images / drop the volumes, the database included |
+
+The raw commands the recipes wrap, which is what CI runs inside the same images: `ruff check .`,
+`ruff format --check .`, `mypy --strict .` and `pytest` in `apps/api`; `cargo fmt --check`,
+`cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked` and
+`wasm-pack build --target web --out-dir pkg` in `libs/core`; `ng lint`, `ng build ui`, `ng build web` and
+`ng test --watch=false` in the Angular workspace. **The build order is a requirement rather than a
+convention:** `apps/web` resolves `@mapsift/core` to `libs/core/pkg` and `@mapsift/ui` to `dist/libs/ui`, so
+neither a web build nor a web test starts before wasm-pack and ng-packagr have run.

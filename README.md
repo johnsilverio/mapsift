@@ -17,10 +17,12 @@
 </p>
 
 > [!WARNING]
-> Mapsift is **pre-implementation**. There is no application code yet, on purpose. What exists is the
-> constitution, the requirements, and the architecture decisions, all closed and written down, plus one risk
-> spike that has already run and returned numbers. This README describes the product being built and the
-> shape it is being built into, not a finished tool. Sections marked **pending** land with the scaffold.
+> Mapsift is **early**, and deliberately so. What exists is the constitution, the requirements and the
+> architecture decisions, all closed and written down, one risk spike that has already run and returned
+> numbers, and a scaffold: four ecosystems that build, type check and test green, containerised, with the
+> WebAssembly core and the component library wired into the web client. **No product capability is built
+> yet.** This README describes the product being built and the shape it is being built into, not a finished
+> tool.
 
 <br>
 
@@ -293,9 +295,6 @@ architecture, its storage, or its identity shortcuts.
 
 ## Environment and requirements
 
-> **Pending.** Concrete commands land with the scaffold. What follows is what the scaffold will require and
-> what is already decided about it.
-
 **Container-first.** Every service runs in a container from the first commit, in development as well as in
 deployment, and the whole system comes up with one command. The container is the source of truth for
 **running**; the host toolchains exist for **authoring**, so your editor, language servers, and formatters
@@ -303,13 +302,14 @@ work. Compose files stay on the OCI-standard surface, so a Podman host runs them
 
 | What | Version | Note |
 |---|---|---|
-| Docker or Podman, with compose | current | The only hard host requirement for running |
-| Python | **3.13** | Capped by Celery, see the gotcha above |
-| uv | 0.12.x | Packaging, locking, and the interpreter itself. Still pre-1.0, so pinned exactly |
+| Docker or Podman, with compose | current | With `just`, the only hard host requirement for running |
+| `just` | current | The command runner every recipe below goes through (`dnf install just`) |
+| Python | **3.13** | Capped by Celery, see the gotcha above. Lives in the image, not on your host |
+| uv | **0.12.1** | Packaging, locking, and the interpreter itself. Still pre-1.0, so pinned exactly |
 | Django | **5.2 LTS** | Security-supported to April 2028, with one planned migration to 6.2 LTS |
-| PostgreSQL | **18** + PostGIS | The major is ratified, the minor always runs current |
-| Node and the Angular workspace | current | Angular v22 line, zoneless, TypeScript strict |
-| Rust with Cargo | current stable | Plus `wasm-pack` for the WASM build |
+| PostgreSQL | **18.4** + PostGIS 3.6 | The major is ratified, the minor always runs current |
+| Node | **24.15 or newer** | What the Angular v22 line requires; the image runs 24.18 |
+| Rust with Cargo | **1.95** | Plus `wasm-pack` 0.15 for the WebAssembly build, both inside the image |
 
 **Host toolchains, for authoring.** On Fedora, `dnf install` covers Docker or Podman and the Node runtime;
 Rust comes from `rustup`; uv installs from its own installer and then manages the Python interpreter itself, so
@@ -321,20 +321,45 @@ allowed to be asserted from.
 
 ## Running it
 
-> **Pending, with the shape already decided.** The scaffold creates a development compose file with source
-> bind-mounted for hot reload and named volumes for dependency and build artifacts, so a container rebuild does
-> not re-download the world. `libs/core` builds in its own stage and produces the WASM artifact that
-> `apps/web` consumes, which means building the web client never requires a Rust toolchain on the host.
-> Orchestration is a `justfile` across the four ecosystems.
+Three commands from a fresh clone, and the only things your machine needs are a container runtime and `just`.
+
+```bash
+just setup     # creates infra/.env and apps/api/.env from their tracked templates
+just dev       # builds the wasm core and the component library, then brings the stack up
+just check     # the full gate set: lint, type check, tests, generated contracts
+```
+
+`just dev` leaves the web client on <http://localhost:4200>, the API on <http://localhost:8000>, its OpenAPI
+documentation on `/api/docs`, and PostgreSQL on **5433**. That last one is not a typo: the API reaches the
+database over the compose network on the usual port, and the published one is only for a `psql` session or a
+GUI from the host, where a system PostgreSQL is usually already sitting on 5432.
+
+The source is bind-mounted for hot reload, and the dependency and build artifacts live in named volumes so a
+container rebuild does not re-download the world. `libs/core` builds in its own stage and produces the
+WebAssembly artifact `apps/web` consumes, which is why building the web client never needs a Rust toolchain
+on your host. The build order is a requirement rather than a habit: `apps/web` resolves `@mapsift/core` to
+`libs/core/pkg` and `@mapsift/ui` to `dist/libs/ui`, so `just dev`, `just test` and `just typecheck` all
+produce those two first.
+
+After a lockfile change, `just build` rebuilds the images and `just reset-deps` drops the dependency volumes
+that would otherwise keep serving the previous resolution. `just reset` drops everything including the
+database.
 
 <br>
 
 ## Building for production
 
-> **Pending.** Deployment uses a separate compose file, and the difference between it and development is
-> configuration and build target, **never a different architecture**. Configuration comes from the environment
-> and never from a checked-in file with real values, and no production credential or production data exists in
-> any non-production environment.
+Deployment uses a separate compose file, and the difference between it and development is configuration and
+build target, **never a different architecture**. Configuration comes from the environment and never from a
+checked-in file with real values, and no production credential or production data exists in any
+non-production environment.
+
+**That file does not exist yet, and its absence is a decision rather than an oversight.** Three things it
+would have to assume are not decided: which application server serves Django (nothing in the lockfile does
+today, and a dependency nothing imports is a dependency somebody still has to upgrade and audit), where the
+thing is deployed, and what terminates TLS in front of it. Writing it now would mean writing a deployment
+against three guesses, and a guess committed to a file starts defending itself. It lands with the first real
+deployment target, and the images it will build are the ones already in `infra/docker/`.
 
 <br>
 
