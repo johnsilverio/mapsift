@@ -46,6 +46,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   - **`tasks/MAP-3-account-tree.md`** — the first product code in the repository: the five entities of M1, the
     tenant identifier, and the ADR-0005 wall in the same migration, with the split between what window A tests
     and what window B implements written out.
+  - **`tasks/MAP-5-layers-and-features.md`** — the layer and the feature as persisted shapes, with the storage
+    class that decides whether a feature enters the operation queue at all (M2), the geometry in the M5 storage
+    frame, and both tables inside the same wall. It scopes the slice explicitly (the attribute schema, the
+    legal-weight marker, style and import provenance are each deferred with the owner that holds them) and
+    carries the two things reading the code found: `Project` lacks the `UNIQUE (tenant_id, id)` a composite
+    reference needs, and `django.contrib.gis` is absent from `INSTALLED_APPS` while the engine is already the
+    PostGIS backend.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
