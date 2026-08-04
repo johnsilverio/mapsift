@@ -60,7 +60,7 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
 - DO keep django-ninja routers thin. A router parses, calls a use case, and returns a schema.
 - DO generate the frontend contract from the OpenAPI schema; never hand-write the other side (M12).
 
-## Tenant isolation (C4, I4, PRD T6.1 and N2)
+## Tenant isolation (C4, I4, PRD T6.1 and N2; the mechanism is **ADR-0005**)
 
 - The **tenant** is the top container of an account (a personal user account or an organization) and it is
   the only isolation boundary. It rides as a tenant identifier on every tenant-owned row.
@@ -72,6 +72,24 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
   conditions: a role that owns the table without `FORCE ROW LEVEL SECURITY`, or any role holding
   `BYPASSRLS`, silently removes the wall.
 - DON'T write raw SQL that reaches a tenant-owned table outside the policy.
+- DO bind the tenant **transaction-scoped and parameterised**, as the first statement of the transaction
+  serving the request or the task: `SELECT set_config('mapsift.tenant_id', %s, true)`. Bind it once, where
+  the N9 correlation keys are bound, never per caller.
+- DON'T use a session-scoped binding (`SET`, or `set_config` with `is_local` false). It survives into the
+  next request on a pooled or persistent connection, which may belong to another tenant (ADR-0005, measured).
+- DON'T interpolate the tenant into that statement. The parameter is settable by the same unprivileged role,
+  so an injection on the binding path re-binds the tenant and the wall does not stop it (ADR-0005, measured).
+- DO read the parameter in a policy through the guarded cast,
+  `nullif(current_setting('mapsift.tenant_id', true), '')::uuid`. The bare cast throws
+  `invalid input syntax for type uuid: ""` on every transaction after the first on a reused connection,
+  because the setting reverts to the empty string rather than to unset (ADR-0005, measured).
+- DO make every foreign key between tenant-owned tables composite over `(tenant_id, key)`, with the matching
+  `UNIQUE (tenant_id, id)`, and every **natural** unique key unique per tenant rather than globally.
+  Referential integrity checks always bypass row security, so this is the only thing that closes that channel.
+- DO lead every index serving a tenant-scoped query with `tenant_id`, because the policy adds that predicate
+  to every query on the table (structural performance, foundation section 10).
+- DO let the application raise when a tenant-scoped query runs with no binding in force. The policy denies
+  silently by construction, and a silent empty result is indistinguishable from an empty tenant (N9, N12).
 
 ## Queries
 

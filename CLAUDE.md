@@ -12,7 +12,7 @@ internal by nature.
 Mapsift is **early**: a scaffold exists and runs (four ecosystems building, type checking and testing green,
 containerised, with the task runner and the CI gates in place) and **no product capability is built yet**.
 `specs/mapsift-foundation.md` is at **v0.17** and is the **live source of truth** (the
-constitution: the what and the why). `specs/PRD.md` is a living document at **v0.12**, and its **prose is complete**
+constitution: the what and the why). `specs/PRD.md` is a living document at **v0.13**, and its **prose is complete**
 (Layer 1 the native capability floor with the anti-requirements and the extension catalog, Layer 2 the transversal
 system behaviors T1 to T9, Layer 3 the data model and contracts M1 to M16, Layer 4 the surfaces and platform
 S1 to S10, section 8 the non-functional requirements N1 to N12, and section 9 the design system U1 to U12; PRD
@@ -175,7 +175,8 @@ Hort C-equivalents). Breaking one is a regression, not a tradeoff. CI and review
   user account or an organization; foundation v0.11), carried as a tenant identifier on every row; the
   **workspace** and **project** below it are permission and organization, not isolation, and confidentiality
   within a tenant (between its clients or projects) is the permission model's job, not a second SQL wall.
-  Isolation is enforced in the database (PostgreSQL row-level security or per-tenant views), not only in the ORM,
+  Isolation is enforced in the database (PostgreSQL row-level security, chosen over per-tenant views in ADR-0005,
+  which also fixes the roles, the transaction-scoped binding and the tile path's contract), not only in the ORM,
   so direct-to-PostGIS readers such as the tile server are covered (the tile role must set the tenant on its
   session, never run with RLS bypassed). *Test:* a cross-tenant read or write, including a tile request, is
   impossible by construction.
