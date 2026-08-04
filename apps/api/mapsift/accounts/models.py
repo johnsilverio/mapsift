@@ -10,7 +10,7 @@ from uuid import uuid4
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 
-from accounts.binding import TenantOwnedManager
+from mapsift.common.binding import TenantOwnedManager
 
 
 class User(AbstractBaseUser):

@@ -6,7 +6,7 @@ out, no database, so the edge cases are cheap to enumerate here rather than behi
 
 from uuid import uuid4
 
-from accounts.tenancy import resolve_tenant
+from mapsift.accounts.rules import resolve_tenant
 
 
 def test_a_session_resolves_the_tenant_of_a_resource_it_belongs_to() -> None:

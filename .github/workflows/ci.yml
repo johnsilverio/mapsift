@@ -81,6 +81,9 @@ jobs:
       - name: Format check
         run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api ruff format --check .
 
+      - name: Import contracts
+        run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api lint-imports
+
       - name: Type check
         run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api mypy --strict .
 
