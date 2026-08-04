@@ -300,7 +300,10 @@ def test_a_feature_carries_no_storage_class_of_its_own() -> None:
     cannot drift feature by feature. A feature that could carry its own class is the frontier
     becoming per-row, which is exactly what M2's second acceptance forbids."""
     with pytest.raises(TypeError):
-        Feature(storage_class=StorageClass.ELEMENT)
+        # The call is a static error on purpose: django-stubs builds __init__ from the
+        # fields, so the checker refuses the very argument this test exists to prove is
+        # refused at runtime. Removing the ignore removes the test's subject.
+        Feature(storage_class=StorageClass.ELEMENT)  # type: ignore[misc]
 
 
 def test_a_feature_exists_before_its_geometry_does(alice: Party) -> None:

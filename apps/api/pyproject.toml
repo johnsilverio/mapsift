@@ -66,14 +66,6 @@ warn_unreachable = true
 module = ["config.wsgi", "config.asgi"]
 disallow_untyped_defs = false
 
-# A test asserting that a field does NOT exist has to write the call that proves it, and
-# django-stubs builds a model's __init__ from its fields, so that call is a static error before it
-# is ever the runtime one being asserted. The narrower fix is one `# type: ignore[misc]` on the
-# line, which only the window owning the test may write.
-[[tool.mypy.overrides]]
-module = ["mapsift.layers.tests.test_layers_and_features"]
-disable_error_code = ["misc"]
-
 [tool.pydantic-mypy]
 # A settings object is populated from the environment, so its constructor legitimately takes
 # no arguments and accepts the raw forms it coerces.

@@ -84,6 +84,16 @@ this list.
   the server the allocator the first time a code path forgot to send one.
 - **Indexes lead with `tenant_id`** (ADR-0005 section 5): `(tenant_id, layer_id)` on feature, and
   `(tenant_id, project_id)` on layer.
+  > **Correction (2026-08-04), and the implementing window was right to refuse half of this line.**
+  > ADR-0005 section 5 fixes that an index serving a tenant-scoped query **leads** with the tenant;
+  > it does not enumerate which indexes exist, and this list overstepped it. The composite unique
+  > key the reference above already requires, `(tenant_id, project_id, id)` on layer, is a btree
+  > that answers both `WHERE tenant_id = x` and `WHERE tenant_id = x AND project_id = y` from its
+  > leading columns, so a separate `(tenant_id, project_id)` index is a **strict prefix duplicate**:
+  > it serves no read and costs every write. The same reasoning removes Django's default
+  > single-column index from the tenant foreign keys. On the highest-volume table in the product,
+  > whose write path is a flush of queued operations and whose keys are random by ADR-0006, paying
+  > for an index nobody reads runs against the performance rule rather than serving it.
 
 ---
 
