@@ -51,7 +51,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "accounts",
 ]
+
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -86,7 +89,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {"default": env.django_database()}
+DATABASES = {
+    "default": {
+        **env.django_database(),
+        # PostGIS is not a `trusted` extension, and this connection is deliberately not a
+        # superuser (ADR-0005 section 2), so the test database has to be copied from a template
+        # that already carries it rather than installing it on creation.
+        "TEST": {"TEMPLATE": "template_postgis"},
+    }
+}
 
 
 # Password validation

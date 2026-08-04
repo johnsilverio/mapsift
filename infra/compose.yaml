@@ -26,6 +26,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mapsift}
       POSTGRES_USER: ${POSTGRES_USER:-mapsift}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mapsift}
+      # Read by the provisioning script below. The superuser above it is used once, to run that
+      # script, and by no application ever (ADR-0005 section 2).
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-mapsift_owner}
     ports:
       # 5433 on the host, not 5432. The API reaches the database over the compose network on
       # 5432, so this mapping exists only for a psql session or a GUI from the host, and a
@@ -37,6 +40,11 @@ services:
       # (/var/lib/postgresql/data) still mounts happily here: it just is not where 18 keeps the
       # cluster, so the database silently starts empty on every recreate.
       - db-data:/var/lib/postgresql
+      # The file is mounted rather than the directory holding it, because the entrypoint iterates
+      # this path one level deep and silently ignores a subdirectory. The leading number puts it
+      # after the image's own PostGIS script. It runs on an empty cluster only, so editing it does
+      # nothing to one that exists: `just reset` first.
+      - ./docker/db/30-mapsift-owner.sh:/docker-entrypoint-initdb.d/30-mapsift-owner.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mapsift} -d ${POSTGRES_DB:-mapsift}"]
       interval: 5s
@@ -58,7 +66,9 @@ services:
       # container to follow is the trap, and it points at localhost by design because it is the
       # host's configuration.
       SECRET_KEY: ${API_SECRET_KEY:-development-only-not-a-production-secret}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mapsift}:${POSTGRES_PASSWORD:-mapsift}@db:5432/${POSTGRES_DB:-mapsift}
+      # Deliberately not the POSTGRES_USER above: a suite running as a privileged role passes every
+      # isolation test without the wall existing at all (ADR-0005 section 2, measurements J to L).
+      DATABASE_URL: postgresql://mapsift_owner:${DB_OWNER_PASSWORD:-mapsift_owner}@db:5432/${POSTGRES_DB:-mapsift}
       DEBUG: "true"
       ALLOWED_HOSTS: localhost,127.0.0.1,api
     volumes:
