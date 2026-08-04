@@ -56,6 +56,16 @@ require conversation resolution. Inside the status-check rule, the three checks 
 `apps/api`, `libs/core` and `apps/web and libs/ui`, plus **Require branches to be up to date before
 merging**.
 
+**That last sub-option has a running cost, and here is when to turn it off.** It buys a real thing: the
+checks ran against the actual merge result rather than against the branch in isolation. It costs a loop,
+because every merge into `main` puts every other open pull request behind, and each one has to be updated
+and re-checked before it can merge. GitHub already enforces part of this on its own: a branch in the
+`behind` state has **Rebase and merge greyed out** until it is updated, and the update to use is
+**Update with rebase** rather than the plain Update branch, which would put a merge commit inside the
+branch and fight the linear history above. One developer merging in sequence barely feels it. Three
+developers with pull requests open at once feel it as a queue, and that is the moment to **uncheck this one
+sub-option**: the wall stays exactly as it was, and only the freshness requirement goes.
+
 **The two settings that depart from the obvious one, with the reason, because the obvious one is wrong here.**
 
 - **Required approvals is 0, not 1.** GitHub does not let an author approve their own pull request, so on a
