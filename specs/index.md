@@ -36,7 +36,7 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   capability floor), the anti-requirements, the extension catalog, Layer 2 (transversal system behaviors,
   T1 to T9), Layer 3 (data model and contracts, M1 to M16), Layer 4 (surfaces and platform, S1 to S10), the
   non-functional requirements (N1 to N12), and the design system (U1 to U12). The prose is complete; section 10
-  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.12.
+  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.13.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
@@ -84,3 +84,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     decision (allocate the whole range in one statement, take the allocation last), the eliminated candidates and
     why, and the two conditions that would bring the rejected one back. Delivers the spike's exit and the fifth
     version axis PRD M10 had declared missing.
+  - **`adr/0005-tenant-isolation-and-the-tile-session.md`** — the I4 wall as it is actually built: row-level
+    security with per-tenant views rejected, four unprivileged roles with `BYPASSRLS` granted to none, the
+    tenant bound transaction-scoped and parameterised through a guarded cast, composite keys closing the
+    referential-integrity channel that no policy closes, and the contract any tile server must satisfy to
+    carry a verified tenant into its own database session. Its defeat conditions were measured against
+    PostgreSQL 18.4 rather than argued, and the measurements are in the ADR.
