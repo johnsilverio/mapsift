@@ -66,6 +66,21 @@ def _party(email: str, name: str) -> Party:
     return Party(tenant_id=membership.tenant_id, workspace_id=workspace_id, project_id=project_id)
 
 
+def second_project_of(party: Party) -> UUID:
+    """A second project inside one tenant, for the invariants that need two of them to show."""
+    project_id = uuid4()
+
+    with tenant_scope(party.tenant_id):
+        Project.objects.create(
+            id=project_id,
+            tenant_id=party.tenant_id,
+            workspace_id=party.workspace_id,
+            name="the other project",
+        )
+
+    return project_id
+
+
 @pytest.fixture
 def alice(transactional_db: None) -> Party:
     return _party("alice@example.com", "Alice")
