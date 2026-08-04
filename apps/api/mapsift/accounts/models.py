@@ -108,6 +108,14 @@ class Project(models.Model):
     objects = TenantOwnedManager["Project"]()
 
     class Meta:
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            # Redundant against the primary key, and not removable: it is what a layer's composite
+            # reference points at, by the rule that already put the matching one on Workspace
+            # (ADR-0005 section 5).
+            models.UniqueConstraint(
+                fields=["tenant", "id"], name="project_identity_within_its_tenant"
+            )
+        ]
         indexes: ClassVar[list[models.Index]] = [
             # The column order is not interchangeable: the tenant leads (ADR-0005 section 5).
             models.Index(fields=["tenant", "workspace"], name="project_workspace_by_tenant")
