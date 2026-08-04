@@ -36,7 +36,7 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   capability floor), the anti-requirements, the extension catalog, Layer 2 (transversal system behaviors,
   T1 to T9), Layer 3 (data model and contracts, M1 to M16), Layer 4 (surfaces and platform, S1 to S10), the
   non-functional requirements (N1 to N12), and the design system (U1 to U12). The prose is complete; section 10
-  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.13.
+  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.14.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
@@ -90,3 +90,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     referential-integrity channel that no policy closes, and the contract any tile server must satisfy to
     carry a verified tenant into its own database session. Its defeat conditions were measured against
     PostgreSQL 18.4 rather than argued, and the measurements are in the ADR.
+  - **`adr/0006-client-generated-identifier-variant.md`** — the client-minted identifier is a random 128-bit
+    value rather than a time-ordered one, decided on a measurement that inverted the expected trade: the index
+    locality a time-ordered identifier buys is contingent on the device clock being right, and with a fifth of
+    the rows minted on a skewed clock the index came out 2.45 times the well-behaved ordered one and roughly
+    twice the random one. Also records that a time-ordered identifier is not opaque, since PostgreSQL reads
+    its creation instant back out, which M3 forbids and N9's logging path would carry everywhere.

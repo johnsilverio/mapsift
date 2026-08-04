@@ -63,6 +63,12 @@ from memory; `cargo add` writes what the registry actually resolves.
   needs both whole versions presentable.
 - Identifiers are client-generated, globally unique with no coordination, opaque, stable, and never reused.
   No code path derives meaning, order or authority from an identifier's content.
+- The variant is a **random 128-bit UUID (v4)**, decided in **ADR-0006** against a time-ordered one. DON'T
+  reach for a time-ordered variant for index locality: measured, that benefit disappears once device clocks
+  are wrong, which this model assumes they are (I10), and a time-ordered identifier publishes its creation
+  instant to anything that can read it, including every log line N9 puts an operation identifier in.
+- The same generator produces the **clientID** (M4, T1.3), which identifies an installation and is never an
+  author identity.
 - Every operation carries a per-client monotonic and **contiguous** mutation number. The cursor advances only
   from the server's echoed last-applied, never by assumption.
 - The queue is append-only and persistent; the sync engine is pure functions over the operation log, with the
