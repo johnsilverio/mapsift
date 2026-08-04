@@ -51,7 +51,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # It loads GDAL and GEOS at import, which is why it waited for the first geometry model and
+    # why it runs in the container (specs/dependencies.md section 1, ADR-0001 section 3).
+    "django.contrib.gis",
     "mapsift.accounts",
+    "mapsift.layers",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
