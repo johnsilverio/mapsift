@@ -364,6 +364,30 @@ These are not libraries, and they move, so they carry the same verification disc
 
 ---
 
+## 5.9 Advisories assessed and deliberately not acted on
+
+An advisory that is real and does not reach this product still needs a written verdict with a date and a
+re-check trigger, because the alternative is rediscovering the same reasoning every quarter, or worse,
+acting on it and breaking something that was never at risk.
+
+- **`@hono/node-server` path traversal in `serve-static` (< 2.0.5), raised by Dependabot 2026-08-04.** An
+  encoded backslash lets a request read static files under a middleware-guarded prefix. **Not exploitable
+  here, on three independent grounds**, and any one of them would be enough. The advisory is **Windows-only**
+  by its own text, while this product runs on Linux containers. The package is a **development dependency**
+  (`dev: true` in the lockfile), reached only through `@angular/cli` and `angular-eslint` by way of
+  `@modelcontextprotocol/sdk`, so it never enters a browser bundle and never runs on a server. And nothing
+  in this repository serves static files through Hono at all; the vulnerable code path has no caller.
+- **Why the offered fixes are worse than the exposure.** Dependabot's own path downgrades `@angular/cli`
+  from 22.1.2 to 21.0.4, which **ADR-0002 forbids in spirit**: generation is CLI-first precisely so an
+  artifact matches the installed version's schematic, and an older CLI reproduces an older shape. The other
+  option, an `overrides` pin, forces a major (2.x) under a dependency declaring `^1.19.9`, which is a
+  compatibility gamble taken to fix something that cannot fire.
+- **Re-check trigger, so this is deferred rather than forgotten:** an `@angular/cli` release whose
+  `@modelcontextprotocol/sdk` takes the patched Hono. Until then the alert is dismissed as *vulnerable code
+  not in use*, and this entry is the record of why.
+
+---
+
 ## 6. Not chosen yet: the dependency-gated ADR agenda
 
 Each of these is a decision that this survey must feed before it can be made without guessing. They are listed so the agenda is visible in one place.
