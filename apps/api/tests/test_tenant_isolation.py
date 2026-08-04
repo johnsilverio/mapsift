@@ -8,9 +8,9 @@ Every case here is one of ADR-0005's probes turned from a measurement into a gat
 from uuid import uuid4
 
 import pytest
-from django.db import Error, connection
+from django.db import connection
 
-from conftest import Party
+from conftest import FOREIGN_KEY_VIOLATION, POLICY_VIOLATION, Party, refused_with
 from mapsift.accounts.models import Project, Workspace
 from mapsift.common.binding import TenantNotBound, tenant_scope
 
@@ -182,7 +182,7 @@ def test_a_delete_bound_to_one_tenant_does_not_reach_another_tenants_row(
 def test_an_insert_cannot_smuggle_a_row_into_another_tenant(alice: Party, bob: Party) -> None:
     """C4, N2, ADR-0005 section 3 (probe F): WITH CHECK is what makes the write path as closed as
     the read path."""
-    with pytest.raises(Error), tenant_scope(alice.tenant_id):
+    with refused_with(POLICY_VIOLATION), tenant_scope(alice.tenant_id):
         Workspace.objects.create(id=uuid4(), tenant_id=bob.tenant_id, name="smuggled")
 
 
@@ -190,7 +190,7 @@ def test_a_foreign_key_cannot_reach_another_tenants_row(alice: Party, bob: Party
     """C4, N2, ADR-0005 section 5 (probes H and N): referential integrity checks bypass the policy
     by design, so a single-column reference happily points at a row in another tenant. Only a
     composite key over (tenant_id, key) closes it."""
-    with pytest.raises(Error), tenant_scope(alice.tenant_id):
+    with refused_with(FOREIGN_KEY_VIOLATION), tenant_scope(alice.tenant_id):
         Project.objects.create(
             id=uuid4(),
             tenant_id=alice.tenant_id,

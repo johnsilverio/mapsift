@@ -3,11 +3,13 @@
 Trace: M1, N2; C4; ADR-0005.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 import pytest
-from django.db import connection
+from django.db import Error, connection
 
 from mapsift.accounts.models import Project, Workspace
 from mapsift.accounts.services import create_personal_account
@@ -17,6 +19,26 @@ from mapsift.common.binding import tenant_scope
 # the wall. The enumeration below reads it from the catalogue rather than from a list somebody
 # maintains, which is what N2 means by coverage that holds by construction.
 TENANT_COLUMN = "tenant_id"
+
+# PostgreSQL SQLSTATE codes. They are what says WHICH mechanism refused a write, and the wall has
+# more than one that can (ADR-0005).
+POLICY_VIOLATION = "42501"
+NOT_NULL_VIOLATION = "23502"
+FOREIGN_KEY_VIOLATION = "23503"
+
+
+@contextmanager
+def refused_with(sqlstate: str) -> Iterator[None]:
+    """Assert which mechanism refused the write, rather than that something did.
+
+    The trap this closes: `pytest.raises(Error)` passes when the row is refused for any reason at
+    all, so a composite-key test goes green while the policy, not the key, did the refusing, which
+    is the exact defect ADR-0005 probes H and N exist to catch.
+    """
+    with pytest.raises(Error) as caught:
+        yield
+
+    assert getattr(caught.value.__cause__, "sqlstate", None) == sqlstate
 
 
 @dataclass(frozen=True)
