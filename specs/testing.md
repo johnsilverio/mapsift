@@ -18,6 +18,18 @@ Work runs in **two clean-context windows**, and the separation is the point rath
 
 Why two windows and not two intentions: a single context that writes both sides converges the test toward the implementation it already has in mind, and the test stops being a specification. The separation is what keeps the test honest, and it is the same reason the conflict rule is golden-tested against two runtimes instead of trusted once.
 
+### How a window is briefed, and why the briefing is short
+
+A window is opened by a briefing, and the briefing is where the separation above is most easily thrown away. **A window is given the goal, the boundary of what is out of scope, where the authority lives, and the standard its result will be held to. It is not given a step list, a file list, or a name it could have read from the canon.**
+
+The reason is the same one that justifies the two windows at all. A window handed a list of steps stops deciding and starts transcribing, so it discovers nothing, and the review that follows can only catch transcription. Worse, an error in the briefing then rides through unchallenged, because the pass that would have questioned it was told the answer instead. **Pre-deciding the shape destroys exactly the independent check the protocol exists to buy.**
+
+There is a second reason specific to this repository. A briefing that restates a requirement is a **second copy of it outside the fan-out**, living in a message that is not versioned and not reviewed, which is the same defect the comment discipline forbids in code and the governance rule forbids between documents.
+
+**One thing is handed over rather than withheld, and the distinction is evidence against instruction.** What cost a measurement, a probe, or an afternoon of diagnosis is given to the window directly, because it is not a decision the window should be making and it would otherwise have to be bought twice. A version that behaves unexpectedly, a tool that rejects a configuration the documentation seems to allow, a generator that writes a file nobody wants: these belong in the briefing, with their date, exactly as they belong in `specs/log.md`.
+
+**The test that keeps a briefing honest:** if an item can be derived by reading the documents the briefing points at, it does not belong in the briefing. Wanting to write it anyway is a signal that the canon is incomplete, and the fix is then to write the document rather than the message.
+
 ---
 
 ## 2. What a test asserts
