@@ -137,24 +137,22 @@ to be the exception, least of all in a codebase written largely by agents. **`im
 with `mapsift` as the root package, under a **layers** contract that fails the build when a lower tier
 imports a higher one.
 
-```ini
-[importlinter]
-root_package = mapsift
+```toml
+[tool.importlinter]
+root_package = "mapsift"
 
-[importlinter:contract:tiers]
-name = Mapsift package tiers
-type = layers
-layers =
-    mapsift.accounts
-    mapsift.common
+[[tool.importlinter.contracts]]
+name = "Mapsift package tiers"
+type = "layers"
+containers = ["mapsift"]
+layers = ["accounts", "common"]
+exhaustive = true
 
-[importlinter:contract:models-are-not-a-public-surface]
-name = A package is reached through its selectors and services, never its models
-type = protected
-protected_modules =
-    mapsift.accounts.models
-allowed_importers =
-    mapsift.accounts
+[[tool.importlinter.contracts]]
+name = "A package is reached through its selectors and services, never its models"
+type = "protected"
+protected_modules = ["mapsift.accounts.models"]
+allowed_importers = ["mapsift.accounts"]
 ```
 
 Two things about this being thin today, stated rather than glossed. **Two layers assert almost nothing**, and
@@ -162,6 +160,16 @@ that is fine: ADR-0001 section 6 already established that a gate exists before t
 first violation this prevents is the concrete one in the Context. **The `protected` contract is the part that
 is not thin**: it enforces mechanically what the reference ADR could only leave as a convention a reviewer
 must remember, and it is why the tool is adopted at its current version rather than an older one.
+
+> **Correction (2026-08-04), and it is the difference between a gate and a gate that means something.** The
+> first version of this contract listed fully-qualified module names and was **not exhaustive**, which left a
+> package added later silently **outside** the tier order, the exact opposite of the by-construction property
+> N2 has and this section claims. `exhaustive = true` closes it, and the form above is the one the tool
+> actually accepts: `exhaustive` **requires `containers`**, so the layers are named relative to the container
+> rather than fully qualified, and the fully-qualified form is rejected as a misconfiguration rather than
+> quietly ignored. Both halves were **probed rather than read**: with the corrected form the contracts are
+> kept, and creating an unlisted package under `mapsift/` turns the tiers contract **BROKEN** on the next run,
+> which is the property being bought.
 
 **Reaching another package costs no import at all**, because a relation is declared with the string form,
 `models.ForeignKey("accounts.Tenant", ...)`. So breaking the rule requires typing an import somebody sees in

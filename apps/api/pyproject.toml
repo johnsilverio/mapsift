@@ -92,7 +92,9 @@ root_package = "mapsift"
 [[tool.importlinter.contracts]]
 name = "Mapsift package tiers"
 type = "layers"
-layers = ["mapsift.accounts", "mapsift.common"]
+containers = ["mapsift"]
+layers = ["accounts", "common"]
+exhaustive = true
 
 [[tool.importlinter.contracts]]
 name = "A package is reached through its selectors and services, never its models"
