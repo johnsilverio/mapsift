@@ -70,6 +70,15 @@ this list.
 - **Composite references over `(tenant_id, key)`** (ADR-0005 section 5): feature to layer, and layer to
   project. As in MAP-3, the Django field carries `db_constraint=False` and the real constraint is added in a
   `RunSQL` operation, because a single-column reference crosses tenants.
+- **The feature's reference to its layer is three columns wide, not two, and this is a hole window A found in
+  an earlier version of this list.** A feature carries both a project and a layer (M2), and the two composite
+  references above close the tenant channel while closing nothing between them: a feature can be filed under
+  project X while its layer lives in project Y, and the row then resolves to two projects, which contradicts
+  M2's own acceptance that a feature resolves to exactly one. So the layer additionally carries
+  `UNIQUE (tenant_id, project_id, id)` and the feature references **`(tenant_id, project_id, layer_id)`**
+  against it, which subsumes the two-column reference rather than sitting beside it. It is the same ADR-0005
+  section 5 rule one column wider, and it is settled here rather than later because the alternative is a
+  constraint added to a live table.
 - **Identifiers as the native `uuid` type with no server-side default** on either table (ADR-0006 section 3,
   M3): a feature is minted by the client that draws it, offline, and a database default would quietly make
   the server the allocator the first time a code path forgot to send one.
@@ -152,6 +161,17 @@ produce (the policies, the grants, the composite constraints) goes in `RunSQL` o
 generated migration, and that migration **cites ADR-0005 and ADR-0006 by number** rather than restating their
 reasoning. **Do not edit `mapsift/accounts/migrations/0001_initial.py`**, which is applied; the new migration puts its
 own tables inside the wall in its own module.
+
+**Two mechanical things, probed rather than assumed, so the first command of this window does not fail.**
+`python manage.py startapp layers mapsift/layers` **does not refuse** a directory that already holds window
+A's `tests/` package; measured in the container on 2026-08-04, it exits 0 and writes its template beside it.
+What it writes that this project does not use, and that the MAP-3 round already deleted from `accounts/`, is
+`admin.py`, `views.py` and **`tests.py`**, and the last one is the one that bites: a `tests.py` module sitting
+next to a `tests/` package in the same directory is a name collision nobody enjoys diagnosing. Delete all
+three. And **`mapsift.layers` must be added to the `layers` list of the `import-linter` tiers contract**
+above `mapsift.accounts`, or the new package sits outside the gate entirely; note while doing it that the
+contract is **not** `exhaustive`, so today a package added later is silently unguarded, which is the opposite
+of the by-construction property N2 has and ADR-0007 section 4 claims.
 
 **Where the code goes is decided and is no longer this file's to recommend.** **ADR-0007** fixes the layout:
 one subpackage per **domain** under `mapsift/`, so these two models are a **new package** rather than growth
