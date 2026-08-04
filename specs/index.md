@@ -20,6 +20,7 @@ Every prefix used across the canon, so a newcomer does not have to derive the ma
 | **N1 to N12** | PRD section 8 | non-functional requirements |
 | **U1 to U12** | PRD section 9 | the design system |
 | **ADR-NNNN** | `adr/` | code-shape decisions, superseded rather than edited |
+| **MAP-NNN** | `tasks/` | the spec-per-task an implementing window reads, one file per Linear issue that needs one |
 | **SP-N** | `spikes/` | risk spikes, throwaway code and a surviving ADR |
 | **MC-01 to MC-05** | `market-reserarch.md` | market codes standing in for competitor names |
 | **FAM-xx, REQ-xx, Z.x, DEV-A/B/C** | `market-reserarch.md` | the reverse-engineered competitor catalog those codes index |
@@ -37,6 +38,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   T1 to T9), Layer 3 (data model and contracts, M1 to M16), Layer 4 (surfaces and platform, S1 to S10), the
   non-functional requirements (N1 to N12), and the design system (U1 to U12). The prose is complete; section 10
   is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.14.
+- **`tasks/`** — the spec-per-task the authority chain ends at, one file per Linear issue that needs one, named
+  by its issue ID. It **assembles and cites** what the foundation, the PRD and the ADRs already decided into the
+  one contract two windows read, and it decides nothing of its own; where it disagrees with a document it cites,
+  the cited document wins. Not every issue needs one: it earns its place when the requirements an implementer
+  must hold at once are spread across several documents. On disk:
+  - **`tasks/MAP-3-account-tree.md`** — the first product code in the repository: the five entities of M1, the
+    tenant identifier, and the ADR-0005 wall in the same migration, with the split between what window A tests
+    and what window B implements written out.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
