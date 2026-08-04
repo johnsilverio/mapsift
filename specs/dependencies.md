@@ -369,7 +369,7 @@ These are not libraries, and they move, so they carry the same verification disc
 Each of these is a decision that this survey must feed before it can be made without guessing. They are listed so the agenda is visible in one place.
 
 1. ~~Tenant isolation mechanism: row-level security against per-tenant views, plus the tile role's session-tenant wiring.~~ **CLOSED 2026-08-04 by ADR-0005**, on probes run against PostgreSQL 18.4 rather than on reading: row-level security enabled and forced, four unprivileged roles, a transaction-scoped and parameterised binding read through a guarded cast, composite keys against the referential-integrity channel, and a three-point contract the tile server choice (item 6) inherits.
-2. The identifier variant (a random against a time-ordered 128-bit identifier), weighing index locality against embedding a device clock the model distrusts.
+2. ~~The identifier variant (a random against a time-ordered 128-bit identifier), weighing index locality against embedding a device clock the model distrusts.~~ **CLOSED 2026-08-04 by ADR-0006**, on probes run against PostgreSQL 18.4: the random variant, because the locality a time-ordered identifier buys evaporates once the clocks are wrong (measured: 2.45x the index and half-empty pages at one row in five skewed), because a time-ordered identifier publishes its creation instant to anything that can read it, and because ADR-0004 already owns ordering.
 3. The web client store: IndexedDB against OPFS, behind the storage interface.
 4. The geometry encoding across the serializable boundary, with MapLibre needing GeoJSON only at the very edge.
 5. The SGL computation path and the equal-area conic definition.

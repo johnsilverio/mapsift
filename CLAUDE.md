@@ -12,7 +12,7 @@ internal by nature.
 Mapsift is **early**: a scaffold exists and runs (four ecosystems building, type checking and testing green,
 containerised, with the task runner and the CI gates in place) and **no product capability is built yet**.
 `specs/mapsift-foundation.md` is at **v0.17** and is the **live source of truth** (the
-constitution: the what and the why). `specs/PRD.md` is a living document at **v0.13**, and its **prose is complete**
+constitution: the what and the why). `specs/PRD.md` is a living document at **v0.14**, and its **prose is complete**
 (Layer 1 the native capability floor with the anti-requirements and the extension catalog, Layer 2 the transversal
 system behaviors T1 to T9, Layer 3 the data model and contracts M1 to M16, Layer 4 the surfaces and platform
 S1 to S10, section 8 the non-functional requirements N1 to N12, and section 9 the design system U1 to U12; PRD
