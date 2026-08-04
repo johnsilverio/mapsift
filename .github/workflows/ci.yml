@@ -29,18 +29,51 @@ jobs:
     name: apps/api
     runs-on: ubuntu-latest
     env:
-      # Fake values, and they are required rather than convenient: the settings module validates
-      # its environment at import, and django-stubs builds its mypy plugin by importing that
-      # module, so a missing variable surfaces as `INTERNAL ERROR -- Error constructing plugin
-      # instance`, which reads like a broken type checker and is nothing of the sort. Nothing
-      # here connects to a database, and no production value exists outside production (C6, I7).
+      # The settings module validates its environment at import, and django-stubs builds its mypy
+      # plugin by importing that module, so a missing variable surfaces as `INTERNAL ERROR -- Error
+      # constructing plugin instance`, which reads like a broken type checker and is nothing of the
+      # sort. The lint and type steps still never open a connection; the suite does, since MAP-3.
+      # No production value exists outside production (C6, I7).
       SECRET_KEY: ci-not-a-secret
-      DATABASE_URL: postgresql://ci:ci@db.invalid:5432/ci
+      DB_OWNER_PASSWORD: ci-not-a-secret
+      # The suite connects as the migrate role of ADR-0005 section 2, never as the superuser, and
+      # its first test asserts exactly that: a superuser walks through the wall as if it were not
+      # there, so a suite running as one proves nothing it claims to prove.
+      DATABASE_URL: postgresql://mapsift_owner:ci-not-a-secret@db:5432/mapsift
     steps:
       - uses: actions/checkout@v7
 
       - name: Build the API image
         run: docker build --target dev -f infra/docker/api.Dockerfile -t mapsift-api .
+
+      # Not a `services:` block, and the reason is mechanical rather than stylistic: GitHub starts
+      # service containers BEFORE the checkout, so the provisioning script this repository owns is
+      # not on disk yet and cannot be mounted. Running the container here uses the same image and
+      # the same script the compose file does, which is the parity ADR-0001 section 3 asks for.
+      - name: Start the database, provisioned the way compose provisions it
+        run: |
+          docker network create ci
+          docker run --detach --name db --network ci \
+            --env POSTGRES_DB=mapsift \
+            --env POSTGRES_USER=mapsift \
+            --env POSTGRES_PASSWORD=mapsift \
+            --env DB_OWNER_PASSWORD \
+            --volume "$PWD/infra/docker/db/30-mapsift-owner.sh:/docker-entrypoint-initdb.d/30-mapsift-owner.sh:ro" \
+            postgis/postgis:18-3.6
+
+      # Waiting on `pg_isready` is the trap here: during initialisation the server is already up on
+      # the unix socket while the init scripts are still running, so it answers ready before the
+      # role below exists. Wait for the thing the suite actually needs.
+      - name: Wait until provisioning has finished
+        run: |
+          for _ in $(seq 60); do
+            if docker exec db psql -U mapsift -d mapsift -tAc \
+              "SELECT 1 FROM pg_roles WHERE rolname = 'mapsift_owner'" 2>/dev/null | grep -q 1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "the database never finished provisioning"; docker logs db; exit 1
 
       - name: Lint
         run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api ruff check .
@@ -52,7 +85,7 @@ jobs:
         run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api mypy --strict .
 
       - name: Test
-        run: docker run --rm -e SECRET_KEY -e DATABASE_URL mapsift-api pytest
+        run: docker run --rm --network ci -e SECRET_KEY -e DATABASE_URL mapsift-api pytest
 
   core:
     name: libs/core
