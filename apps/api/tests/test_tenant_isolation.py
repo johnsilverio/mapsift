@@ -10,9 +10,9 @@ from uuid import uuid4
 import pytest
 from django.db import Error, connection
 
-from accounts.binding import TenantNotBound, tenant_scope
-from accounts.models import Project, Workspace
 from conftest import Party
+from mapsift.accounts.models import Project, Workspace
+from mapsift.common.binding import TenantNotBound, tenant_scope
 
 pytestmark = pytest.mark.django_db(transaction=True)
 

@@ -9,10 +9,10 @@ from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import Error, connection
 
-from accounts.binding import tenant_scope
-from accounts.models import Membership, Project, Tenant, Workspace
-from accounts.services import create_organization_account, create_personal_account
 from conftest import Party
+from mapsift.accounts.models import Membership, Project, Tenant, Workspace
+from mapsift.accounts.services import create_organization_account, create_personal_account
+from mapsift.common.binding import tenant_scope
 
 pytestmark = pytest.mark.django_db(transaction=True)
 

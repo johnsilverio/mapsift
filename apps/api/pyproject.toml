@@ -14,6 +14,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "django-stubs[compatible-mypy]>=6.0.7",
+    "import-linter>=2.13",
     "pytest>=9.1.1",
     "pytest-django>=4.12.0",
     "ruff>=0.16.1",
@@ -49,7 +50,7 @@ select = [
 # generates it sorts as third-party and then moves the day it appears, which would put a lint
 # failure inside a file that window may not edit. `conftest` never resolves on its own because
 # tests/ is not a source root.
-known-first-party = ["accounts", "config", "conftest"]
+known-first-party = ["mapsift", "config", "conftest"]
 
 [tool.mypy]
 strict = true
@@ -76,10 +77,25 @@ warn_required_dynamic_aliases = true
 django_settings_module = "config.settings"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "mapsift"]
 python_files = ["test_*.py"]
 addopts = "-q --strict-markers --strict-config"
 # MAP-3 brought the first ORM-dependent tests, so this is on. pytest-django calls django.setup()
 # before any conftest.py loads, which is why the environment has to reach the process from outside
 # (compose supplies it) and cannot be arranged by a fixture.
 DJANGO_SETTINGS_MODULE = "config.settings"
+
+# The dependency direction of ADR-0007 section 4, as a gate rather than a review item.
+[tool.importlinter]
+root_package = "mapsift"
+
+[[tool.importlinter.contracts]]
+name = "Mapsift package tiers"
+type = "layers"
+layers = ["mapsift.accounts", "mapsift.common"]
+
+[[tool.importlinter.contracts]]
+name = "A package is reached through its selectors and services, never its models"
+type = "protected"
+protected_modules = ["mapsift.accounts.models"]
+allowed_importers = ["mapsift.accounts"]

@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from accounts.binding import tenant_scope
-from accounts.models import Membership, Tenant, User
+from mapsift.accounts.models import Membership, Tenant, User
+from mapsift.common.binding import tenant_scope
 
 
 def create_personal_account(*, email: str) -> Membership:

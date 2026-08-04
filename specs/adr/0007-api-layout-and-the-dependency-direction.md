@@ -185,9 +185,18 @@ than a rewrite precisely because both live in the same package.
 ### 6. Tests live with their subject
 
 Per-package tests under the package, in the `tests/` folder beside the code they test. **Cross-package tests
-and shared fixtures stay in `apps/api/tests/`**, which is where the wall's own suite belongs, because the N2
-catalogue test enumerates every tenant-owned table across every package by construction and is not any single
-package's.
+stay in `apps/api/tests/`**, which is where the wall's own suite belongs, because the N2 catalogue test
+enumerates every tenant-owned table across every package by construction and is not any single package's.
+
+> **Correction (2026-08-04), found while executing this ADR and recorded rather than silently worked around.**
+> The sentence above originally also put the **shared fixtures** in `apps/api/tests/`, which cannot work:
+> pytest resolves a `conftest.py` by directory, so a fixture declared there is invisible to a test under
+> `mapsift/accounts/tests/`. It is not a hypothetical, it is the actual shape of this suite, where `alice` and
+> `bob` are used both by the account-tree tests, which belong to a package, and by the wall's own suite, which
+> does not. **Shared fixtures therefore live in the stack's root `conftest.py`** (`apps/api/conftest.py`),
+> which is pytest's own convention for project-wide fixtures, and `apps/api/tests/` holds cross-package
+> **tests**. This is a correction to an instruction that could not be executed rather than a change of
+> decision, so it is recorded here in the ADR-0005 section 7 form rather than in a superseding ADR.
 
 This is `testing.md` section 5 applied rather than changed: tests stay inside `apps/api`, in pytest idiom,
 and there is still no repository-root `tests/` folder for application tests.

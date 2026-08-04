@@ -9,9 +9,9 @@ from uuid import UUID, uuid4
 import pytest
 from django.db import connection
 
-from accounts.binding import tenant_scope
-from accounts.models import Project, Workspace
-from accounts.services import create_personal_account
+from mapsift.accounts.models import Project, Workspace
+from mapsift.accounts.services import create_personal_account
+from mapsift.common.binding import tenant_scope
 
 # ADR-0005 section 3: every policy keys on this column, so carrying it is what puts a table inside
 # the wall. The enumeration below reads it from the catalogue rather than from a list somebody

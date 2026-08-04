@@ -90,6 +90,7 @@ check: lint typecheck test contracts
 lint:
     {{run}} api ruff check .
     {{run}} api ruff format --check .
+    {{run}} api lint-imports
     {{run}} core cargo clippy --locked --all-targets -- -D warnings
     {{run}} core cargo fmt --check
     {{run}} web npx ng lint
