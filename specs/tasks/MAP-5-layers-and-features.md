@@ -8,10 +8,10 @@
 > **Trace.** PRD **M2** (elements and layers as persisted shapes, and the class that decides the path),
 > **M3** (identity of every created object), **M5 rule 1** (the storage frame), **T6.1**, **N2**; foundation
 > **section 3** (the elements and layers frontier), **I3**, **I4**; **C1**, **C3**, **C4**; **ADR-0005**
-> sections 5 and 7, **ADR-0006** section 3.
+> sections 5 and 7, **ADR-0006** section 3, and **ADR-0007** for where every file in this task goes.
 >
 > **The pattern to copy is on disk.** `specs/tasks/MAP-3-account-tree.md` and the code it produced
-> (`apps/api/accounts/`) are how this repository writes a tenant-owned model and puts it inside the wall.
+> (`apps/api/mapsift/accounts/`) are how this repository writes a tenant-owned model and puts it inside the wall.
 > Read both before starting; almost every mechanical question below is already answered there.
 
 ---
@@ -64,7 +64,7 @@ this list.
   catalogue rather than from a list. **If that test has to be edited to pass, the model is wrong, not the
   test.**
 - **Grants for `mapsift_app`** on the two new tables, following the shape
-  `accounts/migrations/0001_initial.py` already uses. **`mapsift_tile` gets nothing yet**, deliberately: it is
+  `mapsift/accounts/migrations/0001_initial.py` already uses. **`mapsift_tile` gets nothing yet**, deliberately: it is
   the direct-to-PostGIS reader and the tile path is an open ADR, so granting it now would scaffold a decision
   nobody has taken (ADR-0001 section 8).
 - **Composite references over `(tenant_id, key)`** (ADR-0005 section 5): feature to layer, and layer to
@@ -80,21 +80,20 @@ this list.
 
 ## 4. Two things this task hits that MAP-3 did not
 
-Both were found by reading the code on disk, and both are stated here so a window does not lose an hour to
-them.
+**`Project` carries no `UNIQUE (tenant_id, id)` while `Workspace` does**, which is a real gap rather than a
+deliberate omission. A composite reference from `layer` to `project` has nothing to point at until it exists,
+so this task adds it, by exactly the rule and for exactly the reason that put the matching constraint on
+`Workspace` (`workspace_identity_within_its_tenant`, ADR-0005 section 5). It is redundant against the primary
+key and it is not removable.
 
-**`Project` carries no `UNIQUE (tenant_id, id)` while `Workspace` does.** A composite reference from `layer`
-to `project` has nothing to point at until it exists, so this task adds it, by exactly the rule and for
-exactly the reason that put the matching constraint on `Workspace`
-(`workspace_identity_within_its_tenant`, ADR-0005 section 5). It is redundant against the primary key and it
-is not removable.
-
-**`django.contrib.gis` is not in `INSTALLED_APPS`, while the database engine is already
-`django.contrib.gis.db.backends.postgis`.** This is the first task that declares a geometry column, so it is
-the first moment that gap can matter. **Verify what the installed Django's own GeoDjango installation
-documentation requires, against the version in `apps/api/uv.lock`, and do not assert it from memory**: that
-is the external-dependency rule, and it is the whole reason this line says "verify" instead of naming an
-answer.
+**`django.contrib.gis` enters `INSTALLED_APPS` here, and that was already decided rather than discovered.**
+`specs/dependencies.md` section 1 records the reasoning and the verification: the engine is the PostGIS
+backend from the first line, but the app loads GDAL and GEOS at import while the developer host is not
+required to carry them (ADR-0001 section 3 puts running in the container and authoring on the host), and it
+was verified that `manage.py check` passes with the engine set and the app absent. That entry names its own
+trigger, **"it goes in with the first geometry model, inside the container"**, and this task is that model.
+So add it, and confirm the container is where it runs; there is no open question to research here, only a
+dated decision to execute.
 
 ---
 
@@ -151,14 +150,16 @@ Generate rather than hand-write: `python manage.py startapp`, `python manage.py 
 hand-written migration file (ADR-0002 section 1, `dev-workflow` section 3). What the autodetector cannot
 produce (the policies, the grants, the composite constraints) goes in `RunSQL` operations inside the
 generated migration, and that migration **cites ADR-0005 and ADR-0006 by number** rather than restating their
-reasoning. **Do not edit `accounts/migrations/0001_initial.py`**, which is applied; the new migration puts its
+reasoning. **Do not edit `mapsift/accounts/migrations/0001_initial.py`**, which is applied; the new migration puts its
 own tables inside the wall in its own module.
 
-**One choice this file does not make for you, with a recommendation and its reason.** Where these two models
-live is a Django app-layout call that no document in the canon decides. The recommendation is a **new app**
-rather than growing `accounts`, because `accounts` holds the account tree and these are its contents, and
-because M2 makes the layer the thing that decides while the feature is subordinate to it. Name it for what it
-holds. Make the call, note it in the pull request, and move on; it is not worth a round trip.
+**Where the code goes is decided and is no longer this file's to recommend.** **ADR-0007** fixes the layout:
+one subpackage per **domain** under `mapsift/`, so these two models are a **new package** rather than growth
+inside `accounts`, with the per-package file roles of its section 3 (`models.py`, `rules.py` pure,
+`selectors.py`, `services.py`, `capabilities.py`, one thin `api.py`) and its tests under the package. The
+tenant binding and the tenant-owned manager come from **`mapsift.common`** and are not re-implemented or
+imported out of `accounts`. Only the package's **name** is left to the implementing window; name it for what
+it holds, note it in the pull request, and move on.
 
 **One structural-performance question to settle rather than skip** (foundation section 10: structural
 performance is free at design time and is therefore not optional). ADR-0005 section 5 requires every index
