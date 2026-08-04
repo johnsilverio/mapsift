@@ -29,7 +29,70 @@ gh pr create --base main --fill
 
 # Watch the required checks, then merge once they are green
 gh pr checks --watch
-gh pr merge --delete-branch   # pick the team's merge strategy (--squash / --merge / --rebase)
+gh pr merge --rebase --delete-branch   # squash only for a branch full of noise commits
+```
+
+## Repository protection
+
+The PR flow in SKILL.md section 5 is a rule until a ruleset makes it a wall. This is the configuration, so
+applying it is a checklist rather than a design session. **Nothing here is applied yet**; the state at the
+time of writing (2026-08-04) was no ruleset and no branch protection, verified with
+`gh api repos/johnsilverio/mapsift/rulesets` returning `[]`.
+
+**The ruleset.** `Settings` → `Rules` → `Rulesets` → `New branch ruleset`. Name it `main`, set **Enforcement
+status to Active** (a ruleset left disabled is decoration), and target **Include default branch**, so it
+follows the default branch rather than a name. Enable:
+
+| Rule | What it buys |
+|---|---|
+| Restrict deletions | `main` cannot be deleted |
+| Block force pushes | the rule `dev-workflow` already states, now enforced |
+| Require linear history | blocks merge commits, which is what makes the rebase strategy the only path |
+| Require a pull request before merging | closes the "no branch reaches `main` without a PR" rule |
+| Require status checks to pass | the CI gates of ADR-0001 section 6 stop being advisory |
+
+Inside the pull-request rule: **Required approvals `0`**, restrict merge types to **rebase and squash**, and
+require conversation resolution. Inside the status-check rule, the three checks by their exact job names,
+`apps/api`, `libs/core` and `apps/web and libs/ui`, plus **Require branches to be up to date before
+merging**.
+
+**The two settings that depart from the obvious one, with the reason, because the obvious one is wrong here.**
+
+- **Required approvals is 0, not 1.** GitHub does not let an author approve their own pull request, so on a
+  one-person repository a requirement of 1 locks the only developer out of their own `main`. It becomes 1
+  when the second developer arrives, and the change is one field.
+- **The bypass list stays empty**, and being the repository owner does **not** grant a bypass by itself.
+  That is the point rather than an oversight: a permanent bypass is a permanent hole, while editing the
+  ruleset in an emergency takes thirty seconds and leaves a record of having been done.
+
+**Require signed commits is deliberately off.** It obliges every machine that commits to carry a configured
+signing key and rejects anything unsigned, which is friction nobody asked for; revisit when the team grows
+past the people who set up their own machines.
+
+**Repository settings** (`Settings` → `General` → Pull Requests): turn **off** allow merge commits, keep
+rebase and squash, and turn **on** automatically delete head branches, because parallel worktrees leave
+branches behind.
+
+**Code security** (`Settings` → `Code security`): Dependabot **alerts** and **security updates** on;
+Dependabot **version updates off**, because it would open routine upgrade pull requests across four
+ecosystems and fight `specs/dependencies.md`, where a version is a researched decision rather than an
+automatic bump. Secret scanning and push protection are on by default on a public repository and are what
+would catch a credential before it leaves the machine.
+
+**Actions** (`Settings` → `Actions` → `General`): workflow permissions set to read-only. The CI workflow
+already declares `permissions: contents: read`, and the repository default should match it.
+
+**The caveat that outweighs the rest.** On a free plan, rulesets and branch protection are enforced on
+**public** repositories only. This repository is public today, so all of the above is free. The canon says
+the product stays private until it matures, and **the day this repository is made private on a free plan the
+protection stops being enforced** while still being visible in the settings, which is the worst way for a
+guarantee to disappear. A paid individual plan covers private repositories.
+
+Verify what is actually in force rather than what was clicked:
+
+```bash
+gh api repos/johnsilverio/mapsift/rulesets --jq '.[] | {name, enforcement}'
+gh api repos/johnsilverio/mapsift/rules/branches/main --jq '[.[].type]'
 ```
 
 ## Reproducing a failed check locally
