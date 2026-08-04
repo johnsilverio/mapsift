@@ -44,6 +44,13 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["ANN201", "ANN001"]
 
+[tool.ruff.lint.isort]
+# Ruff infers first-party from what is on disk, so an app a red test names before window B
+# generates it sorts as third-party and then moves the day it appears, which would put a lint
+# failure inside a file that window may not edit. `conftest` never resolves on its own because
+# tests/ is not a source root.
+known-first-party = ["accounts", "config", "conftest"]
+
 [tool.mypy]
 strict = true
 # Two plugins, two jobs: the Django one teaches the ORM and the settings, the Pydantic one
@@ -72,6 +79,7 @@ django_settings_module = "config.settings"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q --strict-markers --strict-config"
-# DJANGO_SETTINGS_MODULE is deliberately absent while every test is a pure decision. Setting it
-# makes pytest-django call django.setup() before any conftest.py loads, so nothing can supply the
-# environment the settings module requires. The first ORM-dependent test turns it on.
+# MAP-3 brought the first ORM-dependent tests, so this is on. pytest-django calls django.setup()
+# before any conftest.py loads, which is why the environment has to reach the process from outside
+# (compose supplies it) and cannot be arranged by a fixture.
+DJANGO_SETTINGS_MODULE = "config.settings"
