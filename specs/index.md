@@ -112,3 +112,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     the rows minted on a skewed clock the index came out 2.45 times the well-behaved ordered one and roughly
     twice the random one. Also records that a time-ordered identifier is not opaque, since PostgreSQL reads
     its creation instant back out, which M3 forbids and N9's logging path would carry everywhere.
+  - **`adr/0007-api-layout-and-the-dependency-direction.md`** — where a file goes in `apps/api` and what it may
+    import: one application package `mapsift/` with a subpackage per domain and never per layer, `config/` never
+    holding domain code, the per-package file roles (`rules.py` pure, `selectors.py` reads, `services.py` writes,
+    `capabilities.py` the published surface, one django-ninja `api.py`), the tier direction enforced by an
+    `import-linter` contract rather than by a reviewer, and the home a named capability gets before the first one
+    exists. Fires the trigger ADR-0002 section 5 named for itself.

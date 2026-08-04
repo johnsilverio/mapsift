@@ -32,6 +32,32 @@ Same reason as everywhere else in this repo: the generator writes what the insta
 model writes what it remembers. A hand-written migration that diverges from the autodetector is a silent
 schema drift, and this database holds legal-weight geometry.
 
+## Where a file goes (ADR-0007, and this section decides nothing it does not say)
+
+- The application package is **`mapsift/`**, one subpackage per **domain** and never per layer. There is no
+  top-level `models/`, `schemas/` or `services/`. A package past roughly ten models is hiding two domains.
+- **`config/` is the Django project and never holds domain code.** It holds the settings, the validated
+  environment, `urls.py`, the server entrypoints, and the `NinjaAPI` instance with its `add_router` calls.
+- **`mapsift/common/` is tier 0** and holds what every package needs and no package owns: the tenant binding
+  and its guard, the tenant-owned manager, the shared model primitives. It depends on nothing above it. A
+  helper that grows a domain opinion has left `common/`.
+- Inside a package: `models.py`, `rules.py`, `selectors.py`, `services.py`, `capabilities.py`, `api.py`,
+  `migrations/`, `tests/`.
+  - `rules.py` is **pure**: no ORM, no I/O, no framework import beyond types. The test density lives here.
+  - `selectors.py` reads, `services.py` writes and is the only writer.
+  - `capabilities.py` holds the named capabilities this package publishes (foundation 9.5, PRD T7), which are
+    serializable, carry a machine-readable description, and return composable output. A capability is not a
+    service: a service is internal, a capability is the published surface the SDK and the agent consume.
+  - `api.py` holds one thin django-ninja `Router`. A route carrying a business decision has taken work that
+    belongs in `rules.py`.
+- **Reach another package through its `selectors` or `services`, never through its `models`**, enforced by an
+  `import-linter` `protected` contract rather than by review. A cross-package relation needs **no import at
+  all**, because the foreign key is declared with the string form: `models.ForeignKey("accounts.Tenant", ...)`.
+- **Importing upward across tiers fails the build** (`import-linter` `layers` contract, root package
+  `mapsift`). If a contract has to be relaxed to make a feature land, the feature is in the wrong package.
+- Per-package tests live under the package. **`apps/api/tests/` holds only what crosses packages** (the wall's
+  own catalogue suite) plus the shared fixtures.
+
 ## Decisions are pure, effects sit behind interfaces
 
 This is the architecture rule that makes the test-first method possible (foundation section 14), and it
@@ -98,7 +124,10 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
 - DO use `.only()` / `.defer()` on heavy rows, `.exists()` instead of truthiness, `.count()` instead of
   `len()`, and `F()` expressions for database-level updates.
 - DO define chainable custom QuerySets for reusable query logic (`Feature.objects.in_layer(x).legal_weight()`)
-  and attach them with `as_manager()`.
+  and attach them with `as_manager()`. **This does not contradict the styleguide rule that bans business logic
+  in managers and querysets (ADR-0007 section 3): query composition is not a business rule.** A queryset method
+  that narrows rows is a selector's building block; one that decides whether an edit is allowed is a rule in
+  the wrong file.
 - DO let PostGIS own authoritative geometry (GEOS). Don't reimplement in Python what `ST_Area`, `ST_Buffer`
   or `ST_Intersects` already computes, and never compute a metric in degrees (M5).
 

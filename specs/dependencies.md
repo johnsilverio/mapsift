@@ -196,6 +196,20 @@ The tension disappears on its own at the 6.2 LTS migration, when the stub line a
 - **Row-level security must be ENABLED and FORCED.** A role that owns the table bypasses a policy that is not forced, and a role holding the bypass privilege defeats it outright, which is why PRD N2 makes both explicit test cases rather than review notes. The direct-to-PostGIS tile role must connect non-privileged and set the tenant on its session or it defeats I4.
 - **Sequences do not give a safe change-feed cursor.** A sequence value is taken before commit, so a transaction that started later can commit first with a higher number, and a consumer polling `WHERE position > last` skips the rows that commit late. That is silent data loss, which is the one thing this product refuses. Documented alternatives: transaction ids (`xid8` with `pg_snapshot_xmin(pg_current_snapshot())`, ordering by transaction id then position), a serialized counter in a singleton row (correct, serializes all writes), or logical replication. **This is the crux of the OQ-10 spike and the reason the resync cursor is not yet a named version axis in PRD M10.** *Verified 2026-07-30.*
 
+### import-linter is the gate that makes the ADR-0007 dependency direction real
+
+**`import-linter` 2.13**, released 2026-07-03, BSD-2, supporting Python 3.10 to 3.14 and therefore the pinned
+3.13. *Verified 2026-08-04 against PyPI and the project's own documentation.* It is a **development
+dependency and a CI gate**, never imported by application code.
+
+Two things about it are worth recording rather than rediscovering. It offers five contract types (`layers`,
+`forbidden`, `independence`, `protected`, `acyclic_siblings`), and in a `layers` contract a `|` between
+siblings makes them independent while a `:` lets them import each other, which is easy to get backwards.
+And **`protected` is the reason the current version is taken rather than an older one**: it restricts who may
+import a module directly, from an allow-list, which is what turns "a package is reached through its selectors
+and services, never through its models" (ADR-0007 section 3) from a convention a reviewer must remember into
+a build that fails. A sibling project's equivalent ADR could only leave that half as a convention.
+
 ---
 
 ## 2. Client core, `libs/core`
