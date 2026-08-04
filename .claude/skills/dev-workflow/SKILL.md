@@ -62,6 +62,14 @@ needs an "and", it is two commits). Types: `feat`, `fix`, `refactor`, `test`, `d
 `perf`. Format: `type(scope): short description`, scope optional. Reference the Linear ID (`MAP-123`) when the
 work traces to a ticket.
 
+**Keep the message short. The long form belongs in the pull request, not in the commit.** A subject line
+under about 72 characters, and a body of **at most three or four lines** saying what changed and why, only
+when the subject cannot carry it alone. The reasoning, the measurements, the tables, the review notes and the
+fan-out list go in the **PR description**, which is where a human reads them and where they can be edited
+later; a commit message is permanent, is read in a one-line log far more often than in full, and a wall of
+prose there is a PR description in the wrong file. When the two would say the same thing, the commit says the
+headline and the PR says the rest.
+
 **Do NOT add any AI/Co-Authored-By attribution trailer**, to a commit, a PR body, or a release. This holds in
 every skill, command and agent in this repository, with no exception.
 
