@@ -83,3 +83,16 @@ Stage explicit paths, never `git add -A`.
 
 There is no path in this project where a branch reaches `main` without a PR and green checks. A local merge
 into `main` bypasses the gates ADR-0001 section 6 exists to enforce.
+
+**Merge with rebase, and the exception is named.** `gh pr merge --rebase --delete-branch` is the default,
+because this project writes atomic commits with one purpose each and rebase replays every one of them onto
+`main` intact, which is the whole point of writing them that way. **Squash** is for the branch that
+accumulated noise (a typo fix, a review correction), where one clean commit is more honest than four; it
+replaces the messages with the PR title and body, so it is the wrong tool for a branch whose commits were
+written properly. **A merge commit is never used**, and the ruleset below blocks it. Note that rebasing
+rewrites the commits, so the hash on `main` differs from the hash on the branch; the content and the message
+do not.
+
+**The flow above is enforced by a repository ruleset, not by discipline.** Its exact configuration, the two
+places where it departs from the obvious setting, and the caveat that it stops being enforced if this
+repository ever goes private on a free plan, are in `reference.md` under "Repository protection".
