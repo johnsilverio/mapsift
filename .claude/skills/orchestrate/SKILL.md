@@ -27,7 +27,7 @@ skipped. Everything after them is the role you take.
 
 ## The live state, as the canon claims it
 
-!`sed -n '/^## 0\. Current state/,/^## 1\. The canon/p' specs/session-handoff.md`
+!`sed -n '/^## 0\. Current state/,/^## 1\. The canon/p' specs/session-handoff.md 2>/dev/null || echo "ABSENT. specs/session-handoff.md is deliberately untracked, so it exists in the main checkout and never in a worktree. Read it from there before claiming any live state, and say in your first answer that you booted without it."`
 
 ---
 

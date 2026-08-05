@@ -20,7 +20,7 @@ This is section 0 of `specs/session-handoff.md`, loaded from disk. Its own rule 
 state claim is written only with the command that verified it**, so where this block and the tree disagree,
 the tree wins and the document is what is stale.
 
-!`sed -n '/^## 0\. Current state/,/^## 1\. The canon/p' specs/session-handoff.md`
+!`sed -n '/^## 0\. Current state/,/^## 1\. The canon/p' specs/session-handoff.md 2>/dev/null || echo "ABSENT. specs/session-handoff.md is deliberately untracked, so it exists in the main checkout and never in a worktree. Read it from there before claiming any live state, and say that you started without it."`
 
 ## The task specs on disk
 
