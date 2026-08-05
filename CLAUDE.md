@@ -437,6 +437,29 @@ pre-generation). Imagery: Copernicus Data Space / openEO. CRDTs (Yjs) are demote
 > it, say so. A dependency survey doc (`specs/dependencies.md`, like Hort's) is the canonical place for
 > versions and particularities.
 
+> ### Canon rule (non-negotiable)
+>
+> The rule above applies to this product's own decisions too, and for the same reason: a canon of this size
+> is not recallable, so **on any doubt, open the document and read it, never answer from memory**. Three
+> obligations follow, and each closes a failure this project has actually met.
+>
+> **Never assert about a section you did not open in this window.** Not the foundation's, not the PRD's, not
+> an ADR's. `specs/index.md` resolves a citation to the file and the section without reading the document,
+> which is what makes opening it cheap; the heavy canon is always opened **by reference, never wholesale**,
+> because a window filled with four thousand lines it does not need recalls the ten it does need worse.
+> Reading everything and absorbing nothing is worse than reading the obligatory set and citing the rest,
+> because it looks like coverage.
+>
+> **A contradiction between two documents is a defect, not a matter of style.** Stop and report it rather
+> than choosing one in silence or reconciling it in code. The **foundation wins**, the derived document is
+> the one that is wrong, and the correction is a dated revision whose fan-out is finished before the
+> decision counts as closed. This is how every contradiction this canon has carried was found, and more than
+> once it was found in a document written the same day.
+>
+> **State what you read and what you did not.** A window that lists the documents it opened makes its own
+> blind spots reviewable, so a reader can judge whether a decision rested on something nobody opened. An
+> answer that does not say which of the two it is invites being trusted for the wrong reason.
+
 ## Comments: a trap earns one, an explanation does not
 
 Code is self-explanatory through naming, and this repository has a stronger reason than usual to keep

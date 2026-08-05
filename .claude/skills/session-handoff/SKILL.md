@@ -69,6 +69,31 @@ does not yet mention. Every bullet must be checkable against disk. In particular
 
 Weave in the user's note if one was given.
 
+### Section 0 has a size budget, and keeping it is part of closing the session
+
+**Measure it before you finish:**
+
+```bash
+awk '/^## 0\. Current state/,/^## 1\. The canon/' specs/session-handoff.md | wc -c
+```
+
+This section is **injected into the boot of every orchestrator and every onboarding window**, which is what
+makes it the live state rather than a document somebody remembers to open. That guarantee holds only while
+it fits: past roughly forty kilobytes the harness hands it over as a file preview, and a preview is a
+pointer a window can skip. The failure is silent and it is the worst kind, because the material is then
+both unread and believed covered.
+
+So the budget is not tidiness, it is what keeps the injection true. **Over it, migrate rather than
+compress.** A bullet describing a round that is closed, a correction that landed, a decision that was
+superseded: that is history, and history lives in `specs/log.md`, one grep-able line each. Section 0 keeps
+what a fresh window needs **to act now**: where the work stands, what is next and why, what blocks, and the
+command that verified each claim.
+
+Two things this rule is not. It is **not** a licence to drop a claim because the section is long, since a
+claim that matters and is nowhere is worse than a long section. And it is **not** an instruction to shorten
+sentences, because a model told to trim optimises for length and cuts function with it. Move whole bullets
+to the log, or leave them.
+
 ## Phase 4: confirm and report
 
 Re-read the file and confirm three things: sections 1 to 10 are byte-for-byte intact, Section 0 stands alone
