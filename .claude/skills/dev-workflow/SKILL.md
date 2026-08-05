@@ -6,10 +6,11 @@ description: Use when creating branches, committing, opening pull requests, or o
 # Contribution workflow
 
 How a change lands in the Mapsift monorepo. **This skill is the single source of truth for the branch name,
-the commit format and the PR flow**; the `github-workflow` agent, the `/commit` and `/pr` commands and the
-`ticket` skill execute this procedure and must not define a second one. Concrete commands and examples are in
+the commit format and the PR flow**; the `github-workflow`, `commit`, `pr` and `ticket` skills execute this
+procedure and must not define a second one. Concrete commands and examples are in
 `reference.md`. The project rules this builds on live in the root `CLAUDE.md`, the foundation
-`specs/mapsift-foundation.md` and `specs/adr/0001-architecture-baseline.md`.
+`specs/mapsift-foundation.md`, `specs/adr/0001-architecture-baseline.md` and
+`specs/adr/0008-development-workflow-and-tracking.md`.
 
 ## 1. Branch
 

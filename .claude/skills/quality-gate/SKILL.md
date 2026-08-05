@@ -1,102 +1,125 @@
 ---
 name: quality-gate
-description: Validate an implementation locally before commit or PR, running the same checks CI will run for the stack you touched. Stops you committing on red. Use before any commit or pull request, and whenever the user asks whether the work is ready or if the checks pass. Triggers on "/quality-gate".
+description: Validate an implementation locally before commit or PR, running the same lint/type/test/contract checks CI will run for the languages you touched. Stops you committing on red. Use before any commit or pull request, and whenever the user asks whether the work is ready or if the checks pass. Triggers on "/quality-gate".
 argument-hint: "[optional scope note]"
+allowed-tools: Bash(sed *), Bash(just *), Bash(git *)
 ---
 
 # Quality gate
 
-Local mirror of the checks CI runs (`specs/testing.md` section 9, ADR-0001 section 6). A green run here
-means those gates should pass on the pull request. It **complements, does not replace** CI: only the
-remote checks are authoritative for merging. Treat green here as "safe to push", not "merge approved".
+Local mirror of the per-language checks CI runs (ADR-0001 section 6). A green run here means those gates
+should pass on the PR. It **complements, does not replace** CI: only the PR checks are authoritative for
+merging. Treat a green local run as "safe to push", not "merge approved".
 
-Run only the phases for the stack actually touched. Optional focus: $ARGUMENTS
+Run only the phases for the languages actually present in the pending change. Optional focus: $ARGUMENTS
 
-## Where things live: one repository, two toolchains, no orchestrator
+## The gate this mirrors, injected
 
-**ADR-0001 section 1 decided one repository organised by unit of deploy and the move has NOT run** (it is sequenced
-after `PRD.md`). There is **no monorepo tool** in either layout: each stack keeps its native toolchain, and
-what will span them is a `justfile` plus compose, created with the api scaffold.
+This is section 8 of `specs/testing.md`, loaded from disk. It is the authority for what CI blocks on, and
+this skill is the operational mirror that runs it locally.
 
-What decides where you type, today:
+!`sed -n '/^## 8\. The gate/,/^## 9\./p' specs/testing.md`
 
-- **`apps/web` is still its own repository with its own Angular workspace**, so **every web command runs
-  from `apps/web`**. After the migration the workspace hoists and they run from the repository root.
-- **The api does not hoist in either layout**, because uv is per project. Its commands run from `apps/api`,
-  which is still empty.
+## How these checks are run
 
-ADR-0003 makes the container the source of truth for **running**, with the host toolchain there for
-**authoring**. Where a compose service exists, prefer it over the host command.
-
-## Phase 1: the web (`apps/web`)
+ADR-0001 section 3 makes the container the source of truth for **running**, in development as well as in
+deployment, with the host toolchain there for **authoring** (editor, language servers, formatters). The
+`justfile` is the top-level orchestration across the ecosystems, so prefer the recipe over the raw command:
 
 ```bash
-cd apps/web                       # until the ADR-0001 section 1 migration runs
-pnpm build
-pnpm exec ng test --watch=false
+just lint        # per-language linters
+just typecheck   # mypy --strict, tsc strict, cargo check
+just test        # the suites of each ecosystem
+just contracts   # regenerate the cross-language contracts and fail on any diff
 ```
 
-`pnpm build` runs the strict `tsc`, so it is also the type check. **Never invoke the Vitest CLI directly**:
-the `@angular/build:unit-test` builder is what wires the tsconfig path aliases, `@mapsift/ui` included, so
-a direct Vitest run fails to resolve the library. `--watch=false` is explicit because watch defaults to true
-in a TTY.
+`just check` is all four in order. The recipes exist and run against the containers; the raw commands in the
+phases below are the reference for what each one wraps, not a host fallback, because the host is for
+authoring rather than for running.
 
-`pnpm e2e` runs Playwright and boots its own dev server. Run it when the change touches a journey, not on
-every gate: end-to-end is where integration risk is proven, not where behaviour is specified
-(`specs/testing.md` section 4).
+**Two things about how the recipes run, both of which cost a debugging session to rediscover.** Every
+one-shot run carries `CI=1`, which is what disables Angular's persistent cache: that cache is an LMDB store
+coordinated through a process-shared mutex in shared memory, two containers do not share an IPC namespace,
+and a gate run against the same cache directory while `just dev` holds it crashes every time. And
+`just contracts` does **not** run a blanket `git diff --exit-code`: the only generated artifact today is
+`libs/core/pkg`, which is built reproducibly and untracked, so a tree-wide diff would fail on any
+work in progress rather than on a stale contract. The scoped diff lands the day a generated file is
+committed.
 
-**ESLint is registered debt** (ADR-0001 section 17): it is not set up yet, so there is no lint step here to
-run. Do not invent one, and do not report a lint pass that did not happen.
-
-## Phase 2: the api (`apps/api`)
-
-**`apps/api` is an empty folder.** Verify with `ls -A apps/api` before claiming anything about it. Until the
-scaffold lands there is nothing to run here, and saying so plainly is the correct output rather than
-inventing a green result.
-
-When it exists, the gate is the one `specs/testing.md` section 9 and ADR-0001 section 6 define:
-
-| Check | Fails when |
-| --- | --- |
-| lint and type check | **the tool is not chosen yet.** ADR-0001 section 19 requires the gate and deliberately does not name the linter or the type checker. It is decided at scaffold and recorded in `apps/api/docs/dependencies.md`. Do not assume a tool here |
-| `pytest` | a test is red. Runs against the **containerized PostgreSQL with PostGIS** from ADR-0003, the same image production runs, because triggers, row-level security, GRANTs and PostGIS cannot be faked |
-| `lint-imports` | a package imports upward through the tier order, or `engines/` imports a domain package (ADR-0002 section 5) |
-| missing-migration check | a model changed with no migration. In a model-heavy system this is the cheapest real bug the gate catches |
-| schema freshness | regenerating the OpenAPI schema differs from what is committed |
-| capability-registry freshness | the code registry and the permission rows disagree (ADR-0007 section 3) |
-
-## Phase 3: the generated contract, when both sides moved
-
-The api owns the schema; the web commits both the snapshot it consumes and the types generated from it
-(the one-pull-request rule). Regenerating either must produce no diff:
+## Phase 1: Python backend (`apps/api`)
 
 ```bash
-git diff --exit-code
+ruff check .
+ruff format --check .
+mypy --strict .
+pytest
 ```
 
-A stale contract is a red build and never a silent drift.
+They run inside the container, whose `PATH` already carries the environment, so there is no `uv run` in
+front of them and no `apps/api` argument after them: the working directory is the project.
 
-## Phase 4: invariant coverage
+Lint, format check, strict type check (mypy `--strict` with django-stubs), and the test suite.
 
-`specs/testing.md` section 6.1: a test implementing an invariant **names its identifier**, and CI fails when
-an invariant I1 to I23 has no test naming it and no allow-list entry. Locally this is a grep, and it is worth
-running when the change implements or touches an invariant.
+## Phase 2: Rust core (`libs/core`)
+
+```bash
+cargo clippy --locked --all-targets -- -D warnings
+cargo fmt --check
+cargo test --locked
+```
+
+`--locked` is not decoration: it fails rather than silently updating `Cargo.lock`, which is the pin.
+
+## Phase 3: Angular web and UI (`apps/web`, `libs/ui`)
+
+```bash
+ng build ui        # @mapsift/ui resolves to dist/libs/ui, so this precedes anything in apps/web
+ng lint
+ng build web
+ng test --watch=false
+```
+
+`ng build` runs the strict `tsc`, so it is also the type check, but it is **not** the linter: ADR-0001
+section 6 blocks a change on `tsc` strict **and** the linter, so `ng lint` is not optional. Run unit tests
+through `ng test` (the `@angular/build:unit-test` builder, whose default runner is Vitest), never the Vitest
+CLI directly, so the `@mapsift/ui` tsconfig path alias resolves. `--watch=false` is explicit because watch
+defaults to true in a TTY.
+
+## Phase 4: generated contracts (any language touched)
+
+ADR-0001 section 5 and PRD M12 require the generated contracts to be regenerated in CI, with any difference
+failing the build. Two directions: the API's OpenAPI schema generates the TypeScript (later Dart) types, and
+the Rust core's types generate the TypeScript (later Dart) types across the boundary.
+
+```bash
+just contracts        # regenerate what exists, and report what does not
+```
+
+**Only one direction has an artifact today, and the recipe says so rather than reporting a green it did not
+earn.** The Rust-to-TypeScript half is real: `wasm-pack` emits `libs/core/pkg` with the definitions generated
+from the Rust types, and that output is built reproducibly and untracked, so there is no committed copy that
+could go stale. The OpenAPI half has a schema (`/api/docs`) and no consumer, so nothing is generated from it
+yet.
+
+A stale contract must be a red build, never a silent drift. The one deliberate duplication in this repository
+is the conflict rule (Rust core and Python server, guarded by golden tests, foundation 9.6.6): no generator
+ever emits it, and nobody "fixes" it by generating it.
 
 ## Phase 5: report and block on red
 
-Report each phase you ran on its own line, unambiguously, as PASS or FAIL. **Say explicitly which phases you
-skipped and why** ("api not scaffolded", "no journey touched"), because a report that silently omits a phase
-reads as a pass.
+Report each phase you ran on its own line, unambiguously (Backend lint/format/types/tests, Rust
+clippy/fmt/tests, Web lint/build/tests, Contracts): PASS or FAIL. **Say explicitly which phases you skipped
+and why** ("no Rust touched", "no journey touched"), because a report that silently omits a phase reads as
+a pass.
 
-If anything is FAIL, state that the change is **not ready to commit or push**, show the failing output, and
-stop. Do not commit, do not open a pull request, and do not paper over it by skipping or deleting a test.
-Committing on red is forbidden by the project workflow, and **weakening a test to make it pass is forbidden
-outright** (`specs/testing.md` section 10): if a test blocks you and you believe it is wrong, that is a
-conversation about the requirement, in the requirement's document.
+If anything is FAIL, state clearly that the change is **not ready to commit or push**, show the failing
+output, and stop. Do not commit, do not open a PR, and do not paper over it by skipping or deleting tests
+(`specs/testing.md` section 9: never weaken a test to make it pass). Fix the cause, then re-run. Committing
+on red is forbidden by the project workflow.
 
 ## Phase 6: diff summary
 
-Only when the gate passes, summarize the pending change so the scope can be sanity-checked.
+Only when the gate passes, summarize the pending change so the user can sanity-check the scope.
 
 ```bash
 git status --short
@@ -104,10 +127,13 @@ git diff --stat
 ```
 
 Flag anything unexpected: files outside the intended scope, a generated artifact that should not be
-committed, a lockfile from a package manager other than pnpm or uv, or **anything under `apps/api` that
-ADR-0002 section 12 says must not exist yet** (`PaymentPlan` behaviour, a legacy import package, the GIS
-surfaces, the embedded editor).
+committed, a lockfile from the wrong package manager, or a folder ADR-0001 section 8 says must not exist yet
+(`apps/sync`, `apps/desktop`, `apps/mobile`).
 
-**And one check specific to this tree:** no production data, ever. If the diff contains a dump, a fixture
-derived from the 1.0 database, or a credential, stop and say so. Foundation 9.1 and ADR-0003 section 2 forbid
-production data outside production, version control included.
+## Phase 7: offer a deeper review
+
+Offer, do not auto-run, the `code-review` skill for the judgement pass over a green build: the machine gates
+above are its stage 1, and its three axes (Canon, Spec, Craft) are what a script cannot decide. Ask first;
+if the user declines, end here.
+
+Reminder: this gate runs locally what CI runs, but only the remote PR checks are authoritative for merging.

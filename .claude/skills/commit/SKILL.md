@@ -3,16 +3,22 @@ name: commit
 description: Run the pre-commit gate and create atomic Conventional Commits (does not push). Use when the user asks to commit, save the work, or create commits. Runs the gate first and never pushes. Triggers on "/commit".
 argument-hint: "[optional scope or message hint]"
 disable-model-invocation: true
+allowed-tools: Bash(git *), Bash(sed *)
 ---
 
 Create one or more commits for the staged work. Follow `CLAUDE.md`, `specs/mapsift-foundation.md`
 section 14 and the `dev-workflow` skill. Optional hint for scope or wording: $ARGUMENTS
 
-**ADR-0001 section 1 decided one repository and the move has not run**, so today `apps/web` and the tree root are
-still separate repositories and a commit belongs to one of them. After the migration a commit may
-legitimately carry `specs/`, `apps/api` and `apps/web` together when they are one change. Run
-`git rev-parse --show-toplevel` and say
-which one you are committing to.
+**This is one repository, organised by unit of deploy** (ADR-0001 section 1), so a commit may legitimately
+carry `specs/`, `apps/api` and `apps/web` together when they are one change; what it may not do is carry
+two purposes because the paths happen to be staged together.
+
+## The commit rules, injected from their single source
+
+This is section 4 of the `dev-workflow` skill, loaded from disk. It is the authority for the message, and
+this skill does not restate it.
+
+!`sed -n '/^## 4\. Commits/,/^## 5\./p' .claude/skills/dev-workflow/SKILL.md`
 
 ## 1. Pre-commit gate, never commit on red
 
@@ -32,27 +38,17 @@ git diff --staged
 Read the staged changes to understand their purpose. If nothing is staged, stop and say so. Only staged
 changes are committed here; this command does not stage files for you.
 
-**Two things that stop a commit outright in this tree**, both from foundation 9.1 and ADR-0003 section 2: a
-credential, and production data. If the staged diff carries a database dump, a fixture derived from the 1.0
-database, or a secret, stop. A repository that starts with a committed secret carries it in its history
-forever, which this tree has already learned once.
+**Two things that stop a commit outright in this tree**, both C6 (foundation I7): a credential, and
+production data. If the staged diff carries a database dump, a fixture derived from production data, or a
+secret, stop. A committed secret stays in the history forever, which is why this check runs before the
+commit exists rather than after.
 
-## 3. Compose an atomic Conventional Commit message, in English
+## 3. Compose the message under the injected rules
 
-One purpose per commit. Format `type(scope): short description`, with type from `feat`, `fix`, `refactor`,
-`test`, `docs`, `style`, `chore`, `perf`. Subject in English, imperative, lower case, no trailing period.
-
-**Everything written in this ecosystem is in English**, commit messages included, and there are no em dashes
-or double hyphens in prose.
-
-If the subject needs an "and" to describe what is staged, that is two commits: split by purpose and plan one
-message per purpose.
-
-If the work traces to a Linear issue, reference `MAP-123`. **An issue exists only when the work traces to the
-canon and the trace is cited** (`CLAUDE.md` "Process & tracking"), so a commit referencing an identifier that traces to
-nothing is a signal that the issue should not have existed.
-
-**Do NOT add any AI or Co-Authored-By attribution trailer.** The committer of record is the developer.
+The format, the types, the one-line rule, the language and the no-trailer rule are the injected section
+above, not a list here. One thing it does not say: **an issue exists only when the work traces to the canon
+and the trace is cited** (ADR-0008 section 2), so a commit referencing an identifier that traces to nothing
+is a signal that the issue should not have existed.
 
 ## 4. Create the commits
 
@@ -71,5 +67,6 @@ A commit that closes or revises a decision is not finished when the code compile
 the fan-out rule require the decision to reach. **Run the `fan-out` skill, which owns that list.** Formerly enumerated here: the foundation as law, the ADR that
 carries its code shape, `CLAUDE.md`, `specs/PRD.md` where it is a requirement, section 0 of
 `specs/session-handoff.md`, and one grep-able line in `specs/log.md`. **A decision whose fan-out is
-incomplete is a contradiction waiting to be found by the next adversarial pass**, which is exactly how the
-`PARTNER` and `SPOUSE` role kinds survived in `CLAUDE.md` long after the foundation made them relationships.
+incomplete is a contradiction waiting to be found by the next adversarial pass**, which is exactly how
+`CLAUDE.md` still said "uv or poetry" while the tooling had already started writing `uv run`, until the
+survey of 2026-08-01 closed it (`specs/dependencies.md` section 1).
