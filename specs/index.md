@@ -37,7 +37,7 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   capability floor), the anti-requirements, the extension catalog, Layer 2 (transversal system behaviors,
   T1 to T9), Layer 3 (data model and contracts, M1 to M16), Layer 4 (surfaces and platform, S1 to S10), the
   non-functional requirements (N1 to N12), and the design system (U1 to U12). The prose is complete; section 10
-  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.14.
+  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.15.
 - **`tasks/`** — the spec-per-task the authority chain ends at, one file per Linear issue that needs one, named
   by its issue ID. It **assembles and cites** what the foundation, the PRD and the ADRs already decided into the
   one contract two windows read, and it decides nothing of its own; where it disagrees with a document it cites,
