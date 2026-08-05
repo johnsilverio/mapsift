@@ -86,8 +86,8 @@ reviewer who disagrees argues it in the issue, never by widening the model.
 ### 2.1 One rule this task invented, and the half of it that is the owner's
 
 **The rule.** A feature's geometry must belong to the family its layer declares, and a disagreeing one is
-refused. **M2 does not say that.** It gives a layer a geometry kind and stops; nothing in the PRD turns
-that declaration into a constraint on the layer's features. The rule was invented in section 5 of this
+refused. **M2 did not say that.** It gave a layer a geometry kind and stopped; nothing in the PRD turned
+that declaration into a constraint on the layer's features, until the round recorded below. The rule was invented in section 5 of this
 file, which makes its test a test with no requirement, and `specs/testing.md` section 6 calls that a
 candidate for deletion. Raising it into the PRD is an owner decision and is **not** taken here.
 
