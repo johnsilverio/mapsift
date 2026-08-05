@@ -133,6 +133,49 @@ def test_a_tenant_scoped_query_with_no_binding_in_force_raises_in_the_applicatio
         Workspace.objects.count()
 
 
+def test_a_binding_for_a_second_tenant_inside_one_in_force_is_refused_naming_the_rule(
+    alice: Party, bob: Party
+) -> None:
+    """C4, N2, N9, ADR-0005 section 3: the binding is made once per request and once per
+    background task, so a scope opened for a second tenant while one is in force is refused by
+    name, never restored, because restoring would make nesting look supported (MAP-29)."""
+    # In-function import: the module must collect while the name does not exist yet (MAP-5 trap).
+    from mapsift.common.binding import TenantAlreadyBound  # type: ignore[attr-defined]
+
+    with tenant_scope(alice.tenant_id):
+        with pytest.raises(TenantAlreadyBound) as refusal, tenant_scope(bob.tenant_id):
+            pytest.fail("the nested binding must be refused before its block runs")
+
+        message = str(refusal.value)
+        assert "once per request and once per background task" in message
+        assert "ADR-0005 section 3" in message
+
+
+def test_a_refused_binding_leaves_the_outer_tenant_in_force(alice: Party, bob: Party) -> None:
+    """C4, N2, ADR-0005 sections 3 and 4: the refusal comes before the inner binding reaches the
+    database, so the wall and the guard never disagree: after it, the guard still passes the
+    outer tenant's query and the wall still answers with that tenant's row and nobody else's."""
+    from mapsift.common.binding import TenantAlreadyBound  # type: ignore[attr-defined]
+
+    with tenant_scope(alice.tenant_id):
+        with pytest.raises(TenantAlreadyBound), tenant_scope(bob.tenant_id):
+            pass
+
+        assert Workspace.objects.filter(pk=alice.workspace_id).exists()
+        assert not Workspace.objects.filter(pk=bob.workspace_id).exists()
+
+
+def test_reentering_the_scope_with_the_same_tenant_is_a_harmless_no_op(alice: Party) -> None:
+    """ADR-0005 section 3: one binding per request means the same tenant twice is still one
+    binding, so re-entry executes its block and tenant-scoped queries keep answering as that
+    tenant (MAP-29)."""
+    with tenant_scope(alice.tenant_id):
+        with tenant_scope(alice.tenant_id):
+            assert Workspace.objects.filter(pk=alice.workspace_id).exists()
+
+        assert Workspace.objects.filter(pk=alice.workspace_id).exists()
+
+
 def test_the_binding_does_not_survive_its_transaction(alice: Party) -> None:
     """N2, ADR-0005 section 3 (probes C and D): a session-scoped binding reaches the next request
     on a reused connection, and a bare cast raises on every transaction after the first because the
