@@ -56,35 +56,81 @@ only operational residue.
 - **A command is the older form of a user-invoked skill.** Both surface as `/name`. New procedures are
   written as skills, so there is one place to look.
 
-## The two-window protocol, and the skills that carry it
+## A day of work, and where each skill falls in it
 
-The protocol is `specs/testing.md` section 1 and it is not restated here. What this folder holds is the
-procedure each role runs:
+The protocol is `specs/testing.md` section 1 and it is not restated here. This section answers the question
+an index usually does not: **at which moment do I reach for this, and what does typing it actually do.**
 
-| Skill | Fires when | What it carries |
+**You open a session and type `/orchestrate`.** It injects the measured tree, the tracker and the live state
+before the model says anything, so the first answer is the divergence between disk and document rather than
+a greeting. You pick the issue. The orchestrator runs **`onboard`** for that issue's context, writes the task
+spec at `specs/tasks/MAP-<n>-<slug>.md`, and brings you the boundary decisions with a recommendation and a
+cost each. You rule. It **registers your verdict in the canon before dispatching anything**, because a
+decision that exists only in a chat message is invisible to the next clean window.
+
+**Then the two windows, one at a time.** Window A runs **`test`** and writes the failing tests. The
+orchestrator closes it by **running** `code-review`, never by reading its report. Only then does Window B's
+brief exist, because that brief is the review; Window B runs **`implement`** and reaches green without
+touching a test. The gate runs again, and you get a verdict plus a suggested commit message.
+
+**Closing:** `/quality-gate` if you want the checks alone, `/commit`, `/pr`, and `/session-handoff` at the
+end of a session that changed the live state.
+
+If a decision was closed anywhere in that day, **`/fan-out`** is what finishes it, and the decision is not
+closed until it has run.
+
+### The procedure skills
+
+| Skill | The moment you reach for it | What typing it does |
 | --- | --- | --- |
-| **`orchestrate`** | opening a session with no task picked up | the role, the boot state measured from disk, the rules, the register. **The orchestrator does not implement and does not touch code** |
-| **`test`** | "write the failing tests", TDD, red, Window A | how a test is named, what it may assert, the three ways a red test still pins the wrong thing, seams, the report format |
-| **`implement`** | "make it green", Window B | minimum to pass, triangulation, tests byte-identical, refactor under green |
-| **`code-review`** | reviewing **your own** diff, before committing | machine gates first, then three isolated axes |
-| **`pr-review`** | reviewing **somebody else's** pull request | reconstructing the intention you do not have |
-| **`backlog`** | turning a problem into issues | outcome decomposition, sizing, dependency edges, vertical sequencing |
-| **`fan-out`** | any closed decision | propagate by grep, never from memory, with the target table |
-| **`writing-for-agents`** | writing or editing anything an agent reads | the loading tiers, pointer wording, the no-op test |
-| **`onboard`** | you have **a task** and need **its** context | the per-task reading order, the trace to the authority |
-| **`solid`** | in the refactor step, under green | SOLID, clean code, patterns, smells |
-| **`docs-sync`** | auditing whether the documents are still true | walks the authority chain against disk |
-| **`dev-workflow`** | branching, committing, opening a pull request | the single source of the branch convention, the commit format and the PR flow; `commit`, `pr` and `github-workflow` execute it and inject it rather than restating it |
-| **`ticket`**, **`linear-workflow`**, **`quality-gate`**, **`commit`**, **`pr`**, **`github-workflow`**, **`pr-summary`**, **`session-handoff`**, **`plan`**, **`fix`**, **`systematic-debugging`**, **`worktree-commit-merge`** | the name says it | |
+| **`orchestrate`** | opening a session with no task chosen, or asking "what is next" | injects the tree, the tracker and the live state, then takes the orchestrator role. **It does not implement and does not touch code**: a finding goes back to a window, never into your own edit |
+| **`onboard`** | a task exists and you need **its** context | directs the reading for that task, traces it to the requirement and the invariants, explores the code that will change |
+| **`test`** | Window A, or any "write the tests for X" | writes failing tests as behaviour and nothing else; carries naming, what a test may assert, the three ways a red test still pins the wrong thing, and the report format |
+| **`implement`** | Window B, or "make it green" | minimum to pass, triangulation, refactor under green, and the rule it will not break: **the test module ends byte-identical** |
+| **`code-review`** | before committing **your own** diff, and to close a window you dispatched | runs the machine gates first, then three axes in isolated contexts (Canon blocks, Spec blocks, Craft advises) and never merges them into one ranked list |
+| **`pr-review`** | a pull request **somebody else** wrote | reconstructs the intent you do not have before judging it, and separates what blocks a merge from what is a request to the author |
+| **`quality-gate`** | before any commit or PR, or "do the checks pass" | runs what CI runs, for the ecosystems the diff actually touched, inside the container |
+| **`fix`** | the lint or the types are red | reads what the checks report and fixes that, rather than guessing |
+| **`plan`** | thinking through a change before any code exists | grounds an approach in the canon and the codebase, then stops and waits |
+| **`backlog`** | "break this down", "create the issues", filling or grooming | acts as product owner and scrum master: decomposes into outcomes rather than task lists, sizes against the tracer-bullet rule, sequences vertically, and **refuses** to invent a requirement the canon does not carry |
+| **`ticket`** | you have an issue ID and want it worked end to end | reads it, checks that it traces to the canon, branches, drives both windows, gates, and opens the PR |
+| **`linear-workflow`** | before touching any issue, project or milestone | the git and tracker boundary, when an issue may exist at all, the status automation, the MCP isolation |
+| **`fan-out`** | the instant any decision is closed, changed or refused | propagates by grep across every document that names it, with the target table, so the canon cannot contradict itself |
+| **`writing-for-agents`** | writing or editing anything an agent reads, or when an agent ignored a written rule | the loading tiers, how to word a pointer so it fires, the no-op test, and how to prune duplication |
+| **`docs-sync`** | "are the specs still true" | walks the authority chain and compares it against disk |
+| **`solid`** | in the refactor step, under green, never while red | SOLID, clean code, patterns and smells, spent where design belongs |
+| **`systematic-debugging`** | a bug, a failing test, something unexplained | root cause before any fix, in four phases |
+| **`dev-workflow`** | the single source for branch, commit and PR conventions | `commit`, `pr` and `github-workflow` **inject** it rather than restating it, so there is one copy |
+| **`commit`**, **`pr`**, **`github-workflow`**, **`pr-summary`**, **`worktree-commit-merge`**, **`session-handoff`** | closing work out | the last four write history, push, or rewrite the live state, so they stay yours to type |
 
-Beside them sit the **stack skills**, which are reference rather than procedure: the Angular set
-(`angular-component`, `angular-di`, `angular-directives`, `angular-forms`, `angular-http`, `angular-routing`,
-`angular-signals`, `angular-testing`, `angular-tooling`), and the backend set (`django-models`,
-`celery-patterns`, `pytest-django-patterns`).
+### The stack skills, which are reference rather than procedure
 
-**`orchestrate` is not `onboard`, and the difference is worth knowing.** `onboard` runs when **a task
-exists** and you need its context. `orchestrate` opens a session when there is **no task yet**: it loads the
-role and the measured state, and it sends you to `onboard` the moment a task appears.
+The Angular set (`angular-component`, `angular-di`, `angular-directives`, `angular-forms`, `angular-http`,
+`angular-routing`, `angular-signals`, `angular-testing`, `angular-tooling`) and the backend set
+(`django-models`, `celery-patterns`, `pytest-django-patterns`).
+
+**They are deliberately many and deliberately small.** A task about routing should pay for routing and not
+for forms, which is the whole point of tier 2: the description matches, one payload loads. Consolidating them
+into one `angular` skill would hand every task all nine payloads, which is the attention-budget failure this
+folder is organised against. If one of them fails to fire when it should, **the defect is its description**,
+and the fix is `writing-for-agents` rather than a router on top.
+
+What they do **not** carry, and what therefore has to come from elsewhere: the build order (`libs/core` then
+`libs/ui` then `apps/web`, a requirement rather than a convention), generating with the CLI before editing
+(ADR-0002), importing the library from its barrel only (ADR-0003), and the rule that client logic belongs in
+the shared core rather than in the Angular layer (C11). Those live in `.claude/rules/`, which fires when a
+file in that stack is opened.
+
+### Two pairs that are easy to confuse
+
+**`orchestrate` is not `onboard`.** `onboard` runs when **a task exists** and you need its context.
+`orchestrate` opens a session when there is **no task yet**: it loads the role and the measured state, and it
+sends you to `onboard` the moment a task appears.
+
+**`code-review` is not `pr-review`.** The first reviews work **you commissioned**, where the requirement, the
+task spec and the canon were all in the window's reading protocol, so "they could not have known" is not
+available as an explanation and the standard is higher. The second reviews code from outside that loop, so it
+reconstructs the intent first and marks explicitly what it cannot know.
 
 ## The three consequences that bind anything added here
 
