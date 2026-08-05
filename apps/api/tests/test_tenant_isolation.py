@@ -139,8 +139,7 @@ def test_a_binding_for_a_second_tenant_inside_one_in_force_is_refused_naming_the
     """C4, N2, N9, ADR-0005 section 3: the binding is made once per request and once per
     background task, so a scope opened for a second tenant while one is in force is refused by
     name, never restored, because restoring would make nesting look supported (MAP-29)."""
-    # In-function import: the module must collect while the name does not exist yet (MAP-5 trap).
-    from mapsift.common.binding import TenantAlreadyBound  # type: ignore[attr-defined]
+    from mapsift.common.binding import TenantAlreadyBound
 
     with tenant_scope(alice.tenant_id):
         with pytest.raises(TenantAlreadyBound) as refusal, tenant_scope(bob.tenant_id):
@@ -155,7 +154,7 @@ def test_a_refused_binding_leaves_the_outer_tenant_in_force(alice: Party, bob: P
     """C4, N2, ADR-0005 sections 3 and 4: the refusal comes before the inner binding reaches the
     database, so the wall and the guard never disagree: after it, the guard still passes the
     outer tenant's query and the wall still answers with that tenant's row and nobody else's."""
-    from mapsift.common.binding import TenantAlreadyBound  # type: ignore[attr-defined]
+    from mapsift.common.binding import TenantAlreadyBound
 
     with tenant_scope(alice.tenant_id):
         with pytest.raises(TenantAlreadyBound), tenant_scope(bob.tenant_id):
