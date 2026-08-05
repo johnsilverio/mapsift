@@ -1,16 +1,9 @@
 """The layer and the feature as persisted shapes, inside the same wall as everything else.
 
-Trace: M2 (the two shapes), M3 (identity), M5 rule 1 (the storage frame), N2; C4; ADR-0005
-sections 5 and 7 (the composite references, and which tables are inside the wall), ADR-0006
-section 3 (who allocates an identifier).
+Trace: M2, M3, M5 rule 1, N2; C4; ADR-0005 sections 5 and 7, ADR-0006 section 3.
 
-What is deliberately absent here, because the suites MAP-3 produced already cover it **by
-construction** the moment these two tables carry the tenant identifier: row-level security enabled
-and forced, the identifier stored as the native uuid type, the absence of a server-side column
-default, no runtime role owning a tenant-owned table, and no unique key answering across the wall.
-The first two tests below are the hook those enumerations hang from, which is why they are the
-first two. If any of those existing tests has to be edited for this task to pass, the model is
-wrong rather than the test (`specs/testing.md` section 9).
+The wall's own properties are deliberately absent here: the MAP-3 suites enumerate them from the
+catalogue, so the first two tests below are the whole hook those enumerations hang from.
 """
 
 from uuid import uuid4
@@ -71,8 +64,7 @@ def test_the_layer_table_is_inside_the_isolation_wall(
     tenant_owned_tables: frozenset[str],
 ) -> None:
     """N2, C4, ADR-0005 sections 3 and 7: carrying the tenant identifier is what puts a table
-    inside the wall and into every catalogue-driven test, so the rest of the coverage hangs from
-    this one assertion rather than from a list somebody maintains."""
+    inside the wall and into every catalogue-driven test."""
     assert Layer._meta.db_table in tenant_owned_tables
 
 
@@ -84,8 +76,7 @@ def test_the_feature_table_is_inside_the_isolation_wall(
 
 
 def test_the_geometry_column_declares_the_one_storage_frame() -> None:
-    """M5 rule 1, read from the catalogue rather than reviewed: one storage and interchange frame,
-    SIRGAS 2000. A column in another frame moves a legal boundary with nothing raising."""
+    """M5 rule 1, read from the catalogue rather than reviewed: one storage frame, SIRGAS 2000."""
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -100,9 +91,8 @@ def test_the_geometry_column_declares_the_one_storage_frame() -> None:
 
 
 def test_a_writer_outside_the_orm_cannot_store_geometry_in_another_frame(alice: Party) -> None:
-    """M5 rule 1, and it is I4's reasoning applied to the frame: the wall is worth having only
-    where it covers the writers that never pass through the ORM, and the tile path is one. The
-    column's own type modifier is what refuses this, which is why no separate constraint exists."""
+    """M5 rule 1, and it is I4's reasoning applied to the frame. The column's own type modifier is
+    what refuses this, which is why no separate constraint exists."""
     with tenant_scope(alice.tenant_id):
         layer = _a_layer(alice)
 
@@ -128,10 +118,8 @@ def test_a_writer_outside_the_orm_cannot_store_geometry_in_another_frame(alice: 
 
 
 def test_a_geometry_in_another_frame_is_refused_rather_than_converted(alice: Party) -> None:
-    """M5 rules 1 and 3: the source frame is recorded and never discarded, and a datum
-    transformation is an explicit recorded decision. Measured on 2026-08-04: the plain GeoDjango
-    field wraps a mismatched value in ST_Transform, so this parcel would land as degrees with
-    EPSG:31983 gone and nothing raised, which is the silent drift rule 3 forbids by name."""
+    """M5 rules 1 and 3: the source frame is never discarded and a datum transformation is an
+    explicit recorded decision, so the write path refuses rather than converting."""
     with tenant_scope(alice.tenant_id):
         layer = _a_layer(alice)
 
@@ -191,8 +179,8 @@ def test_an_update_bound_to_one_tenant_does_not_reach_another_tenants_layer(
 def test_a_delete_bound_to_one_tenant_does_not_reach_another_tenants_feature(
     alice: Party, bob: Party
 ) -> None:
-    """C4, N2, C7: the destructive verb is the one exercised on the feature, because a feature is
-    the row that carries geometry and a legal-weight one may never vanish without a record."""
+    """C4, N2, C7: the destructive verb is exercised on the feature, because that is the row a
+    legal-weight geometry lives in."""
     with tenant_scope(bob.tenant_id):
         theirs = _a_feature(bob, _a_layer(bob))
 
@@ -205,8 +193,8 @@ def test_a_delete_bound_to_one_tenant_does_not_reach_another_tenants_feature(
 
 
 def test_an_insert_cannot_smuggle_a_layer_into_another_tenant(alice: Party, bob: Party) -> None:
-    """C4, N2, ADR-0005 section 3 (probe F): WITH CHECK is what makes the write path as closed as
-    the read path, and naming the code is what proves it was the policy that refused."""
+    """C4, N2, ADR-0005 section 3 (probe F): WITH CHECK makes the write path as closed as the read
+    path, and naming the SQLSTATE is what proves it was the policy that refused."""
     with refused_with(POLICY_VIOLATION), tenant_scope(alice.tenant_id):
         Layer.objects.create(
             id=uuid4(),
@@ -220,7 +208,7 @@ def test_an_insert_cannot_smuggle_a_layer_into_another_tenant(alice: Party, bob:
 
 def test_an_insert_cannot_smuggle_a_feature_into_another_tenant(alice: Party, bob: Party) -> None:
     """C4, N2, ADR-0005 section 3 (probe F). The reference is to the layer that owns the row, so
-    the key is satisfied and the policy is the only thing left to refuse it."""
+    the key is satisfied and only the policy is left to refuse it."""
     with tenant_scope(bob.tenant_id):
         theirs = _a_layer(bob)
 
@@ -235,10 +223,9 @@ def test_an_insert_cannot_smuggle_a_feature_into_another_tenant(alice: Party, bo
 
 
 def test_a_layer_cannot_reference_a_project_of_another_tenant(alice: Party, bob: Party) -> None:
-    """C4, N2, ADR-0005 section 5 (probes H and N): referential integrity checks bypass the policy
-    by design, so a single-column reference points happily across the wall. Only the composite key
-    closes it, and this is the case that proves the project carries the uniqueness it points at.
-    The row is the writer's own tenant, so the policy admits it and only the key can refuse."""
+    """C4, N2, ADR-0005 section 5 (probes H and N), and the case that proves the project carries
+    the uniqueness the reference points at. The row is the writer's own tenant, so the policy admits
+    it and only the key can refuse."""
     with refused_with(FOREIGN_KEY_VIOLATION), tenant_scope(alice.tenant_id):
         Layer.objects.create(
             id=uuid4(),
@@ -251,9 +238,8 @@ def test_a_layer_cannot_reference_a_project_of_another_tenant(alice: Party, bob:
 
 
 def test_a_feature_cannot_reference_a_layer_of_another_tenant(alice: Party, bob: Party) -> None:
-    """C4, N2, ADR-0005 section 5 (probes H and N): the same channel one level down, which is
-    where it would actually be exercised, since a feature is the row a client mints offline. The
-    row is the writer's own tenant, so the policy admits it and only the key can refuse."""
+    """C4, N2, ADR-0005 section 5 (probes H and N): the same channel one level down, where it is
+    actually exercised, since a feature is the row a client mints offline."""
     with tenant_scope(bob.tenant_id):
         theirs = _a_layer(bob)
 
@@ -271,9 +257,8 @@ def test_a_feature_cannot_be_filed_under_a_project_its_layer_does_not_belong_to(
     alice: Party,
 ) -> None:
     """M2, ADR-0005 section 5: a feature filed under one project while its layer lives in another
-    resolves to two projects, which M2's own acceptance forbids. Both rows belong to the writer's
-    own tenant, so the tenant channel is closed and the third column of the reference is the only
-    thing left that can refuse this."""
+    resolves to two projects. Both rows are the writer's own tenant, so the third column of the
+    reference is the only thing left that can refuse it."""
     elsewhere = second_project_of(alice)
 
     with tenant_scope(alice.tenant_id):
@@ -291,7 +276,7 @@ def test_a_feature_cannot_be_filed_under_a_project_its_layer_does_not_belong_to(
 
 def test_two_tenants_can_each_hold_a_layer_of_the_same_name(alice: Party, bob: Party) -> None:
     """N2, ADR-0005 section 5 (probe I): a natural key is unique per tenant and never globally,
-    because a global unique index reports that a row exists to a writer who cannot see it."""
+    because a global unique index answers across the wall."""
     with tenant_scope(alice.tenant_id):
         _a_layer(alice, name="vegetation cover")
 
@@ -300,8 +285,7 @@ def test_two_tenants_can_each_hold_a_layer_of_the_same_name(alice: Party, bob: P
 
 
 def test_an_ordinary_update_cannot_move_a_layer_to_another_tenant(alice: Party, bob: Party) -> None:
-    """M2, M1: a layer resolves to exactly one tenant, immutable in the ordinary write path, by
-    the same rule the workspace and the project already hold."""
+    """M2, M1: a layer resolves to exactly one tenant, immutable in the ordinary write path."""
     with tenant_scope(alice.tenant_id):
         layer = _a_layer(alice)
 
@@ -323,8 +307,8 @@ def test_an_ordinary_update_cannot_move_a_feature_to_another_tenant(
 
 
 def test_the_server_never_allocates_an_identifier_for_a_layer(alice: Party) -> None:
-    """M3, ADR-0006 section 3: the rule one level up from the column default, because a generator
-    on the model is the server allocating just as much as one in the database is."""
+    """M3, ADR-0006 section 3: one level up from the column default, because a generator on the
+    model is the server allocating just as much as one in the database is."""
     with refused_with(NOT_NULL_VIOLATION), tenant_scope(alice.tenant_id):
         Layer.objects.create(
             tenant_id=alice.tenant_id,
@@ -336,8 +320,8 @@ def test_the_server_never_allocates_an_identifier_for_a_layer(alice: Party) -> N
 
 
 def test_the_server_never_allocates_an_identifier_for_a_feature(alice: Party) -> None:
-    """M3, ADR-0006 section 3: the feature is the row this rule exists for, since it is minted by
-    the client that draws it, offline, before any server has heard of it."""
+    """M3, ADR-0006 section 3: the feature is the row this rule exists for, minted offline by the
+    client that draws it."""
     with tenant_scope(alice.tenant_id):
         layer = _a_layer(alice)
 
@@ -351,9 +335,8 @@ def test_the_server_never_allocates_an_identifier_for_a_feature(alice: Party) ->
 
 
 def test_a_feature_carries_no_storage_class_of_its_own() -> None:
-    """M2: the class is the layer's, so there is no per-feature class to change and the path
-    cannot drift feature by feature. A feature that could carry its own class is the frontier
-    becoming per-row, which is exactly what M2's second acceptance forbids."""
+    """M2: the class is the layer's, so there is no per-feature class to change and the frontier
+    cannot become per-row."""
     with pytest.raises(TypeError):
         # The call is a static error on purpose: django-stubs builds __init__ from the
         # fields, so the checker refuses the very argument this test exists to prove is
@@ -362,10 +345,8 @@ def test_a_feature_carries_no_storage_class_of_its_own() -> None:
 
 
 def test_a_feature_exists_before_its_geometry_does(alice: Party) -> None:
-    """M2, foundation OQ-4: this slice's operation catalog is two operations, create a feature and
-    then set its geometry, so a feature necessarily exists for the interval between them. A
-    geometry required at creation makes the first of the two unrepresentable, which is why both
-    steps are run here rather than assumed."""
+    """M2, foundation OQ-4: this slice's catalog is create a feature and then set its geometry, so
+    a geometry required at creation makes the first of the two unrepresentable."""
     boundary = Polygon(((0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (0.0, 0.0)), srid=STORAGE_FRAME_SRID)
 
     with tenant_scope(alice.tenant_id):

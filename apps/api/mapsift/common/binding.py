@@ -1,8 +1,4 @@
-"""The tenant binding and the guard beside it (ADR-0005 sections 3 and 4).
-
-The wall is the database's. This module puts a tenant in force for one transaction, and refuses to
-run a tenant-scoped query when none is.
-"""
+"""The tenant binding and the guard beside it (ADR-0005 sections 3 and 4)."""
 
 from collections.abc import Iterator
 from contextlib import contextmanager

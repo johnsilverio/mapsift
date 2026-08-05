@@ -1,7 +1,4 @@
-"""Which tenant is in force for a resource, and when the answer is none (M1, T6.1).
-
-The decision the application makes before it reaches the wall that enforces the same answer.
-"""
+"""Which tenant is in force for a resource, and when the answer is none (M1, T6.1)."""
 
 from collections.abc import Set as AbstractSet
 from uuid import UUID

@@ -1,8 +1,7 @@
-"""The layer and the feature (M2), the two shapes every operation of milestones 2 and 3 addresses.
+"""The layer and the feature (M2).
 
-Both carry the tenant identifier, which is what puts them inside the wall and into the catalogue
-the N2 suite enumerates (ADR-0005 sections 3 and 7). Neither carries an identifier default, because
-the client that draws a feature offline is its allocator (ADR-0006 section 3).
+Neither carries an identifier default, unlike the user beside them, because the client that draws a
+feature offline is its allocator (ADR-0006 section 3).
 """
 
 from enum import StrEnum
@@ -16,11 +15,7 @@ from mapsift.layers.rules import GeometryKind, StorageClass
 
 
 def _labelled(enumeration: type[StrEnum]) -> dict[str, str]:
-    """Django's `choices` from a framework-free enumeration.
-
-    The enumerations live in `rules.py`, which may not import Django (ADR-0007 section 3), so there
-    is no `TextChoices` here to read a `.choices` off.
-    """
+    """Django's `choices` from an enumeration that may not import it (ADR-0007 section 3)."""
     return {member.value: member.name.capitalize() for member in enumeration}
 
 
@@ -48,10 +43,8 @@ class Layer(models.Model):
 
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
-            # Three columns rather than two: it is what the feature's reference points at, and a
-            # two-column one would leave a feature resolving to its own project and its layer's
-            # (ADR-0005 section 5). The tenant leads, and the leading columns serve every
-            # tenant-scoped read of this table, so no further index is declared beside it.
+            # Three columns rather than two, and nothing declared beside it: both are corrections
+            # dated 2026-08-04 in this task's spec, section 3 (ADR-0005 section 5).
             models.UniqueConstraint(
                 fields=["tenant", "project", "id"],
                 name="layer_identity_within_its_tenant_and_project",

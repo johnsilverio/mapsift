@@ -1,8 +1,4 @@
-"""The one frame stored geometry is in, and the column that refuses to convert into it (M5 rule 1).
-
-Tier 0 rather than the layers package's, because every geometry column this product ever adds owes
-the same guarantee (ADR-0007 section 1).
-"""
+"""The storage frame, and the column that refuses to convert into it (M5 rule 1)."""
 
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
@@ -15,11 +11,9 @@ from django.db.backends.base.base import BaseDatabaseWrapper
 STORAGE_FRAME_SRID = 4674
 
 if TYPE_CHECKING:
-    # A field is generic to the type checker and a plain class at runtime: django-stubs declares
-    # the parameters in a stub and Django's own field cannot be subscripted, so writing the base
-    # out once is what keeps the stored and returned types real rather than `Any` (C5). The
-    # optional is the plugin's requirement for a column that may be null, which is every geometry
-    # column this product has so far.
+    # Generic to the type checker and a plain class at runtime: Django's own field cannot be
+    # subscripted, so inlining the parameters raises TypeError at import. The optional is
+    # django-stubs' requirement for a column that may be null (C5).
     _GeometryColumn = GeometryField[GEOSGeometry | None, GEOSGeometry | None]
 else:
     _GeometryColumn = GeometryField
@@ -32,13 +26,10 @@ class ForeignFrame(Exception):
 class StorageFrameGeometryField(_GeometryColumn):
     """A geometry column in the storage frame, which stores what it was given or refuses it.
 
-    Guarantees that no write converts a coordinate on its way in (M5 rules 1 and 3). Measured on
-    2026-08-04: the plain field wraps a value whose SRID differs in `ST_Transform`, so a parcel sent
-    in EPSG:31983 lands as degrees with its source frame gone before anything could record it.
-
-    The two `Any` below are the framework's own hook signatures rather than a choice: a field takes
-    heterogeneous keyword arguments, and what reaches the save path may be a geometry or an
-    expression standing in for one.
+    Replacing it with the plain field reintroduces a measured defect, because that one converts a
+    mismatched SRID through `ST_Transform` and the source frame is gone (M5 rules 1 and 3, and the
+    correction dated 2026-08-04 in `specs/tasks/MAP-5-layers-and-features.md` section 2). Both `Any`
+    below are the framework's own hook signatures rather than a choice.
     """
 
     def __init__(self, **kwargs: Any) -> None:  # noqa: ANN401
