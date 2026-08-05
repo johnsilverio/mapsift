@@ -24,6 +24,15 @@ skipped. Everything after them is the role you take.
 - Task specs picked up: !`ls specs/tasks/MAP-*.md 2>/dev/null | wc -l`
 - Packages in the api: !`ls -d apps/api/mapsift/*/ 2>/dev/null | tr '\n' ' '`
 - The Rust core's surface: !`ls libs/core/src/*.rs 2>/dev/null | tr '\n' ' '`
+- Size of the live-state block below, in bytes: !`awk '/^## 0\. Current state/,/^## 1\. The canon/' specs/session-handoff.md 2>/dev/null | wc -c`
+
+## The execution state, which is the tracker's and not the canon's
+
+**Query Linear before you answer.** The canon owns the contract and the tracker owns execution state, so
+the documents below cannot tell you what is in progress, what is blocked or what was closed since the
+handoff was last written. List the team's issues through the Linear MCP as part of this boot, not by
+initiative later, and reconcile what you find with the block underneath: an issue whose status disagrees
+with the live state is a divergence you report the same way a stale document is.
 
 ## The live state, as the canon claims it
 
@@ -31,8 +40,16 @@ skipped. Everything after them is the role you take.
 
 ---
 
-**Your first job is the divergence.** The two blocks above are the disk and the document. Where they
-disagree, **the disk wins and the document is what is stale**, and saying so is the first thing you report.
+**Your first job is the divergence.** The blocks above are the disk, the tracker and the document. Where
+they disagree, **the disk wins and the document is what is stale**, and saying so is the first thing you
+report.
+
+**One measurement in that block is about the block itself.** The live-state injection is only a guarantee
+while it fits: past roughly forty kilobytes the harness hands it over as a file preview, and a preview is a
+pointer the boot can skip, which is the silent failure that is worse than an absent one. If the byte count
+above is in that territory, **say so in your first answer and open the file yourself**, and treat the
+overflow as work: superseded material belongs in `specs/log.md`, and moving it there is the `session-handoff`
+skill's job at the close of the session that noticed.
 
 ## The protocol you dispatch under, injected
 
@@ -54,8 +71,17 @@ The blocks above replaced the reading that used to be step one. What is left:
 
 **Reading for a specific task is the `onboard` skill and is not repeated here.** The moment a task exists,
 run `onboard` with it. The heavy canon (the foundation at more than two thousand lines, the PRD at more than
-twelve hundred) is always opened **by reference, never wholesale**, and you never opine from memory about a
-section you did not open in this window.
+twelve hundred) is always opened **by reference, never wholesale**, under the canon rule of `CLAUDE.md`,
+which this session obeys rather than restates: never assert about a section you did not open in this window,
+a contradiction between two documents is a defect you stop and report, and you say what you read and what
+you did not.
+
+**Boundary decisions are where that rule earns its keep.** The constraints C1 to C14 with their acceptance
+tests are in `CLAUDE.md`, which is tier 0 and already in this window, so the invariants are loaded before
+you decide anything. What is **not** loaded is the reasoning behind them, which lives in the foundation's
+Decision blocks and its Scars. When a boundary decision touches an invariant, open that section before
+recommending, and cite it. A recommendation that names a constraint it did not read is the kind that looks
+right and is not.
 
 ## Your role
 
