@@ -17,9 +17,28 @@ class TenantNotBound(Exception):
     """Raised instead of returning the empty result an unbound query would otherwise get."""
 
 
+class TenantAlreadyBound(Exception):
+    """Raised when a scope opens for a second tenant while another is in force (MAP-29)."""
+
+
 @contextmanager
 def tenant_scope(tenant_id: UUID) -> Iterator[None]:
-    """Put one tenant in force for one transaction, and guarantee it is gone when that ends."""
+    """Put one tenant in force for one transaction, and guarantee it is gone when that ends.
+
+    The binding is made once per request and once per background task (ADR-0005 section 3):
+    re-entering with the same tenant is a no-op, a second tenant raises TenantAlreadyBound.
+    """
+    bound = _bound_tenant.get()
+    if bound == tenant_id:
+        yield
+        return
+    if bound is not None:
+        raise TenantAlreadyBound(
+            "A binding for a second tenant was opened while one is in force, but the binding is "
+            "made once per request and once per background task (ADR-0005 section 3), so nesting "
+            "is refused rather than restored."
+        )
+
     with transaction.atomic():
         with connection.cursor() as cursor:
             # Both the `true` (is_local) and the placeholder are load-bearing, and a session-scoped
