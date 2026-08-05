@@ -11,10 +11,8 @@ from typing import ClassVar
 from django.contrib.gis.db import models
 
 from mapsift.common.binding import TenantOwnedManager
+from mapsift.common.geometry import StorageFrameGeometryField
 from mapsift.layers.rules import GeometryKind, StorageClass
-
-# M5 rule 1: SIRGAS 2000, the one frame geometry is stored and interchanged in.
-STORAGE_FRAME_SRID = 4674
 
 
 def _labelled(enumeration: type[StrEnum]) -> dict[str, str]:
@@ -86,11 +84,10 @@ class Feature(models.Model):
         db_constraint=False,
         db_index=False,
     )
-    # Nullable because this slice's operation catalog is create a feature and then set its geometry
-    # (foundation OQ-4), so the interval between the two has to be representable. The spatial index
-    # is a plain GiST rather than a composite led by the tenant, which is a decision and not the
-    # default it looks like: the composite would need btree_gist and a query nobody has written.
-    geometry = models.GeometryField(srid=STORAGE_FRAME_SRID, null=True, spatial_index=True)
+    # Null until the second operation of this slice's catalog sets it (foundation OQ-4). The index
+    # is a plain GiST against the ADR-0005 section 5 rule that a tenant-scoped index leads with the
+    # tenant, and the measured condition that flips it is in this task's spec, section 3.
+    geometry = StorageFrameGeometryField(null=True, spatial_index=True)
 
     objects = TenantOwnedManager["Feature"]()
 
