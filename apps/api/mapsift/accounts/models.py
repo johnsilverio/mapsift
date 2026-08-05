@@ -1,7 +1,7 @@
-"""The five entities of the account tree (M1), and which of them the wall applies to.
+"""The five entities of the account tree (M1).
 
-Four carry the tenant identifier and live inside it. The user is deliberately outside, which is a
-decision rather than an omission (ADR-0005 section 7).
+The user is deliberately outside the wall the other four are inside, which is a decision rather
+than an omission (ADR-0005 section 7).
 """
 
 from typing import ClassVar
@@ -110,8 +110,7 @@ class Project(models.Model):
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             # Redundant against the primary key, and not removable: it is what a layer's composite
-            # reference points at, by the rule that already put the matching one on Workspace
-            # (ADR-0005 section 5).
+            # reference points at (ADR-0005 section 5).
             models.UniqueConstraint(
                 fields=["tenant", "id"], name="project_identity_within_its_tenant"
             )
