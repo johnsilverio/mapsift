@@ -1,13 +1,16 @@
-"""The two decisions a layer's declarations make about its features.
+"""The two decisions a layer's declarations make about its features, and both are M2's.
 
-The storage class deciding the path is M2's. The admissibility rule below carries **no requirement
-of its own**: M2 gives a layer a geometry kind and never says a feature disagreeing with it is
-refused, so whether Mapsift requires that at all is open, and is recorded with the two roads in
-`specs/tasks/MAP-5-layers-and-features.md` section 2.1. What D3 does decide is the shape the rule
-must take if it exists, and that half is closed here.
+The storage class decides which path a feature takes. The family rule decides whether a geometry may
+be stored at all, because **the declared kind is a contract on the layer's features rather than a
+label on the layer** (M2, raised there in PRD v0.15), with multipart geometry and a ring carrying an
+enclave inside the family rather than outside it (D3).
 
-Pure over plain data, so neither one can reach the operation queue it answers for: the queue is an
-effect and MAP-7 onwards owns it, while the rule underneath it is owed today (ADR-0007 section 3,
+What this module does not own is the **refusal**, which is M9's: at the flush, a geometry outside
+its layer's declared family is a typed error that flags and retains the operation for inspection,
+never a discard, because that geometry was drawn offline in the field.
+
+Pure over plain data, so neither decision can reach the effect it answers for: the queue and the
+flush are MAP-7 onwards, while the rules underneath them are owed today (ADR-0007 section 3,
 `specs/testing.md` section 3).
 """
 
@@ -65,7 +68,7 @@ def geometry_types_of(kind: GeometryKind) -> frozenset[str]:
 
 
 def geometry_is_admissible(*, layer_kind: GeometryKind, geometry_type: str) -> bool:
-    """Whether a geometry of this concrete type belongs to the family a layer declares.
+    """Whether a geometry of this concrete type belongs to the family a layer declares (M2).
 
     Comparing the declared kind against a concrete type by identity would refuse a legal reserve,
     which is frequently multi-part or carries an enclave (D3).
