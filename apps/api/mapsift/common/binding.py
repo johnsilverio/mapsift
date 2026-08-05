@@ -46,6 +46,6 @@ class TenantOwnedManager(models.Manager[_ModelT]):
             raise TenantNotBound(
                 "A tenant-scoped query ran with no tenant bound, so it would have been answered "
                 "with an empty result rather than refused (ADR-0005 section 4). Wrap the call in "
-                "accounts.binding.tenant_scope."
+                "mapsift.common.binding.tenant_scope."
             )
         return super().get_queryset()
