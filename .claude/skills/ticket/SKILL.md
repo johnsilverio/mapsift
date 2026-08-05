@@ -1,69 +1,85 @@
 ---
 name: ticket
-description: Work on a Linear ticket end-to-end: read the ticket, trace it to the canon, explore the codebase, branch, implement test-first, run the quality gate, update the ticket, open a PR. Use when the user provides a ticket ID to implement. Triggers on requests like "/ticket MAP-123", "work on this ticket", "implement MAP-123".
+description: Work on a Linear issue end-to-end: read the issue, trace it to the canon, explore the codebase, branch, implement test-first, run the quality gate, update the issue, open a PR. Use when the user provides an issue ID to implement. Triggers on requests like "/ticket MAP-123", "work on this ticket", "implement MAP-123".
 ---
 
-# Ticket workflow
+# Issue workflow
 
-Work the ticket ID the user provided. The procedures this composes are owned elsewhere and are not restated
-here: `linear-workflow` for anything touching Linear, `dev-workflow` for the branch, gate, commits and PR.
+End to end for an Mapsift issue, `MAP-123`. The loop is `CLAUDE.md` "Process & tracking" plus the `linear-workflow` and `dev-workflow` skills, and this skill executes it
+rather than defining a second one.
 
-## 1. Read the ticket
+## 1. Read the issue and check that it should exist
 
-Fetch it with the Linear MCP tools: title, description, acceptance criteria, linked issues, comments.
-Summarize what has to be done, the acceptance criteria, and any blocker or dependency.
+Read it through the Linear MCP (workspace `mapsift`, team `Mapsift`). Then apply the condition that
+governs whether the work is legitimate at all:
 
-## 2. Trace it to the canon before writing anything
+**An issue exists only when it traces to the canon, and the trace is cited in the issue.** An invariant, a
+foundation decision, an ADR, a requirement. **An open question is not an issue**: it is a question with an
+owner and an exit criterion, and it becomes an issue when it is answered and there is work.
 
-An issue is only legitimate work if it traces to `specs/mapsift-foundation.md`, `specs/PRD.md`, or a spec in
-git (`linear-workflow`). Find that trace and cite it: the invariant (I1 to I11), the C-test, the PRD
-requirement (a T, M, S, N or U item). git owns the contract, Linear owns execution state.
+If the issue traces to nothing, stop and say so. Do not invent the trace, and do not build against a guess.
+And if a discussion in Linear changed what the system should do, **that decision goes back into the
+foundation or an ADR before code follows it**, because git owns the contract and the tracker owns only
+execution state.
 
-If the ticket does not trace, or asks for something the foundation left open (an OQ-N), or asks to create
-something ADR-0001 section 8 forbids for now (`apps/sync`, `apps/desktop`, `apps/mobile`, the sync internals,
-a dependency-gated ADR), stop and say so instead of implementing a guess.
+## 2. Onboard
 
-## 3. Explore the codebase
+Run `/onboard` with the issue's subject. Read the canon before the code: this tree is mostly intent, and the
+decision you need is almost certainly written down already.
 
-Find the related code, understand the current implementation, and identify the files that change. Note which
-deployable or library the work touches, and remember that nothing in `apps/` imports from another `apps/`.
+Check whether an open question blocks the work (foundation section 13). Several are hard blocks.
 
-## 4. Branch
+## 3. Branch from the issue, not from your head
 
-Per `dev-workflow`:
+**Create the branch from the Linear issue**, so the name carries the identifier and the automation links
+itself. Status then moves on its own: pushed branch to In Progress, opened pull request to In Review, merge
+to `main` to Done. **git to Linear, one direction**, so there is nothing to reconcile.
 
-```bash
-git switch main && git pull
-git switch -c {initials}/MAP-123-short-topic
-```
+Never work on `main`.
 
-## 5. Implement test-first, in two passes
+## 4. Implement in the two-window protocol
 
-`CLAUDE.md` and foundation section 14 require the two-window protocol: one pass writes the failing tests as
-behaviour, another implements the minimum to green using those tests as a contract. Do not write the test and
-its implementation in the same pass, and never weaken a test to reach green. The `tdd-implementer` agent is
-the implementation window for Angular work.
+This is the part that is easy to collapse and must not be. **Each half is a skill**: `test` writes the
+failing tests as behaviour and implements nothing, `implement` turns them green without touching them, and
+`code-review` closes each half by running the gates rather than reading a report. The brief each one
+receives is specified in `specs/testing.md` section 1.1, and the `orchestrate` skill boots the window that writes
+those briefs.
 
-Generate every framework file with its own generator and then edit it (`ng g ...`, `manage.py startapp`,
-`manage.py makemigrations`, `cargo add`). Make incremental commits, one purpose each.
+**Window A writes the failing tests as behaviour**, from the requirement, naming the invariant or the
+requirement identifier in the test (`specs/testing.md` sections 1 and 6). It does not write the
+implementation.
 
-## 6. Run the quality gate
+**Window B implements the minimum to green**, treating those tests as a contract authored by someone else,
+and **may not edit a test to make it pass**. A test that looks wrong is a finding reported back, not a
+licence to rewrite the contract it is supposed to satisfy.
 
-Run `/quality-gate`. It covers every language the change touched (Python, Rust, Angular) plus the
-generated-contract freshness check, which a Python-only list would miss in a polyglot monorepo. Never commit
-on red.
+**Design happens in the refactor step, under green.** That is where the `solid` skill is spent: a pattern
+reached for while a test is red is a pattern chosen to make one test pass.
 
-## 7. Update the ticket
+A single session doing both halves converges the test toward the implementation it already has in mind, and
+the test stops being a specification. **That is the failure this protocol exists to prevent**, and it is also
+why this project deliberately does not adopt an autonomous bridge that turns an issue assignment into a pull
+request (`CLAUDE.md` "Process & tracking").
 
-Status lives only in Linear, never in the spec. Move the issue as the work moves, add a comment for a real
-blocker or decision, and let the git integration move the status on PR open and merge where it can.
+## 5. Gate
 
-## 8. Open the PR
+Run `/quality-gate`. Never commit on red, and never weaken a test to make it pass.
 
-Use `/pr`. Reference the ticket ID in the body so the GitHub-to-Linear automation links them. **No
-AI/Co-Authored-By attribution trailer**, in the commits or the PR body.
+## 6. Commit and open the pull request
 
-## 9. If you find an unrelated bug
+`/commit` then `/pr`. Conventional Commits in English, atomic, no attribution trailer. Reference `MAP-123`
+in the body, with a closing magic word only when this finishes the issue.
 
-Do not fold it into this ticket. Create a new issue only if it traces to the canon, link it, note it in the
-PR description, and carry on with the original task.
+If the change spans both stacks it is **one pull request** (ADR-0001 section 1, the one-pull-request rule),
+carrying the serializer, the regenerated schema, the regenerated types and the component. The retired rule,
+in case it is remembered: api first, web second, both citing the identifier, only the second
+closing it.
+
+## 7. Update the issue with what the automation cannot know
+
+The status moves itself, so do not touch it. What is worth a comment is what a human would ask later: a
+decision taken during the work, an assumption made, a thing found and deliberately left out, a follow-up.
+
+**And if the work changed a decision, the canon change is part of the work**, not a follow-up. **Run the
+`fan-out` skill, which owns the target list.** A decision that lands in code and not in the canon is a contradiction the next adversarial
+pass will find.

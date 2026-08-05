@@ -18,7 +18,11 @@ Work runs in **two clean-context windows**, and the separation is the point rath
 
 Why two windows and not two intentions: a single context that writes both sides converges the test toward the implementation it already has in mind, and the test stops being a specification. The separation is what keeps the test honest, and it is the same reason the conflict rule is golden-tested against two runtimes instead of trusted once.
 
-### How a window is briefed, and why the briefing is short
+### 1.1 The window prompt contract, and why the briefing is short
+
+**A third window opens the task, dispatches the other two and reviews what they return**, and the
+`orchestrate` skill is what boots it. It does not implement, it does not touch code, and it does not write
+Window B's brief before Window A's result has been reviewed, because that brief **is** the review.
 
 A window is opened by a briefing, and the briefing is where the separation above is most easily thrown away. **A window is given the goal, the boundary of what is out of scope, where the authority lives, and the standard its result will be held to. It is not given a step list, a file list, or a name it could have read from the canon.**
 
@@ -29,6 +33,36 @@ There is a second reason specific to this repository. A briefing that restates a
 **One thing is handed over rather than withheld, and the distinction is evidence against instruction.** What cost a measurement, a probe, or an afternoon of diagnosis is given to the window directly, because it is not a decision the window should be making and it would otherwise have to be bought twice. A version that behaves unexpectedly, a tool that rejects a configuration the documentation seems to allow, a generator that writes a file nobody wants: these belong in the briefing, with their date, exactly as they belong in `specs/log.md`.
 
 **The test that keeps a briefing honest:** if an item can be derived by reading the documents the briefing points at, it does not belong in the briefing. Wanting to write it anyway is a signal that the canon is incomplete, and the fix is then to write the document rather than the message.
+
+**The standing discipline is a skill, and the prompt carries only what is task-specific.** The reading protocol, the rules about what a test may assert, and the report format are identical on every task, so they live in `.claude/skills/test/` and `.claude/skills/implement/` and load when the window is dispatched. Writing them into every prompt pays for them every time and lets the copies drift. **The window is the role and the skill is the procedure**, named differently on purpose: "Window A" and "Window B" name the two clean contexts and the separation between them, while `test` and `implement` name what each does, so a session that begins "write the failing tests for M2" reaches the right procedure without anyone knowing the protocol's internal vocabulary.
+
+**The assembly of a task is an artifact in git, not a paragraph in a prompt.** A prompt is pasted into a chat and then gone, so leaving the assembly there makes the most carefully constructed artifact of the loop the only one not under version control, not reviewable as a diff and not readable by the next person. The assembly lives at **`specs/tasks/MAP-<n>-<slug>.md`**, it cites and never restates, and it is written **at pickup rather than at backlog creation**, because task specs written twenty at a time go stale before they are read. `specs/tasks/README.md` carries the shape. The prompt then shrinks to a pointer: read that file, invoke that skill, and here is what changed since it was written.
+
+**The shape is semantic XML**, because a block boundary is what survives a prompt without the window losing which sentence was a rule and which was context. Window A carries `<reading-protocol>`, `<role>`, `<scope>`, `<behaviours>`, `<rules>` and `<deliverable>`. Window B carries the same, with `<behaviours>` replaced by `<semantics>`: what the review of Window A ratified, including spellings the tests chose and any accessor the implementation will be forced to add, pre-authorized with its spelling so the window does not have to guess and then defend it. With the skills in place most blocks are one or two lines, and `<rules>` is usually a single sentence naming what is unusual about **this** task.
+
+**Four things a prompt states, and the third is the one always forgotten:** the objective, the approach you prefer while leaving room for a better one, **what you explicitly do not want**, and how success is verified. The out-of-scope block is not politeness; the measured root cause of agents destroying work is vague instruction.
+
+**The two sentences that belong in every prompt, in both directions:**
+
+> If this prompt contradicts the foundation, the PRD or an ADR, **stop and report instead of choosing**: the canon wins. Window B additionally may not edit a test to make it pass, and a test that looks wrong is a finding reported back, never a licence to rewrite the contract it exists to satisfy.
+
+That reflex has to be armed explicitly, because a window that quietly reconciles a contradiction produces green code over a canon that is now wrong, and nobody finds out until the next adversarial pass.
+
+### 1.2 Task size is part of the protocol
+
+Mature TDD practice names "write every test, then write every implementation" as an anti-pattern called **horizontal slicing**, on the argument that bulk tests verify *imagined* behaviour: the shape is pinned before the implementation has taught anything, and the tests go insensitive to real change. The remedy it offers is a **vertical slice**, one test and one implementation at a time.
+
+The two-window protocol is horizontally sliced by construction, and its own reason is equally real: a single context that writes both sides converges the test toward the implementation it already has in mind.
+
+**Both hold, and they resolve on task size rather than on protocol.** A window pair is safe exactly while the task is thin enough that all of Window A's tests are still **one tracer bullet**: one behaviour cluster, one seam, one requirement or a tight group of them. It stops being safe when Window A is writing tests for work it cannot picture, and the tell is visible in the prompt before anything runs, as a scope block listing several unrelated behaviours or requirements that share no seam.
+
+**Sizing the slice is therefore the orchestrator's job and a first-class step.** A task that does not fit is split into two dispatches, which costs one extra pair of windows and buys tests that pin behaviour somebody understood. The complementary move is equally allowed: a batch of small adjacent tasks over the same material runs as **one** window pair, because the overhead of the protocol should not exceed the work it protects.
+
+**The review that closes a window is a run, not a read of its report**, and it is the `code-review` skill. The machine gates of section 8 run **first and by the orchestrator**, and only when they are green does judgement start, over three axes in isolated contexts that are never merged into one ranked list: **Canon** (the invariants and the ADR shape, blocking), **Spec** (the requirement's criterion, missing or wrong is blocking and scope creep is advisory), and **Craft** (test quality, smells, navigability, advisory).
+
+Two reasons the run is not optional. A test can be red for the right reason and still pin the wrong behaviour, and the requirement is the only thing that catches that. And a published coding-agent benchmark records models that build a reasonable thing and then **hallucinate their own inspection**, which is the empirical form of this project's older rule that a state claim is written only with the command that verified it.
+
+**Language.** Every prompt is written in **English**. Windows A and B may report back in English. The orchestrator answers the owner in **Portuguese**, and every artifact either window produces stays English.
 
 ---
 

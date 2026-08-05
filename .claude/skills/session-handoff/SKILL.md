@@ -1,6 +1,8 @@
 ---
-description: Update Section 0 (the live state) of specs/session-handoff.md so a fresh context window can resume from that file plus CLAUDE.md.
+name: session-handoff
+description: Update Section 0 (the live state) of specs/session-handoff.md so a fresh context window can resume from that file plus CLAUDE.md. Use when the user asks to write the handoff, close the session, or record the live state for the next window. Triggers on "/session-handoff".
 argument-hint: "[optional note]"
+disable-model-invocation: true
 ---
 
 # Session handoff
@@ -27,9 +29,11 @@ report, do not rewrite the document around it.
 
 ## Phase 1: gather the live state
 
-Read the working-tree state rather than guessing it. **The repository may have no `.git` yet** (it was
-removed deliberately while the PRD was being written), so run the git commands only if `git rev-parse
---git-dir` succeeds:
+Read the working-tree state rather than guessing it. **The tree may have no repository yet**: every `.git`
+was removed on 2026-08-05 when ADR-0001 section 1 phase 1 ran, and the first commit of the new one may not have
+happened. So run the git commands only if `git rev-parse` succeeds, and when it does not, **say so as the
+first line of the handoff**, because an unversioned canon is the most urgent fact a fresh window can be
+told:
 
 ```bash
 git rev-parse --git-dir            # if this fails, skip the rest of this block
@@ -58,9 +62,11 @@ does not yet mention. Every bullet must be checkable against disk. In particular
 - **The current phase** and the ordered list of what must happen before the next architecture step.
 - **Decisions closed this session**, with a one-line note on why, so the next window does not relitigate
   them. If a decision closed, remember the fan-out rule (handoff section 7): the foundation carries it as
-  law, the PRD updates the requirement, `CLAUDE.md` updates the constraint or version pointer, Section 0
-  records the state, `.claude/rules/` updates any enforceable restatement, and `specs/log.md` gets one
-  grep-able line. Closing a decision is not finished until its fan-out is.
+  law, the ADR that owns its code shape is amended or created, `CLAUDE.md` updates the constraint or version
+  pointer, `specs/PRD.md` takes it when it is a requirement, `specs/index.md` reflects a new document,
+  Section 0 records the state, and `specs/log.md` gets one grep-able line. **Closing a decision is not
+  finished until its fan-out is**, which is how `PARTNER` and `SPOUSE` survived as role kinds in `CLAUDE.md`
+  long after the foundation made them relationships.
 - **Blockers and gating open questions** (the OQ-N the work touches), and anything that must pass before a
   commit.
 - **The version-control state**, since restoring git is a live decision.
