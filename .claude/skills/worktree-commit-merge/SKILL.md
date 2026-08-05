@@ -5,18 +5,19 @@ description: Commit the work in a git worktree and take it to main through a pul
 
 # Finishing a worktree
 
-You are in a git worktree on a feature branch with uncommitted changes. the `worktree-commit-merge` skill runs independent
-issues in independent worktrees, so two lines of work (two people, or two agent sessions) do not step on each
-other's checkout and branch, which is closer to a requirement for parallel agent sessions than a convenience.
+You are in a git worktree on a feature branch with uncommitted changes. Independent issues run in
+independent worktrees (ADR-0008 section 8), so two lines of work (two people, or two agent sessions) do not
+step on each other's checkout and branch, which is closer to a requirement for parallel agent sessions than
+a convenience.
 
-**ADR-0001 section 1 decided one repository and the move has not run**, so today a worktree belongs to either
-`apps/web` or the tree root and carries changes to that one. After the migration a worktree is a worktree of
-the whole ecosystem and may legitimately carry `specs/`, `apps/api` and `apps/web` at once. Confirm with
-`git rev-parse --show-toplevel` and say which repository the worktree belongs to before doing anything.
+**This is one repository, organised by unit of deploy** (ADR-0001 section 1), so a worktree is a worktree of
+the whole ecosystem and may legitimately carry `specs/`, `apps/api` and `apps/web` in one change when they
+are one change. Confirm with `git worktree list` and say which worktree and branch you are on before doing
+anything.
 
 **What this skill does not do: it never merges into `main` locally.** `main` is protected, the change reaches
 it through a pull request, and the required CI checks decide (the `dev-workflow` skill and ADR-0001 section 6). A local `git merge`
-into `main` skips the suites, the schema freshness check, `lint-imports` and the missing-migration check,
+into `main` skips the suites, the strict type checks, `lint-imports` and the contract freshness check,
 which is the whole reason those gates exist. If a merge really must happen locally for a
 reason outside this workflow, that is the owner's explicit call, not this skill's default.
 

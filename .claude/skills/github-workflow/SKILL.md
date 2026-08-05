@@ -51,11 +51,10 @@ not a follow-up. **Run the `fan-out` skill, which owns the target list**; naming
 seventh copy of it. A decision that lands in code and not in the canon is
 the contradiction the next adversarial pass finds, and it is cheapest to fix before the commit exists.
 
-**Which repository you are in, and whether there is one.** Run `git rev-parse --show-toplevel` and say so
-before anything else. **ADR-0001 section 1 phase 1 ran on 2026-08-05**: every `.git` was removed and the old history,
-which reached a 42 MB production dump, is gone with it. **That retired the rule against a remote on the
-root.** What has not run is the workspace hoist, so web commands still run from `apps/web`. If `git
-rev-parse` fails, there is no repository yet and the answer is `git init` plus a first commit, not a push.
+**Which worktree and branch you are on.** Run `git status -sb` and `git worktree list` and say so before
+anything else. This is one repository organised by unit of deploy (ADR-0001 section 1), with one remote and
+a protected `main`; parallel lines of work live in worktrees (ADR-0008 section 8), and shipping from the
+wrong one is a mistake nobody notices until review.
 
 **That a crossing change is one pull request.** `pr` section 4 has the mechanics; what it does not say is
 when to look: if the diff touches a serializer, the regenerated schema, the regenerated types or a

@@ -78,21 +78,22 @@ that works without the context it needed, and a load where a lookup belongs pays
 
 | Where you are writing | For a hard dependency | For an optional lookup |
 | --- | --- | --- |
-| **a `SKILL.md`** | **`` !`sed -n '/^## 9/,/^## 10/p' specs/testing.md` ``**. The shell runs **before** the content reaches the model and its output replaces the placeholder, so the material is simply there and cannot be skipped. Declare the commands in `allowed-tools` or it prompts | **backticks plus the firing condition**, or a **markdown link** for a file inside the skill's own directory |
+| **a `SKILL.md`** | **`` !`sed -n '/^## 8/,/^## 9/p' specs/testing.md` ``**. The shell runs **before** the content reaches the model and its output replaces the placeholder, so the material is simply there and cannot be skipped. Declare the commands in `allowed-tools` or it prompts | **backticks plus the firing condition**, or a **markdown link** for a file inside the skill's own directory |
 | **`CLAUDE.md`** or a `rules/` file | **`@path`**, which is a real import: expanded into context **at launch**, recursively up to four hops | **backticks**. The docs say plainly that wrapping a path in backticks is how you name it **without** importing |
 | **a spec, an ADR, a task spec** | there is no mechanism. These are plain markdown, so state the dependency as a reading instruction | **backticks** |
-| **the chat, when the owner types it** | **`@specs/constraints.md`**, which attaches the file to that message | just say it |
+| **the chat, when the owner types it** | **`@specs/testing.md`**, which attaches the file to that message | just say it |
 
 **Two traps, opposite in direction, and both have bitten this tree.**
 
 **In a skill, backticks look sufficient and are not.** A skill that says "read `specs/testing.md` sections
-1 to 10" is a request, and a window that skips it writes a plausible test against a method it never read.
+1 to 9" is a request, and a window that skips it writes a plausible test against a method it never read.
 **Every skill that cannot function without a spec injects it**, which is why `test` and `implement` carry
 the whole method, `fan-out` carries the document map, and `backlog` carries the open questions.
 
-**In `CLAUDE.md`, `@` looks tidier and is expensive.** `@specs/constraints.md` there would silently load
-797 lines into every session, undoing the separation ADR-0002 section 5 exists for. **The correct form looks like the
-lazy one**, so anyone "improving" the citations in a tier 0 file reads this table before touching it.
+**In `CLAUDE.md`, `@` looks tidier and is expensive.** `@specs/PRD.md` there would silently load more than
+twelve hundred lines into every session, undoing the separation ADR-0002 section 5 exists for. **The
+correct form looks like the lazy one**, so anyone "improving" the citations in a tier 0 file reads this
+table before touching it.
 
 The rule underneath both: **the tier decides when the document loads, and within it, a hard dependency is
 injected rather than requested.** Injection is not a second copy, because it is read from disk at fire

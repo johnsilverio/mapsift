@@ -44,10 +44,9 @@ is what stops a reviewer asking for something that was decided against.
 
 ## 3. Two things worth checking before you hand it over
 
-**If the change spans both stacks**, say so. **After the ADR-0001 section 1 migration it is one pull request**
-carrying the serializer, the regenerated schema, the regenerated types and the component (the one-pull-request rule
-as rewritten). **Until the migration runs** the two stacks are still separate repositories, so a crossing
-change is still two pull requests with the api first, and the body says which half this is.
+**If the change spans both stacks**, say so: it is **one pull request** carrying the serializer, the
+regenerated schema, the regenerated types and the component that consumes them (ADR-0008 section 6), and the
+body names the crossing so the reviewer reads both sides together instead of finding half a contract.
 
 **If the change touches a decision**, the fan-out is part of the work and belongs in the body: the
 foundation, the ADR, `CLAUDE.md`, `specs/PRD.md`, the handoff's section 0, and one line in

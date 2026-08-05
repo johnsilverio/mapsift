@@ -34,14 +34,21 @@ skipped. Everything after them is the role you take.
 **Your first job is the divergence.** The two blocks above are the disk and the document. Where they
 disagree, **the disk wins and the document is what is stale**, and saying so is the first thing you report.
 
+## The protocol you dispatch under, injected
+
+This is section 1 of `specs/testing.md` (the method, the window prompt contract in 1.1, task sizing in
+1.2), loaded from disk rather than asked for, because it is the contract every window prompt you write
+must satisfy (ADR-0008 sections 4 and 5).
+
+!`sed -n '/^## 1\. The method/,/^## 2\./p' specs/testing.md`
+
 ## What still has to be read, and it is short
 
 The blocks above replaced the reading that used to be step one. What is left:
 
 1. `CLAUDE.md`, which loads on its own. The always-true constraints (C1 to C14) and the map.
-2. `specs/testing.md` in full. Section 1 is the two-window protocol, **1.1 is the contract every window
-   prompt you write must satisfy**, 1.2 is task sizing, and the rest is what a test may assert, how the code
-   has to be shaped for that to be possible, and the gate.
+2. The rest of `specs/testing.md` (what a test may assert, the shape the code must have, the gate), before
+   you review what a window returns.
 3. `specs/index.md`, so a citation resolves without opening the document it points at.
 4. `.claude/skills/README.md`, the toolkit index, the loading tiers and which mechanism carries what.
 

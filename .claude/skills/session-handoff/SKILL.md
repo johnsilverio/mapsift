@@ -29,22 +29,18 @@ report, do not rewrite the document around it.
 
 ## Phase 1: gather the live state
 
-Read the working-tree state rather than guessing it. **The tree may have no repository yet**: every `.git`
-was removed on 2026-08-05 when ADR-0001 section 1 phase 1 ran, and the first commit of the new one may not have
-happened. So run the git commands only if `git rev-parse` succeeds, and when it does not, **say so as the
-first line of the handoff**, because an unversioned canon is the most urgent fact a fresh window can be
-told:
+Read the working-tree state rather than guessing it. A state claim is written only with the command that
+verified it:
 
 ```bash
-git rev-parse --git-dir            # if this fails, skip the rest of this block
-git rev-parse --abbrev-ref HEAD    # current branch
-git status --short                 # changed/untracked files
+git status -sb                     # branch, tracking, changed and untracked files
+git worktree list                  # parallel lines of work (ADR-0008 section 8)
 git diff --stat                    # size of pending change
 git log --oneline -5               # recent commits for context
 ```
 
-Without git, verification is reading the files on disk. List what actually changed in this session from your
-own record of the edits, and say explicitly in the handoff that there is no history to diff against.
+`specs/session-handoff.md` itself is deliberately kept out of version control and lives in the main
+checkout, so the handoff never rides in a pull request and a worktree does not carry it.
 
 ## Phase 2: read the current Section 0
 
@@ -65,11 +61,11 @@ does not yet mention. Every bullet must be checkable against disk. In particular
   law, the ADR that owns its code shape is amended or created, `CLAUDE.md` updates the constraint or version
   pointer, `specs/PRD.md` takes it when it is a requirement, `specs/index.md` reflects a new document,
   Section 0 records the state, and `specs/log.md` gets one grep-able line. **Closing a decision is not
-  finished until its fan-out is**, which is how `PARTNER` and `SPOUSE` survived as role kinds in `CLAUDE.md`
-  long after the foundation made them relationships.
+  finished until its fan-out is**, which is how `CLAUDE.md` still said "uv or poetry" while the tooling was
+  already writing `uv run`, until the survey of 2026-08-01 closed it.
 - **Blockers and gating open questions** (the OQ-N the work touches), and anything that must pass before a
   commit.
-- **The version-control state**, since restoring git is a live decision.
+- **The branch and worktree state**, so the next window knows which line of work it is resuming.
 
 Weave in the user's note if one was given.
 

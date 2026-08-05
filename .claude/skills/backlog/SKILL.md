@@ -24,10 +24,10 @@ circulation.
 
 !`grep -n '^## ' specs/PRD.md`
 
-**The open questions with their owners and what each blocks**, because an issue may not be created for one
-and several are hard blocks:
+**The open questions**, one line each, because an issue may not be created for one and several gate whole
+PRD families (read the full entry in foundation section 13 before leaning on one):
 
-!`sed -n '/^## Open questions/,$p' specs/constraints.md`
+!`grep '^- \*\*OQ-' specs/mapsift-foundation.md`
 
 ---
 
@@ -48,10 +48,11 @@ whole slice. Stop asking when the remaining questions no longer change the shape
 **An issue exists only when it traces to something already decided, and the trace is cited.** Walk the
 chain and name what governs this work:
 
-- **`specs/PRD.md`**: which `REQ-` identifiers are in scope, and their status. A **Deferred** requirement is
-  not work; a **Refused** one is work that must not happen; a **Seam** one is an adapter and its fake.
-- **The invariants** it carries (`specs/constraints.md` for the criteria, foundation section 11 for the
-  scars). These decide what the acceptance has to prove.
+- **`specs/PRD.md`**: which requirement items are in scope (a T, M, S, N or U identifier), and whether each
+  is firm or gated: a requirement whose Open/ADR field is unresolved has a gap, and a gap is a question for
+  the owner rather than work.
+- **The invariants and constraints** it carries (`CLAUDE.md` C1 to C14 for the criteria, foundation
+  section 11 for the scars). These decide what the acceptance has to prove.
 - **The ADR sections** that fix the shape, so the decomposition does not invent a layout.
 - **The open questions** it depends on. Several are hard blocks; **an open question is not an issue**, it is
   a question with an owner and an exit criterion.
@@ -66,19 +67,19 @@ Three outcomes, and only one of them continues:
 
 ## 3. Decompose into outcomes
 
-**The rules below are `specs/tasks/README.md` and `linear-workflow` restates them; neither is decided here.**
-Where this skill and that ADR disagree, the ADR wins.
+**The rules below restate ADR-0008 section 2 and `specs/tasks/README.md`; neither is decided here.**
+Where this skill and the ADR disagree, the ADR wins.
 
 **One issue is one behaviour, one requirement, one pull request.** If the title needs an "and", it is two
 issues, which is the same rule the commit convention uses.
 
-**Write the issue as an outcome, never as a task list.** "Approving a proposal freezes the agreed values per
-item" is an issue. "Work on proposals" is a project. "Add a column" is a step inside one, and steps do not
-get issues.
+**Write the issue as an outcome, never as a task list.** "A feature created offline syncs without an
+identifier collision" is an issue. "Work on sync" is a project. "Add a column" is a step inside one, and
+steps do not get issues.
 
-**Every issue carries its trace and its acceptance, copied rather than invented.** The `REQ-` identifier
-and the pass or fail criterion that requirement already states. If you are writing new acceptance prose,
-you are in the second row of the table above.
+**Every issue carries its trace and its acceptance, copied rather than invented.** The requirement
+identifier (a T, M, S, N or U item, a C-test, an invariant) and the pass or fail criterion that requirement
+already states. If you are writing new acceptance prose, you are in the second row of the table above.
 
 **Sub-issues are for a genuine parent and child**, not for phases. Phases are milestones.
 
@@ -113,9 +114,11 @@ if narrow. A backlog ordered as "all the models, then all the services, then all
 nothing until the last one lands and hides every integration mistake until then. This project's build order
 already says foundations before features and registries before modules; within that, the slice is vertical.
 
-**Respect what the canon already sequenced.** The build order in `CLAUDE.md` is not advice: party model,
-field catalog and outbox before any visible feature, registry as the first visible module, the GIS studio
-after the core, dashboards last.
+**Respect what the canon already sequenced, and what it deliberately did not.** Delivery order and roadmap
+are out of the foundation's scope (`CLAUDE.md`: closed-scope, non-MVP, so "ship it sooner" is never an
+argument), which means the sequence comes from the dependency edges and the project's exit criterion, not
+from a roadmap. The one hard order is technical: the core and the library build before the web
+(`CLAUDE.md` Commands), so a slice that crosses them is one issue with that order inside it.
 
 **Check the set against what already exists.** Read the open issues before adding to them. Three findings
 worth reporting: an issue that duplicates one already there, two issues that are secretly one behaviour,
@@ -123,7 +126,7 @@ and an issue nobody consumes, which usually means it was derived from a layer ra
 
 ## 6. Prioritise with meanings, not vibes
 
-Linear offers five and this project uses all of them with stated meanings (`specs/tasks/README.md`):
+Linear offers five and this project uses them with stated meanings (ADR-0008 section 2):
 
 - **Urgent**: it blocks other issues in the same project, or it is a decision a later artifact is expensive
   to take back. A first migration is the canonical case.

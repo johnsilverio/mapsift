@@ -74,6 +74,7 @@ procedure each role runs:
 | **`onboard`** | you have **a task** and need **its** context | the per-task reading order, the trace to the authority |
 | **`solid`** | in the refactor step, under green | SOLID, clean code, patterns, smells |
 | **`docs-sync`** | auditing whether the documents are still true | walks the authority chain against disk |
+| **`dev-workflow`** | branching, committing, opening a pull request | the single source of the branch convention, the commit format and the PR flow; `commit`, `pr` and `github-workflow` execute it and inject it rather than restating it |
 | **`ticket`**, **`linear-workflow`**, **`quality-gate`**, **`commit`**, **`pr`**, **`github-workflow`**, **`pr-summary`**, **`session-handoff`**, **`plan`**, **`fix`**, **`systematic-debugging`**, **`worktree-commit-merge`** | the name says it | |
 
 Beside them sit the **stack skills**, which are reference rather than procedure: the Angular set

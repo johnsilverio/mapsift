@@ -23,40 +23,40 @@ not a measurement.**
 right tier and cheap to load (`writing-for-agents`, ADR-0002 section 5). A document can be perfectly true and still
 be costing every session for a rule that fires once a month.
 
-## 0. The orphan check, which is the one this tree currently fails
+## 0. The orphan check
 
-**A constraint that exists only in a derived document is a constraint nobody ratified.** `CLAUDE.md` and
-`specs/constraints.md` both state that rule about themselves, and an audit on 2026-08-04 found several
-constraints living only in `CLAUDE.md`. The 2026-08-05 reduction **moved** that content into
-`specs/constraints.md` verbatim, which preserved the orphans rather than resolving them, and finding them
-is open work this skill owns.
+**A constraint that exists only in a derived document is a constraint nobody ratified.** `CLAUDE.md`
+declares itself derived from the foundation, so every constraint it states must resolve upward.
 
-For each constraint in `specs/constraints.md`, grep the foundation, `PRD.md` and the ADR registry for the
-thing it asserts. Three outcomes: it resolves upward and the digest is correct; it resolves upward but
-says something **different**, which is drift and the authority wins; or **nothing upward says it**, which
-is an orphan. An orphan is reported, never deleted and never promoted on your own: either the owner
-ratifies it into the foundation or an ADR, or it was never a rule.
+For each constraint in `CLAUDE.md` (C1 to C14 and the digest rules), grep the foundation, `PRD.md` and the
+ADR registry for the thing it asserts. Three outcomes: it resolves upward and the digest is correct; it
+resolves upward but says something **different**, which is drift and the authority wins; or **nothing
+upward says it**, which is an orphan. An orphan is reported, never deleted and never promoted on your own:
+either the owner ratifies it into the foundation or an ADR, or it was never a rule.
 
 Check the **tier** in the same pass, since you are already reading the line: a constraint that is true for
-every task belongs in `CLAUDE.md`, one that is true per stack belongs in a path-scoped rule, one that is
-true per kind of task belongs in a skill, and the rest belongs where it is.
+every task belongs in `CLAUDE.md`, one that is true per stack belongs in a path-scoped rule
+(`.claude/rules/`), one that is true per kind of task belongs in a skill, and the rest belongs where it is.
 
 ## 1. Check the chain, downward
 
 This is the drift that hurts, because the agent obeys the derived document and cannot tell which authority is
 stale. For each derived document, check that:
 
-- It does not **contradict** the foundation. The worked example is the one that survived for months: the root
-  `CLAUDE.md` listed `PARTNER` and `SPOUSE` as `PartyRole` kinds after foundation v0.3 made them
-  relationships, in the file that loads first in every session.
-- **Two accepted ADRs do not describe the same thing two ways.** ADR-0001 section 2 carried a two-column
-  identifier model long after v0.9 replaced it with rows and ADR-0006 implemented rows, and the baseline's
-  own amendment map did not list section 2 as amended. Check the amendment maps, not just the prose.
+- It does not **contradict** the foundation. The worked example is this repository's own: `CLAUDE.md` still
+  said "uv or poetry" while the tooling had already started writing `uv run`, until the survey of 2026-08-01
+  closed the choice (`specs/dependencies.md` section 1), in the file that loads first in every session.
+- **Two accepted ADRs do not describe the same thing two ways.** Check the amendment maps, not just the
+  prose, because an amended section whose baseline does not list it as amended is exactly where two
+  descriptions survive.
 - Its **version pointers** are current. The convention is written in `adr/README.md`: the `Authority` line
   names **the current version the ADR has been checked against**, and the version it was written under is
   history. **Moving a pointer without doing the reading is worse than leaving it stale**, because it converts
   an obvious gap into a false assurance.
-- It does not reference a **section, requirement or document that does not exist**.
+- It does not reference a **section, requirement, norm or document that does not exist**. The expensive form
+  is the external one: through 2026-07-30 the canon cited the NTGIR 3rd edition, revoked in 2022, as required
+  reading, so a legal-area requirement rested on a dead standard for a full round (`specs/dependencies.md`
+  section 5).
 - A decision that closed recently completed its **fan-out**: the foundation as law, the ADR that carries its
   code shape, `CLAUDE.md`, `specs/PRD.md` where it is a requirement, `specs/session-handoff.md` section 0,
   `specs/index.md`, and one grep-able line in `specs/log.md`. **Closing a decision is not finished until its
@@ -69,7 +69,7 @@ Verification here is reading the file and running the command, never trusting a 
 ```bash
 grep -rn "—\|–" specs/ CLAUDE.md                      # em dashes are banned in prose
 grep -h "Authority:\*\* derives from" specs/adr/*.md  # do all pointers agree?
-ls -A apps/api                                        # is it still empty?
+ls -d apps/api/mapsift/*/                             # the packages that actually exist
 ```
 
 Then confirm the documents that make factual claims still hold: the repository layout of ADR-0001 section 1,
@@ -78,17 +78,16 @@ ADR-0002, the commands in `CLAUDE.md`, the state bullets in session-handoff sect
 and the identifier ranges in `specs/index.md`, and the pinned versions, which are **confirmed against the
 lockfile and never remembered**.
 
-## 3. Check the naming, because v0.11 reversed a rule
+## 3. Check the naming
 
-Code carries **no Portuguese words**. An acronym naming a Brazilian registry or document stays, because it is
-a proper noun; a common noun takes its English term of art. `Matricula` is `TitleRecord`, `Cartorio` is
-`LandRegistryOffice`, `Comarca` is `JudicialDistrict`, `Congelado` is `is_dormant`. **Prose may still name
-the Brazilian instrument in Portuguese**, because prose describes an institution while code declares a
-symbol, so a hit is not automatically a finding: read it.
+Code carries **no Portuguese common nouns**: every identifier is English. An acronym naming a Brazilian
+registry, norm or instrument stays (CAR, SIGEF, MTGIR, SIRGAS), because it is a proper noun the domain
+speaks in. **Prose may still name the Brazilian instrument in Portuguese**, because prose describes an
+institution while code declares a symbol, so a hit is not automatically a finding: read it.
 
 ## 4. Report only what is wrong
 
-- Flag what is **false or contradictory**, not what is missing. A gap that `PRD.md` section 20 already
+- Flag what is **false or contradictory**, not what is missing. A gap that `PRD.md` section 10 already
   lists is tracked, not drift.
 - For each finding: the file, the exact excerpt, which authority it contradicts, and the correction.
 - Say which side to fix. Almost always the derived document, **except when the authority genuinely never

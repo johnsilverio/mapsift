@@ -6,15 +6,15 @@ description: "Use when creating, structuring or updating Mapsift work tracking i
 
 # Linear workflow (Mapsift)
 
-Ratified in `specs/adr/0004-development-workflow-and-tracking.md`. This file is the enforceable
+Ratified in `specs/adr/0008-development-workflow-and-tracking.md`. This file is the enforceable
 restatement; the ADR is the decision, and where they disagree the ADR wins.
 
 ## The decision this skill restates, injected
 
-This is the Decision of `specs/adr/0004-development-workflow-and-tracking.md`, loaded from disk. **This
+This is the Decision of `specs/adr/0008-development-workflow-and-tracking.md`, loaded from disk. **This
 skill restates it and never decides**; where the two disagree, the ADR wins.
 
-!`sed -n '/^## Decision/,/^## Consequences/p' specs/adr/0004-development-workflow-and-tracking.md`
+!`sed -n '/^## Decision/,/^## Consequences/p' specs/adr/0008-development-workflow-and-tracking.md`
 
 ---
 
@@ -43,8 +43,8 @@ skill restates it and never decides**; where the two disagree, the ADR wins.
 ## What one issue is (`specs/tasks/README.md`)
 
 - **One behaviour, one requirement, one pull request.** If the title needs an "and", it is two issues.
-- **Written as an outcome, never as a task list.** "Approving a proposal freezes the agreed values per item"
-  is an issue; "work on proposals" is a project; "add a column" is a step, and steps do not get issues.
+- **Written as an outcome, never as a task list.** "A feature created offline syncs without an identifier
+  collision" is an issue; "work on sync" is a project; "add a column" is a step, and steps do not get issues.
 - **Trace and acceptance are copied from the requirement, never invented.** Acceptance written at
   issue-creation time is the tell that the requirement is soft: sharpen it in `PRD.md` first.
 - **Sub-issues are for a genuine parent and child.** Phases are milestones.
@@ -64,7 +64,7 @@ skill restates it and never decides**; where the two disagree, the ADR wins.
 An issue is Done when **all** of these hold. Anything less is In Review at best.
 
 1. The behaviour its acceptance describes is proven by tests written **before** the implementation.
-2. The gate is green, the same set CI runs (`specs/testing.md` section 9).
+2. The gate is green, the same set CI runs (`specs/testing.md` section 8).
 3. The pull request is merged to `main` through the normal flow, never a local merge.
 4. If the work produced an **ADR**, the document exists and the code that follows it cites it.
 5. If the work **closed a decision**, its fan-out is finished. A decision closed in code and not in the
@@ -103,8 +103,7 @@ Status lives only in Linear, and **git moves it**, never a human clicking:
 - Use a **closing magic word** plus the identifier when the pull request finishes the issue, and the bare
   identifier when it only touches it.
 - A change spanning both stacks is **one** pull request citing `MAP-123`, and it carries the closing word
-  (the one-pull-request rule under ADR-0001 section 1). The api-first ordering of two pull requests, and the
-  rule that only the second closed the issue, were retired on 2026-08-04.
+  when it finishes the issue (ADR-0008 section 6).
 
 ## MCP isolation
 

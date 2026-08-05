@@ -34,8 +34,8 @@ examined and under what criteria, and never that the diff is clean.
 3. `git log <ref>..HEAD --oneline` for the commit list.
 4. **Find the spec, and here it should already exist.** In order: the **task spec** at
    `specs/tasks/MAP-<n>-*.md`, which is the assembled contract and names the requirement, the invariants
-   and what was explicitly out of scope; then the `REQ-` identifier in the commit messages or the branch
-   name; then the `MAP-` issue through the Linear MCP. **If no task spec exists for a dispatched window,
+   and what was explicitly out of scope; then the `MAP-` identifier in the branch name or the commit
+   messages; then the issue itself through the Linear MCP. **If no task spec exists for a dispatched window,
    that is a process finding worth reporting**, because the window was briefed from something that is no
    longer on disk. If there is genuinely no requirement, the Spec axis reports so, and work that traces to
    nothing should not exist (`CLAUDE.md` "Process & tracking").

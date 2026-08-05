@@ -118,3 +118,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     `capabilities.py` the published surface, one django-ninja `api.py`), the tier direction enforced by an
     `import-linter` contract rather than by a reviewer, and the home a named capability gets before the first one
     exists. Fires the trigger ADR-0002 section 5 named for itself.
+  - **`adr/0008-development-workflow-and-tracking.md`** — the working method as one decision: git owns the
+    contract and Linear owns execution state bridged by the task identifier, what may become an issue and what
+    one issue is, the personal-workspace team structure with its labels, the two-window protocol under an
+    orchestrator with sequential dispatch (the method itself stays in `specs/testing.md` section 1), the rule
+    that a skill injects the spec it depends on, the one-pull-request rule for crossing changes, the refusal
+    of autonomous issue-to-pull-request automation with its reopening gate, and worktrees for parallel work.
