@@ -273,8 +273,9 @@ applied rather than quoted.
    promotion, and promotion is **OQ-6**; do not decide it here.
 3. **A feature's geometry kind agrees with the kind its layer declares**, and a mismatch is refused rather
    than stored. PostgreSQL cannot express this as a check across two tables, so it is a decision over plain
-   data and it is tested as one. **This item is the one thing in this file with no requirement above it,
-   and half of it is the owner's; read section 2.1 before touching it.**
+   data and it is tested as one. **This item had no requirement above it when it was written, and PRD
+   v0.15 gave it one: it is M2's contract on a layer's features, with the refusal itself specified in M9;
+   section 2.1 carries the closure.**
 
 **The invariant acceptance tests, against a real database, because the wall is the database's.** These are
 C4 and N2 tests and they may never be weakened:
