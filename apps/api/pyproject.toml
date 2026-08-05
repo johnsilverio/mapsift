@@ -96,8 +96,19 @@ containers = ["mapsift"]
 layers = ["layers", "accounts", "common"]
 exhaustive = true
 
+# One contract per package, and the split is load-bearing rather than tidy: a `protected` contract
+# applies every allowed importer to every protected module, so a single contract naming both
+# packages would let `layers` import `accounts.models`, which is what it exists to forbid.
+# `protected` also has no `exhaustive` option, so a package added later is silently outside this
+# gate; `tests/test_dependency_direction.py` is what closes that.
 [[tool.importlinter.contracts]]
-name = "A package is reached through its selectors and services, never its models"
+name = "accounts is reached through its selectors and services, never its models"
 type = "protected"
 protected_modules = ["mapsift.accounts.models"]
 allowed_importers = ["mapsift.accounts"]
+
+[[tool.importlinter.contracts]]
+name = "layers is reached through its selectors and services, never its models"
+type = "protected"
+protected_modules = ["mapsift.layers.models"]
+allowed_importers = ["mapsift.layers"]
