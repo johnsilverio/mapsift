@@ -21,6 +21,7 @@ from django.db import connection
 
 from conftest import (
     FOREIGN_KEY_VIOLATION,
+    INVALID_PARAMETER_VALUE,
     NOT_NULL_VIOLATION,
     POLICY_VIOLATION,
     Party,
@@ -28,6 +29,7 @@ from conftest import (
     second_project_of,
 )
 from mapsift.common.binding import tenant_scope
+from mapsift.common.geometry import ForeignFrame
 from mapsift.layers.models import Feature, Layer
 from mapsift.layers.rules import GeometryKind, StorageClass
 
@@ -35,6 +37,13 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 # M5 rule 1: SIRGAS 2000, the one frame stored geometry is in.
 STORAGE_FRAME_SRID = 4674
+
+# SIRGAS 2000 / UTM zone 23S, which is how Brazilian cadastral data arrives.
+A_CADASTRAL_FRAME_SRID = 31983
+A_PARCEL_IN_THAT_FRAME = Polygon(
+    ((330000.0, 7390000.0), (330100.0, 7390000.0), (330100.0, 7390100.0), (330000.0, 7390000.0)),
+    srid=A_CADASTRAL_FRAME_SRID,
+)
 
 
 def _a_layer(party: Party, *, name: str = "cover") -> Layer:
@@ -74,7 +83,7 @@ def test_the_feature_table_is_inside_the_isolation_wall(
     assert Feature._meta.db_table in tenant_owned_tables
 
 
-def test_a_features_geometry_is_stored_in_the_one_declared_frame() -> None:
+def test_the_geometry_column_declares_the_one_storage_frame() -> None:
     """M5 rule 1, read from the catalogue rather than reviewed: one storage and interchange frame,
     SIRGAS 2000. A column in another frame moves a legal boundary with nothing raising."""
     with connection.cursor() as cursor:
@@ -88,6 +97,52 @@ def test_a_features_geometry_is_stored_in_the_one_declared_frame() -> None:
         )
 
         assert cursor.fetchall() == [(STORAGE_FRAME_SRID,)]
+
+
+def test_a_writer_outside_the_orm_cannot_store_geometry_in_another_frame(alice: Party) -> None:
+    """M5 rule 1, and it is I4's reasoning applied to the frame: the wall is worth having only
+    where it covers the writers that never pass through the ORM, and the tile path is one. The
+    column's own type modifier is what refuses this, which is why no separate constraint exists."""
+    with tenant_scope(alice.tenant_id):
+        layer = _a_layer(alice)
+
+    with (
+        refused_with(INVALID_PARAMETER_VALUE),
+        tenant_scope(alice.tenant_id),
+        connection.cursor() as cursor,
+    ):
+        cursor.execute(
+            """
+            INSERT INTO layers_feature (id, tenant_id, project_id, layer_id, geometry)
+            VALUES (%s, %s, %s, %s, ST_GeomFromText(%s, %s))
+            """,
+            [
+                uuid4(),
+                alice.tenant_id,
+                alice.project_id,
+                layer.pk,
+                A_PARCEL_IN_THAT_FRAME.wkt,
+                A_CADASTRAL_FRAME_SRID,
+            ],
+        )
+
+
+def test_a_geometry_in_another_frame_is_refused_rather_than_converted(alice: Party) -> None:
+    """M5 rules 1 and 3: the source frame is recorded and never discarded, and a datum
+    transformation is an explicit recorded decision. Measured on 2026-08-04: the plain GeoDjango
+    field wraps a mismatched value in ST_Transform, so this parcel would land as degrees with
+    EPSG:31983 gone and nothing raised, which is the silent drift rule 3 forbids by name."""
+    with tenant_scope(alice.tenant_id):
+        layer = _a_layer(alice)
+
+        with pytest.raises(ForeignFrame):
+            Feature.objects.create(
+                id=uuid4(),
+                tenant_id=alice.tenant_id,
+                project_id=alice.project_id,
+                layer_id=layer.pk,
+                geometry=A_PARCEL_IN_THAT_FRAME,
+            )
 
 
 def test_a_read_bound_to_one_tenant_does_not_see_another_tenants_layer(

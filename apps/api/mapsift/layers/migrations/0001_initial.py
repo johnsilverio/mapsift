@@ -6,9 +6,10 @@
 # The tables come from the autodetector; what follows is what it cannot express. Each cites the
 # decision it comes from rather than repeating why that decision was taken.
 
-import django.contrib.gis.db.models.fields
 import django.db.models.deletion
 from django.db import migrations, models
+
+import mapsift.common.geometry
 
 # ADR-0005 section 7, which names both of these among the tables inside the wall.
 TENANT_OWNED_TABLES = (
@@ -97,7 +98,7 @@ class Migration(migrations.Migration):
             name='Feature',
             fields=[
                 ('id', models.UUIDField(editable=False, primary_key=True, serialize=False)),
-                ('geometry', django.contrib.gis.db.models.fields.GeometryField(null=True, srid=4674)),
+                ('geometry', mapsift.common.geometry.StorageFrameGeometryField(null=True)),
                 ('project', models.ForeignKey(db_constraint=False, db_index=False, on_delete=django.db.models.deletion.CASCADE, related_name='features', to='accounts.project')),
                 ('tenant', models.ForeignKey(db_index=False, on_delete=django.db.models.deletion.CASCADE, related_name='features', to='accounts.tenant')),
                 ('layer', models.ForeignKey(db_constraint=False, db_index=False, on_delete=django.db.models.deletion.CASCADE, related_name='features', to='layers.layer')),

@@ -25,6 +25,8 @@ TENANT_COLUMN = "tenant_id"
 POLICY_VIOLATION = "42501"
 NOT_NULL_VIOLATION = "23502"
 FOREIGN_KEY_VIOLATION = "23503"
+# PostGIS raises this one from the column's own type modifier, which is why it needs no constraint.
+INVALID_PARAMETER_VALUE = "22023"
 
 
 @contextmanager
