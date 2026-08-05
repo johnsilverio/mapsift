@@ -109,10 +109,31 @@ The layer's declared kind stays what M2 makes it, a declaration, until something
 **Costs** nothing today and closes no door, because road A stays available the day the requirement is
 written. **Buys** a suite where every test still names a requirement that exists.
 
-**A recommendation, which is not the decision.** Road A: a declaration a feature may contradict is worth
-little, and the write path that would call the rule is the next milestone rather than a distant one. Until
-the owner takes it, the rule stays pure and callerless and its test module says in its first paragraph that
-it has no requirement above it.
+**CLOSED 2026-08-05: the owner took Road A, and the rule now names a requirement that exists.** PRD **v0.15**
+raises the contract into **M2** ("a feature's geometry belongs to the family its layer declares") and puts the
+**refusal** into **M9**, where it belongs, because the refusal happens at the flush on geometry drawn offline in
+the field: it is a typed error that **flags and retains** the operation for inspection, never a discard, on the
+same shape T5.2 fixes for the operation whose author lost authorization.
+
+**What decided it, and it was not the aesthetic argument.** Three things the next slice builds already treat the
+declared kind as a contract, and none of them can defend itself. A paint specification is per geometry type, so a
+stray geometry does not render **and does not say so**, which is AR1 entering through a door nobody locked. D8
+makes area and perimeter automatic and authoritative on a polygon layer, and a line inside one has no area, which
+leaves a null field with no explanation or a number that does not exist, in a product that computes a legal
+reserve's hectares. And an interchange format carries a single shape type in its header, so a mixed layer either
+fails to export or exports incomplete, while J1 promises exactly that interoperability. The cost is small because
+**the caller arrives anyway**: M9 already requires an operation outside the catalog to be rejected with a typed
+error, so MAP-10 to MAP-14 build that validation regardless and this is one predicate more.
+
+**Two consequences that come with Road A and are not implementation detail.** The refusal is flag-and-retain, as
+above, and a version of Road A that discards trades a rendering hole for erased field work. And **the rule does
+not descend to the database**: PostgreSQL constrains a geometry column's type by its type modifier, which is per
+column, while the permitted family here is a value on another row in another table. A trigger joining to the layer
+would close the non-ORM path and is **declined with its reason** rather than left unmentioned: it adds a lookup per
+insert on the highest-volume table, precisely on the flush path, it puts server-side logic outside the ORM with no
+precedent in this stack, and the performance rule buys added complexity with a measurement. So the rule lives in
+`rules.py` with its caller on the write path, and a writer that does not pass through the ORM can violate it. That
+is the honest difference from the storage frame, which the column closes on its own.
 
 ---
 
