@@ -71,6 +71,21 @@ services:
       DATABASE_URL: postgresql://mapsift_owner:${DB_OWNER_PASSWORD:-mapsift_owner}@db:5432/${POSTGRES_DB:-mapsift}
       DEBUG: "true"
       ALLOWED_HOSTS: localhost,127.0.0.1,api
+    healthcheck:
+      # /ready, never /health: liveness stays green while the database is down (PRD N12).
+      # Python rather than curl because the image carries no HTTP client of its own, and urlopen
+      # raises on 503, which is what makes the exit status carry the probe's verdict.
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://localhost:8000/api/ready", timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      # runserver's first boot loads GDAL and GEOS, so the window is the interpreter's rather
+      # than the framework's.
+      start_period: 30s
     volumes:
       - ../apps/api:/app
     ports:
