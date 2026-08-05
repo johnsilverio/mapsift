@@ -41,7 +41,7 @@ def test_creating_a_personal_account_creates_exactly_one_owner_membership() -> N
 def test_a_user_in_two_tenants_is_one_identity_with_a_membership_in_each() -> None:
     """M1: the user is the global durable identity and belongs to several tenants."""
     personal = create_personal_account(email="ana@example.com")
-    organization = create_organization_account(name="Vale Verde", owner=personal.user)
+    organization = create_organization_account(name="Acme Ambiental", owner=personal.user)
 
     assert organization.user_id == personal.user_id
     assert organization.tenant_id != personal.tenant_id
