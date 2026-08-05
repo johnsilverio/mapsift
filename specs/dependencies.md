@@ -275,6 +275,39 @@ The client core uses the pure-Rust **`geo`** crate (GeoRust): planar geometries,
 - **`ng test` runs the `@angular/build:unit-test` builder**, whose default runner is **Vitest** (Karma is still selectable). Tests execute in Node with jsdom by default; `--browsers ChromeHeadless` opts into a real browser; `--watch=false` is what a gate wants. Always go through `ng test` rather than the Vitest CLI directly, because only the builder wires the Angular pieces.
 - **Consequence carried by ADR-0002:** never pass `--inline-template` or `--inline-style`; the CLI default is the layout.
 
+#### `@angular/aria`, a candidate this survey records and does not adopt
+
+**Verified 2026-08-05 against `angular.dev/guide/aria/overview` and the npm registry.** `@angular/aria` is a
+first-party package, at **22.1.1** and stable for the v22 line, holding **headless** directives that
+implement WAI-ARIA patterns: autocomplete, listbox, select, multiselect and combobox; menu, menubar and
+toolbar; accordion, tabs, tree and grid. It carries the keyboard interaction, the ARIA attributes, the focus
+management and the screen-reader semantics, and it **ships no styles at all**: the consumer provides the
+markup, the CSS and the business logic. The official documentation draws its own boundary against Angular
+Material, which is the styled option for consumers who do not want to style anything.
+
+**Why it is written down rather than ignored.** It sits precisely on two requirements that already bind.
+**N7** declares WCAG 2.2 level AA on the application chrome, with keyboard operability, visible focus and
+correct names and roles, and those are exactly what these directives implement. **U10** forbids a bespoke
+re-implementation of a primitive the library provides, and **U4** rules that a vendored component is mapped
+onto the Mapsift token set when it is adopted and is not adopted if it cannot be. A headless library is the
+best possible shape against that rule, because there is nothing to map: it carries behaviour and semantics,
+and the tokens keep owning every visual value.
+
+**Why it is not adopted here.** `libs/ui` is a vendored fork of a shadcn-class library with roughly
+forty-five primitives that already implement their own accessibility, over the CDK overlay and
+`ControlValueAccessor`. Rebasing those onto `@angular/aria`, adopting it only for new primitives, or leaving
+it out entirely are three different answers with different costs, and choosing between them is a decision
+about the component library rather than a fact about a dependency. **That decision is an ADR** and it belongs
+with the design-system work that PRD section 9 and the component catalog (U12) already owe. What this entry
+buys is that whoever opens that ADR starts from a verified package, a verified stability status and the two
+requirements it touches, instead of from a memory of a blog post.
+
+**One caveat about how this entry was produced, recorded because it is the rule working.** The first search
+that surfaced this area reported "selectorless components" as the headline of v22. Checked against the
+official sources, selectorless has **not** reached developer preview and remains an RFC, while what actually
+went stable in v22 is Signal Forms, asynchronous signals and this package. A secondary source was wrong about
+a framework's flagship feature, and only the primary source caught it.
+
 ### The rest of the web stack
 
 | Dependency | Status | Notes |
@@ -416,7 +449,11 @@ Each of these is a decision that this survey must feed before it can be made wit
 8. The editing library.
 9. The operation-log projection strategy.
 10. The object-storage reference shape for images and its offline behaviour.
-11. The component catalog tool and the token export format.
+11. The component catalog tool and the token export format. **Widened 2026-08-05:** the same ADR answers
+    whether `libs/ui` adopts **`@angular/aria`** (section 3, Angular), for new primitives, as a rebase of the
+    existing ones, or not at all. It belongs here rather than in its own agenda item because all three
+    answers are decisions about the component library, and the headless shape means the token rules of U1 and
+    U4 are unaffected whichever wins.
 12. External GNSS integration for field capture.
 13. Field-trip preparation semantics (what a prepared trip downloads and how it is bounded).
 14. The docking model beyond a single rail.
