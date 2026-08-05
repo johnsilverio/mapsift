@@ -460,13 +460,26 @@ foundation with nobody noticing.
 
 Authority chain: `specs/mapsift-foundation.md` (constitution, v0.17, the what and the why) → `specs/PRD.md`
 (the how, one layer above code) and this file (the constraints-and-behaviors digest), both derived from the
-foundation → ADRs (code-shape) → spec-per-task in git (what the agent reads to implement). **git owns the contract;
-Linear owns execution state; the task ID bridges them.** The procedure for working with Linear (the
-git↔Linear boundary, when an issue may be created and what one issue is, the status lifecycle with the
-two-window protocol inside it, the definition of done, priority meanings, how more than one person works in
-parallel, the project and milestone lifecycle, and the local-scope MCP isolation) lives in the
-**`linear-workflow` skill**, not here. Everything from the branch onward (branch name, the pre-commit gate,
-commit format, the PR flow) is the **`dev-workflow` skill**, and the two do not restate each other.
+foundation → ADRs (code-shape) → spec-per-task in git (what the agent reads to implement, shaped by
+`specs/tasks/README.md`). **The loop from a decision in the canon to a merged pull request is ratified in
+ADR-0008**, and the two skills below are its enforceable restatement rather than a second decision.
+
+**git owns the contract; Linear owns execution state; the task ID bridges them.** The procedure for working
+with Linear (the git↔Linear boundary, when an issue may be created and what one issue is, the status
+lifecycle with the two-window protocol inside it, the definition of done, priority meanings, how more than
+one person works in parallel, the project and milestone lifecycle, and the local-scope MCP isolation) lives
+in the **`linear-workflow` skill**, not here. Everything from the branch onward (branch name, the pre-commit
+gate, commit format, the PR flow) is the **`dev-workflow` skill**, and the two do not restate each other.
+
+**The two-window protocol has a third window over it, and the protocol is `specs/testing.md` section 1.**
+Window A writes the failing tests as behaviour (the `test` skill), Window B implements the minimum to green
+without editing them (the `implement` skill), and an **orchestrator** opens the task, sizes the slice, closes
+the boundary decisions with the owner before dispatching, writes each brief **only after reviewing what the
+previous window returned**, and reviews by **running** the gates rather than by reading a report (the
+`orchestrate` and `code-review` skills). The orchestrator does not implement and does not touch code: the
+moment it edits what a window produced, it stops being the independent check the protocol exists to buy.
+Section 1.1 is the contract every window brief satisfies and 1.2 is why sizing the slice is a step rather
+than an afterthought.
 
 **The method is XP-shaped with three practices deliberately replaced, and the replacements are not
 shortcuts.** The **planning game** is replaced by the closed canon, since scope is decided in the foundation
