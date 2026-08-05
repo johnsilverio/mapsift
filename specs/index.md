@@ -43,6 +43,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   one contract two windows read, and it decides nothing of its own; where it disagrees with a document it cites,
   the cited document wins. Not every issue needs one: it earns its place when the requirements an implementer
   must hold at once are spread across several documents. On disk:
+  - **`tasks/README.md`** — the shape of one of these files and the two rules that make it worth having: it
+    cites and never restates, and it is written at pickup rather than at backlog creation, because task specs
+    written twenty at a time go stale before anybody reads them.
   - **`tasks/MAP-3-account-tree.md`** — the first product code in the repository: the five entities of M1, the
     tenant identifier, and the ADR-0005 wall in the same migration, with the split between what window A tests
     and what window B implements written out.
@@ -62,7 +65,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
 - **`testing.md`** — the canonical method document: Red/Green/Refactor in two clean-context windows, behaviour over
   implementation, the decision-versus-effect split that makes it possible, the kinds of test in this project
   (including the shared cross-runtime golden corpus and why measurements are not CI gates), where tests live,
-  and the traceability rule from a requirement ID to a test. Read before writing any test or any code.
+  and the traceability rule from a requirement ID to a test. **Section 1.1 is the contract every window brief
+  satisfies** and **1.2 is why sizing the slice is a first-class step** rather than something discovered
+  afterwards. Read before writing any test or any code.
 - **`dependencies.md`** — the dependency survey: the canonical home for external-dependency versions and for the
   particularity of each one that bites, serving the external-dependency rule. Distinguishes a **ratified choice**
   from a **pinned version** (only a lockfile pins), carries a verification date on every claim, and ends with the
