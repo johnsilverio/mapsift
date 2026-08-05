@@ -5,43 +5,51 @@ description: Write a pull request body for the current branch. Use when the user
 
 # PR summary
 
-Write the pull request body for the current branch.
+Write the body for the current branch's pull request. **Produce the text; do not open the pull request.**
+That is `/pr`.
 
-Note that `/pr` opens PRs with `gh pr create --fill`, which derives the title and body from the commits. Use
-this skill when the change needs more than the commits say: several commits under one purpose, a decision
-worth recording, or a reviewer who needs the trace to the spec.
-
-## 1. Analyze the branch
+## 1. Read what actually changed
 
 ```bash
-git log main..HEAD --oneline
-git diff main...HEAD --stat
+git rev-parse --show-toplevel          # which repository is this
+git rev-parse --abbrev-ref HEAD
+git log origin/main..HEAD --oneline
+git diff origin/main...HEAD --stat
+git diff origin/main...HEAD
 ```
 
-## 2. Write the body
+Read the diff, not just the commit subjects. A body derived from commit subjects repeats what the reviewer
+can already see in the commit list and adds nothing.
 
-```markdown
-## Summary
+## 2. The body
 
-One to three lines on what changed and why.
+English, no em dashes, no double hyphens, **no AI or Co-Authored-By attribution trailer** anywhere.
 
-## Traces to
+Structure it as four parts, and drop any that would be empty rather than padding it:
 
-The requirement this implements: a PRD item (T, M, S, N, U), a C-test, an invariant, or the ADR that
-fixed the shape. Reference the Linear ID (MAP-123) so the GitHub integration links the issue.
+**What this changes, and why.** One short paragraph in plain language. Lead with the behaviour that is
+different now, not with the files.
 
-## Changes
+**The trace.** Which invariant, foundation section, ADR section or requirement this implements, cited by
+identifier. **This is the part reviewers actually need**, because `CLAUDE.md` "Process & tracking" makes the trace the
+condition for the work existing at all. If the branch traces to a Linear issue, reference `MAP-123` here,
+with a closing magic word only when this pull request finishes it.
 
-The significant changes, grouped by deployable or library (`apps/api`, `apps/web`, `libs/core`, `libs/ui`).
+**What a reviewer should look at hardest.** Name the risky part rather than making them find it: a decision
+that moved, a migration, a new package boundary, a place where the change was arguable. **A pull request that
+claims everything is straightforward gets a shallow review.**
 
-## Test plan
+**What is deliberately not here.** Scope you left out on purpose, a follow-up, an open question you hit. This
+is what stops a reviewer asking for something that was decided against.
 
-- [ ] The behaviour is pinned by a test written before the code
-- [ ] `/quality-gate` green for every language touched
-- [ ] Generated contracts regenerated, no diff
-```
+## 3. Two things worth checking before you hand it over
 
-Keep it factual. If something in the change is a known compromise or leaves an open question, say so
-explicitly rather than letting a reviewer discover it.
+**If the change spans both stacks**, say so. **After the ADR-0001 section 1 migration it is one pull request**
+carrying the serializer, the regenerated schema, the regenerated types and the component (the one-pull-request rule
+as rewritten). **Until the migration runs** the two stacks are still separate repositories, so a crossing
+change is still two pull requests with the api first, and the body says which half this is.
 
-**Do NOT add any AI/Co-Authored-By attribution trailer** to the PR body.
+**If the change touches a decision**, the fan-out is part of the work and belongs in the body: the
+foundation, the ADR, `CLAUDE.md`, `specs/PRD.md`, the handoff's section 0, and one line in
+`specs/log.md`. A pull request that changes a decision in one place only is incomplete, and saying which
+documents moved is how the reviewer checks it.

@@ -43,7 +43,7 @@ Researched 2026-08-04 against current sources rather than from memory, under the
 | **import-linter 2.13** (released 2026-07-03, BSD-2, Python 3.10 to 3.14) | Five contract types: `layers`, `forbidden`, `independence`, `protected`, `acyclic_siblings`. In a layers contract `|` makes siblings independent and `:` lets them import each other. **`protected` restricts who may import a module directly, from an allow-list**, which is the piece that matters below. | 2026-08-04 |
 | The domain-versus-layer question | The consensus for anything past a toy is one app per cohesive domain, not top-level `models/`, `views/`, `services/`. The concrete argument, rather than "separation of concerns": in a layer-organised project adding one field edits five directories and produces five diffs a reviewer has to hold at once. | 2026-08-04 |
 
-**The reference that was read in full is the Ecobalance ADR-0002**, a sibling project's answer to this same
+**The reference that was read in full is a sibling project's own layout ADR**, its answer to this same
 question. Its reasoning transfers almost entirely and three of its parts do not, each for a stated reason.
 Its `engines/` package exists because that backend is one writer among three in a shared cluster, and Mapsift
 owns its database outright. Its `Module`-versus-package distinction exists because that product activates
