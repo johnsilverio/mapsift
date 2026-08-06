@@ -1,4 +1,4 @@
-import type { ClientHalf } from '@mapsift/core';
+import type { ClientHalf, PropertyTarget } from '@mapsift/core';
 
 /**
  * The catalog as `apps/web` reads it: M9's closed set over the core-generated declaration and no
@@ -98,10 +98,23 @@ describe('the operation catalog as the web client reads it', () => {
   });
 
   it('does not admit an operation addressed at a kind its type does not declare', () => {
+    // Named rather than written inline, and this is the trap: an inline target is a fresh literal,
+    // so the excess-property check reports the mismatch at its own `property` line, the directive
+    // below goes unused, and the real error escapes. A named const is not fresh, so what is left
+    // is the assignability failure, and it lands on the declaration the directive guards.
+    const aPropertyAddress: PropertyTarget = {
+      kind: 'property',
+      tenant_id: '7c0e2b81-9d4f-4a63-b5e8-0c1d2e3f4a5b',
+      project_id: '2b6d4f19-3a8c-4e50-9f27-6d8b1c3a5e70',
+      layer_id: '5e9a7c30-1f4b-4d82-a63e-8b0c2d4f6a19',
+      feature_id: 'c4a1e7b2-8d36-4f09-95c7-1e3a5b7d9f02',
+      property: 'geometry',
+    };
+
     // @ts-expect-error M9 as sharpened 2026-08-06: create declares the feature, so a property
-    // address is not assignable to this member. Written out rather than spread from the fixture
-    // above, because a spread widens `operation_type` back to the union and the directive would
-    // then fire on the tag instead of on the target it is here to guard.
+    // address is not assignable to this member. The envelope is written out rather than spread
+    // from the fixture above, because a spread widens `operation_type` back to the union and the
+    // directive would then fire on the tag instead of on the target it is here to guard.
     const addressedFinerThanTheCatalogFixes: ClientHalf = {
       operation_id: '2c9e4b17-5d80-4a36-9e42-7f1b0d8c6a53',
       client_id: '1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9',
@@ -109,14 +122,7 @@ describe('the operation catalog as the web client reads it', () => {
       operation_type: 'feature.create',
       operation_schema_version: 3,
       conflict_rule_version: 5,
-      target: {
-        kind: 'property',
-        tenant_id: '7c0e2b81-9d4f-4a63-b5e8-0c1d2e3f4a5b',
-        project_id: '2b6d4f19-3a8c-4e50-9f27-6d8b1c3a5e70',
-        layer_id: '5e9a7c30-1f4b-4d82-a63e-8b0c2d4f6a19',
-        feature_id: 'c4a1e7b2-8d36-4f09-95c7-1e3a5b7d9f02',
-        property: 'geometry',
-      },
+      target: aPropertyAddress,
       payload: {},
       author_session_material: { proof: 'opaque-to-the-core' },
       created_at: '2026-08-05T11:59:59Z',
