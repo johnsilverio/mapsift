@@ -125,8 +125,12 @@ modifier, and the WebAssembly boundary cannot be faked and run against the real 
   not exist. Bloat is liability: every redundant test breaks on a refactor for no reason.
 - **Signatures only.** Write the minimum production surface for the test to compile and fail. Not the body.
 - **A test importing a name that does not exist yet is a type-check error before it is the runtime red it
-  asserts.** The resolution this project already paid for is the narrowest anchored ignore on that line, or
-  the import moved inside the test function so the module still collects, never a module-wide exemption.
+  asserts.** Two cases, and they resolve differently (revised 2026-08-05, the MAP-7 review). An import the
+  implementation window will create is **left red**: that red is part of the deliverable, and an anchored
+  ignore on it becomes an error the moment the module exists (strict mypy warns on unused ignores), forcing
+  the implementing window to edit a test it may not touch. A static error with **no production fix coming**
+  keeps the resolution this project already paid for: the narrowest anchored ignore on that line, or the
+  import moved inside the test function so the module still collects, never a module-wide exemption.
 
 ## 5. Touching a test that already exists
 
