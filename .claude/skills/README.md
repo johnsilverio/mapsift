@@ -156,8 +156,8 @@ Four path-scoped rules live at `.claude/rules/`: `angular.md`, `python-django.md
 what makes it the right layer and also what makes a wrong one the most expensive kind of stale authority in
 the tree.
 
-**A rules file restates an ADR and decides nothing.** If a rule needs to change, the ADR is superseded and
-the rule follows, never the reverse (ADR-0002 section 5). The Angular rule is ratified by ADR-0002 and
+**A rules file restates an ADR and decides nothing.** If a rule needs to change, the ADR is amended first
+and the rule follows, never the reverse (ADR-0002 section 5). The Angular rule is ratified by ADR-0002 and
 ADR-0003; the Python and Rust rules are not ratified by an ADR yet and remain candidates for one when they
 stop restating the canon and start deciding.
 

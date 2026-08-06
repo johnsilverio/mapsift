@@ -17,7 +17,7 @@ The audit also settled, by research against the current Claude Code documentatio
 
 So the layering this ADR fixes is three levels, each with one job:
 
-1. **The ADR (here):** the decision, in the authority chain, superseded rather than edited.
+1. **The ADR (here):** the decision, in the authority chain, edited in place with a dated note when it changes (convention revised 2026-08-05, ADR-0001).
 2. **`.claude/rules/*.md`, path-scoped:** the enforceable restatement the agent obeys while editing a matching file. It reflects this ADR and never invents.
 3. **The per-stack `CLAUDE.md`:** reserved for the **operational residue** (real commands, real paths, pinned versions) and written only after the scaffold exists.
 
@@ -53,16 +53,16 @@ File and class naming follow what the current schematic emits, which on Angular 
 
 ### 5. Where each level lives, and what may not move
 
-The decision is here. The enforceable restatement is in `.claude/rules/*.md` with a `paths` frontmatter so it loads when a matching file is read. The per-stack `CLAUDE.md` is written after the scaffold and carries only operational residue. **A rules file may not decide anything this ADR does not say**; if a rule needs to change, this ADR is superseded and the rules file follows, never the reverse.
+The decision is here. The enforceable restatement is in `.claude/rules/*.md` with a `paths` frontmatter so it loads when a matching file is read. The per-stack `CLAUDE.md` is written after the scaffold and carries only operational residue. **A rules file may not decide anything this ADR does not say**; if a rule needs to change, this ADR is amended first and the rules file follows, never the reverse.
 
 ---
 
 ## Consequences
 
-**What this buys.** The conventions become reviewable decisions with a reason attached, instead of lines in a tooling file that nobody can trace. The three thresholds that were chosen (5 lines, the three-condition template exception, 8 direct children) are ratified, so changing one is a superseding ADR that leaves a record rather than an edit nobody notices. And the layering resolves the loading problem the research exposed: the rule that must fire before the first file is written lives where it actually loads in time.
+**What this buys.** The conventions become reviewable decisions with a reason attached, instead of lines in a tooling file that nobody can trace. The three thresholds that were chosen (5 lines, the three-condition template exception, 8 direct children) are ratified, so changing one is a dated amendment that leaves a record rather than an edit nobody notices. And the layering resolves the loading problem the research exposed: the rule that must fire before the first file is written lives where it actually loads in time.
 
 **What this costs.** Two artifacts to keep aligned per stack (the ADR and its rules file), and the discipline that the rules file restates rather than invents. Generating with the CLI is also marginally slower than typing a file, which is the point.
 
 **What this forecloses.** Nothing the foundation left open. Per-stack conventions beyond layout and generation are not ratified here. The Angular ones are ratified in **ADR-0003**, which also draws the line between restating the official style guide (no ADR needed, the authority is external and cited) and a project decision (ADR needed). The Python and Rust ones, carried by `.claude/rules/python-django.md` and `.claude/rules/rust-core.md`, remain candidates for their own ADR when they stop being restatements of the canon and start being decisions.
 
-**Reversibility.** All three thresholds are cheap to change and expensive to change silently. Supersede this ADR rather than editing the rules file.
+**Reversibility.** All three thresholds are cheap to change and expensive to change silently. Amend this ADR rather than editing the rules file.

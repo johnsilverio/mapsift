@@ -63,7 +63,7 @@ foundation or an ADR first, stop and put it there before touching anything below
 | --- | --- | --- |
 | `specs/mapsift-foundation.md` | the decision as **law**, plus its scar or its evidence, plus an entry in section 15 and a version bump | the decision is code shape only, which is an ADR |
 | `specs/PRD.md` | the requirement and its acceptance criterion in its family (a T, M, S, N or U item) taking the next free number. A retired one is struck through **in place**, never renumbered | nothing in the product's behaviour moved |
-| `specs/adr/` | an amendment inside the owning ADR with its date and reason, or a new numbered file. **An accepted ADR is superseded, never quietly rewritten** | no code shape moved |
+| `specs/adr/` | an amendment inside the owning ADR with its date and reason; a new numbered file only for a new decision area. **An ADR is never quietly rewritten: every change carries its dated note (ADR-0001, revised 2026-08-05)** | no code shape moved |
 | `CLAUDE.md` | **only if the constraint is true for every task.** Otherwise it belongs one tier down (ADR-0002 section 5) | almost always: the file is the digest, not the archive |
 | `.claude/rules/` | the enforceable per-path restatement (`angular.md`, `design-system.md`, `python-django.md`, `rust-core.md`), because that is what fires while a file is being edited | there is no path-scoped consequence, which is most of the time |
 | `.claude/skills/` | the procedure, if the decision changes how work is done | it changes what is true rather than how work runs |

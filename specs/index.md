@@ -19,7 +19,7 @@ Every prefix used across the canon, so a newcomer does not have to derive the ma
 | **S1 to S10** | PRD section 7 | Layer 4, surfaces and platform |
 | **N1 to N12** | PRD section 8 | non-functional requirements |
 | **U1 to U12** | PRD section 9 | the design system |
-| **ADR-NNNN** | `adr/` | code-shape decisions, superseded rather than edited |
+| **ADR-NNNN** | `adr/` | code-shape decisions, kept current and edited with dated change notes |
 | **MAP-NNN** | `tasks/` | the spec-per-task an implementing window reads, one file per Linear issue that needs one |
 | **SP-N** | `spikes/` | risk spikes, throwaway code and a surviving ADR |
 | **MC-01 to MC-05** | `market-reserarch.md` | market codes standing in for competitor names |
@@ -86,7 +86,8 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   in place of competitor names. Internal by nature and kept out of version control (the on-disk filename
   carries the historical misspelling `reserarch`, referenced as-is by the foundation and CLAUDE.md).
 - **`adr/`** — code-shape decisions in Context/Decision/Consequences form, numbered `NNNN-kebab-title.md`. An
-  accepted ADR is superseded by a later one rather than edited. On disk:
+  ADR is kept current: a changed decision is edited in place with a dated note of what changed and why
+  (convention revised 2026-08-05 in ADR-0001). On disk:
   - **`adr/0001-architecture-baseline.md`** — the immutable baseline the scaffold is created from: the repository
     layout by unit of deploy, the language roles, containerised from the first commit, configuration and secrets,
     generated contracts, the CI gates, test placement, and the explicit list of what must not be scaffolded yet
