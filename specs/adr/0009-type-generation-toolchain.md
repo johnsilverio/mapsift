@@ -34,6 +34,16 @@ The Rust side emits the schema with **schemars**, pinned explicitly to the 2020-
 
 **The exit path is recorded now rather than when needed:** if tsify goes dormant or its tagged-union output fails the empirical check in section 5, the fallback is **ts-rs** emitting into `libs/contracts` with a regenerate-and-diff gate, accepting hand-annotated `unchecked_return_type` and `unchecked_param_type` overrides on the crossing signatures as the cost.
 
+> **Changed (2026-08-06, closing the MAP-8 implementation review).** tsify 0.5.6 emits invalid TypeScript
+> for a `#[serde(flatten)]` of a union: its parser branches on whether the flattened type is syntactically
+> a type reference rather than on whether it is an object type, so a named union lands in the interface
+> branch and `interface ClientHalf extends Operation` extends a union, which `skipLibCheck` then swallows
+> while every member key vanishes. The remedy joins the accepted annotation set rather than firing this
+> section's exit: `#[tsify(type = "Operation")]` on the flattened field takes the intersection branch and
+> emits `type ClientHalf = { ... } & Operation`, a pointer at the same generated declaration in the same
+> `.d.ts` rather than a second copy of the shape. The cost on record: the reference is spelled by hand, so
+> a rename of the Rust type breaks at use sites only, never in the `.d.ts`.
+
 ### 4. The single-TypeScript-shape rule
 
 The envelope's TypeScript type is the core-generated one. The OpenAPI-to-TypeScript direction (M12's other generator) references that type wherever the API surface carries an envelope and never redeclares it. A second TypeScript declaration of a core-contract type, generated or hand-written, is a defect under M12's no-hand-written-duplicate rule.
