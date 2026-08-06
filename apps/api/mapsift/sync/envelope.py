@@ -10,29 +10,20 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, Field, RootModel
 
 
-class MediationProvenance(BaseModel):
-    agent: str
+class FeatureCreatePayload(BaseModel):
+    pass
 
 
-class TenantTarget(BaseModel):
-    kind: Literal["tenant"]
-    tenant_id: UUID
+class FeatureGeometrySetPayload(BaseModel):
+    geometry: Annotated[
+        Any,
+        Field(
+            description="A GeoJSON-shaped structure in the M5 storage frame. Opaque to the core until the boundary\nencoding is decided (MAP-33)."
+        ),
+    ]
 
 
-class ProjectTarget(BaseModel):
-    kind: Literal["project"]
-    project_id: UUID
-    tenant_id: UUID
-
-
-class LayerTarget(BaseModel):
-    kind: Literal["layer"]
-    layer_id: UUID
-    project_id: UUID
-    tenant_id: UUID
-
-
-class FeatureTarget(BaseModel):
+class FeatureAddress(BaseModel):
     feature_id: UUID
     kind: Literal["feature"]
     layer_id: UUID
@@ -40,7 +31,20 @@ class FeatureTarget(BaseModel):
     tenant_id: UUID
 
 
-class PropertyTarget(BaseModel):
+class FeatureTarget(RootModel[FeatureAddress]):
+    root: Annotated[
+        FeatureAddress,
+        Field(
+            description="A whole-feature address, carrying its ancestors so it resolves without a lookup (M9)."
+        ),
+    ]
+
+
+class MediationProvenance(BaseModel):
+    agent: str
+
+
+class PropertyAddress(BaseModel):
     feature_id: UUID
     kind: Literal["property"]
     layer_id: UUID
@@ -49,14 +53,11 @@ class PropertyTarget(BaseModel):
     tenant_id: UUID
 
 
-class TargetPath(
-    RootModel[TenantTarget | ProjectTarget | LayerTarget | FeatureTarget | PropertyTarget]
-):
+class PropertyTarget(RootModel[PropertyAddress]):
     root: Annotated[
-        TenantTarget | ProjectTarget | LayerTarget | FeatureTarget | PropertyTarget,
+        PropertyAddress,
         Field(
-            description="The one address an operation targets, at the granularity the conflict unit is measured on\n(M9). Each variant carries its ancestors, so an address is resolvable without a lookup.",
-            discriminator="kind",
+            description="One property of one feature, the finest granularity the ladder measures a conflict on (M9)."
         ),
     ]
 
@@ -65,7 +66,7 @@ class Verdict(StrEnum):
     applied = "applied"
 
 
-class ClientHalf(BaseModel):
+class FeatureCreateOperation(BaseModel):
     author_session_material: Annotated[
         Any,
         Field(
@@ -76,23 +77,65 @@ class ClientHalf(BaseModel):
     conflict_rule_version: Annotated[int, Field(ge=0)]
     created_at: AwareDatetime
     mediation: MediationProvenance | None
-    mutation_number: Annotated[int, Field(ge=0)]
-    operation_id: UUID
-    operation_schema_version: Annotated[int, Field(ge=0)]
-    operation_type: str
-    payload: Annotated[
-        Any,
+    mutation_number: Annotated[
+        int,
         Field(
-            description="Opaque to the core: the operation type says how to read it, over the catalog M9 owns."
+            description="The per-client monotonic axis the server dedups a resent flush by (C12).",
+            ge=0,
         ),
     ]
-    target: TargetPath
+    operation_id: UUID
+    operation_schema_version: Annotated[int, Field(ge=0)]
+    operation_type: Literal["feature.create"]
+    payload: FeatureCreatePayload
+    target: FeatureTarget
+
+
+class FeatureGeometrySetOperation(BaseModel):
+    author_session_material: Annotated[
+        Any,
+        Field(
+            description="Opaque to the core: the proof mechanism is OQ-18's and the server is what verifies it."
+        ),
+    ]
+    client_id: UUID
+    conflict_rule_version: Annotated[int, Field(ge=0)]
+    created_at: AwareDatetime
+    mediation: MediationProvenance | None
+    mutation_number: Annotated[
+        int,
+        Field(
+            description="The per-client monotonic axis the server dedups a resent flush by (C12).",
+            ge=0,
+        ),
+    ]
+    operation_id: UUID
+    operation_schema_version: Annotated[int, Field(ge=0)]
+    operation_type: Literal["feature.geometry.set"]
+    payload: FeatureGeometrySetPayload
+    target: PropertyTarget
+
+
+class ClientHalf(RootModel[FeatureCreateOperation | FeatureGeometrySetOperation]):
+    root: Annotated[
+        FeatureCreateOperation | FeatureGeometrySetOperation,
+        Field(
+            description="An operation as the client authored it. Every field here is the client's claim; nothing in it\nis authoritative until the server half exists beside it.",
+            discriminator="operation_type",
+        ),
+    ]
 
 
 class ServerHalf(BaseModel):
     applied_at: AwareDatetime
     applied_rule_version: Annotated[int, Field(ge=0)]
-    feature_version: Annotated[int, Field(ge=0)]
+    feature_version: Annotated[
+        int,
+        Field(
+            description="The per-feature axis that orders and detects conflict on one feature (M10).",
+            ge=0,
+        ),
+    ]
     legal_weight_in_force: bool
     verdict: Verdict
 

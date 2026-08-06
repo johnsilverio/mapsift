@@ -6,5 +6,7 @@
 //! See `specs/mapsift-foundation.md` section 9.6.
 
 pub mod boundary;
+pub mod catalog;
 pub mod envelope;
+pub mod granularity;
 pub mod metric;

@@ -1,8 +1,9 @@
 //! The operation envelope, defined once and read everywhere else through a generated form.
 //!
-//! Trace: M8 (the envelope and its two halves), M9 (one target path per operation), M10 and T9.2
-//! (the four envelope-borne version axes), T5.3 (created-at against applied-at), M7 (the
-//! classification in force), T8.2 and C14 (mediation), ADR-0009 (the generation toolchain).
+//! Trace: M8 (the envelope and its two halves), M9 (one target path per operation, and the
+//! type-to-target-kind pairing), M10 and T9.2 (the four envelope-borne version axes), T5.3
+//! (created-at against applied-at), M7 (the classification in force), T8.2 and C14 (mediation),
+//! ADR-0009 (the generation toolchain).
 
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
@@ -10,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tsify::Tsify;
 use uuid::Uuid;
+
+use crate::catalog::Operation;
 
 /// An operation as the client authored it. Every field here is the client's claim; nothing in it
 /// is authoritative until the server half exists beside it.
@@ -24,14 +27,16 @@ pub struct ClientHalf {
     pub operation_id: Uuid,
     #[tsify(type = "string")]
     pub client_id: Uuid,
+    /// The per-client monotonic axis the server dedups a resent flush by (C12).
     pub mutation_number: u64,
-    pub operation_type: String,
+    /// The catalog member this operation is, with the target and payload that member declares.
+    // Flattened so the type, the target and the payload stay flat sibling keys of the envelope
+    // (M8): a nested object here would be a wire change nobody asked for.
+    #[serde(flatten)]
+    #[tsify(type = "Operation")]
+    pub operation: Operation,
     pub operation_schema_version: u32,
     pub conflict_rule_version: u32,
-    pub target: TargetPath,
-    /// Opaque to the core: the operation type says how to read it, over the catalog M9 owns.
-    #[tsify(type = "unknown")]
-    pub payload: Value,
     /// Opaque to the core: the proof mechanism is OQ-18's and the server is what verifies it.
     #[tsify(type = "unknown")]
     pub author_session_material: Value,
@@ -46,6 +51,7 @@ pub struct ClientHalf {
 pub struct ServerHalf {
     #[tsify(type = "string")]
     pub applied_at: DateTime<Utc>,
+    /// The per-feature axis that orders and detects conflict on one feature (M10).
     pub feature_version: u64,
     pub applied_rule_version: u32,
     pub legal_weight_in_force: bool,
@@ -59,28 +65,56 @@ pub struct AppliedOperation {
     pub server: ServerHalf,
 }
 
-/// The one address an operation targets, at the granularity the conflict unit is measured on
-/// (M9). Each variant carries its ancestors, so an address is resolvable without a lookup.
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Tsify)]
+/// The granularity an address is measured at (M9). A decision helper the core reads a catalog
+/// member's declared target through; it never crosses the boundary and has no generated form.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetKind {
+    Tenant,
+    Project,
+    Layer,
+    Feature,
+    Property,
+}
+
+/// A tenant address, and the whole of what one operation may target at that granularity (M9).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
 #[serde(tag = "kind", rename_all = "lowercase")]
-// The keyword schemars does not emit on its own: without it datamodel-code-generator reads the
-// `const` tag as an ordinary union member and the generated Pydantic model routes by trial
-// instead of by tag (ADR-0009 section 5).
-#[schemars(extend("discriminator" = {"propertyName": "kind"}))]
-pub enum TargetPath {
-    #[schemars(title = "TenantTarget")]
+pub enum TenantTarget {
+    #[schemars(title = "TenantAddress")]
     Tenant {
         #[tsify(type = "string")]
         tenant_id: Uuid,
     },
-    #[schemars(title = "ProjectTarget")]
+}
+
+impl TenantTarget {
+    /// The static half of the M9 pairing: this address type declares tenant granularity.
+    pub const KIND: TargetKind = TargetKind::Tenant;
+}
+
+/// A project address, carrying its ancestors so it resolves without a lookup (M9).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum ProjectTarget {
+    #[schemars(title = "ProjectAddress")]
     Project {
         #[tsify(type = "string")]
         tenant_id: Uuid,
         #[tsify(type = "string")]
         project_id: Uuid,
     },
-    #[schemars(title = "LayerTarget")]
+}
+
+impl ProjectTarget {
+    /// The static half of the M9 pairing: this address type declares project granularity.
+    pub const KIND: TargetKind = TargetKind::Project;
+}
+
+/// A layer address, carrying its ancestors so it resolves without a lookup (M9).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum LayerTarget {
+    #[schemars(title = "LayerAddress")]
     Layer {
         #[tsify(type = "string")]
         tenant_id: Uuid,
@@ -89,7 +123,18 @@ pub enum TargetPath {
         #[tsify(type = "string")]
         layer_id: Uuid,
     },
-    #[schemars(title = "FeatureTarget")]
+}
+
+impl LayerTarget {
+    /// The static half of the M9 pairing: this address type declares layer granularity.
+    pub const KIND: TargetKind = TargetKind::Layer;
+}
+
+/// A whole-feature address, carrying its ancestors so it resolves without a lookup (M9).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum FeatureTarget {
+    #[schemars(title = "FeatureAddress")]
     Feature {
         #[tsify(type = "string")]
         tenant_id: Uuid,
@@ -100,7 +145,18 @@ pub enum TargetPath {
         #[tsify(type = "string")]
         feature_id: Uuid,
     },
-    #[schemars(title = "PropertyTarget")]
+}
+
+impl FeatureTarget {
+    /// The static half of the M9 pairing: this address type declares feature granularity.
+    pub const KIND: TargetKind = TargetKind::Feature;
+}
+
+/// One property of one feature, the finest granularity the ladder measures a conflict on (M9).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum PropertyTarget {
+    #[schemars(title = "PropertyAddress")]
     Property {
         #[tsify(type = "string")]
         tenant_id: Uuid,
@@ -112,6 +168,28 @@ pub enum TargetPath {
         feature_id: Uuid,
         property: String,
     },
+}
+
+impl PropertyTarget {
+    /// The static half of the M9 pairing: this address type declares property granularity.
+    pub const KIND: TargetKind = TargetKind::Property;
+}
+
+/// Any one address an operation may target (M9), and the union the disjointness decision in
+/// `crate::granularity` consumes.
+// Untagged because each member already carries its own `kind` as a validated literal, which is
+// what lets a catalog member's target field be typed to one member rather than to this union.
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+#[serde(untagged)]
+// Deleting this silently degrades the generated Pydantic union to routing by trial
+// (ADR-0009 section 5).
+#[schemars(extend("discriminator" = {"propertyName": "kind"}))]
+pub enum TargetPath {
+    Tenant(TenantTarget),
+    Project(ProjectTarget),
+    Layer(LayerTarget),
+    Feature(FeatureTarget),
+    Property(PropertyTarget),
 }
 
 /// Present when the write reached the queue through an agent acting for the author, absent when
