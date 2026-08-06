@@ -2,9 +2,9 @@ import type { ClientHalf, PropertyTarget } from '@mapsift/core';
 
 /**
  * The catalog as `apps/web` reads it: M9's closed set over the core-generated declaration and no
- * other (ADR-0009 sections 3 and 4). Nothing below declares a catalog type of its own; the one
- * type name it needs is indexed out of the generated one, because a second declaration is the
- * defect that rule exists to catch.
+ * other (ADR-0009 sections 3 and 4). Nothing below declares a catalog type of its own; every type
+ * name it needs comes from the generated declaration, imported or indexed out of it, because a
+ * second declaration is the defect that rule exists to catch.
  *
  * Every assertion here is a compile-time one; the runtime `expect` calls exist to give each a test
  * to live in. `ng build web` excludes spec files (`tsconfig.app.json`), so `ng test` is the gate
