@@ -58,6 +58,12 @@ the nested ancestor-descendant disjointness case is **deferred to the conflict s
 the granularity module doc; and the `CATALOG` order is **canonical and append-only**, the const's rustdoc
 owning the rule once it exists.
 
+2026-08-06, closing the implementation review (`specs/log.md` is the record): the tsify flatten annotation
+is **ratified** (ADR-0009 section 3, dated note); the mis-paired-target TS test is corrected by the
+**named-const rewrite**, the one authorized test edit of the round; `TargetKind` keeps its five rungs; the
+OperationType-to-Operation drift witness is recorded debt triggered by the next catalog member; and the
+schema narrowing carries its re-check at MAP-9 and MAP-10 pickup.
+
 ## Evidence handed over
 
 From the MAP-7 rounds (2026-08-05 and 2026-08-06), living in `specs/log.md` and `dependencies.md`
