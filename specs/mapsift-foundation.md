@@ -1,6 +1,6 @@
 # Mapsift Foundation
 
-> **Status:** living document, foundation v0.17 (2026-08-03). Supersedes v0.16; revisions in section 15.
+> **Status:** living document, foundation v0.17.1 (2026-08-05). Supersedes v0.17; revisions in section 15.
 > **Authority:** this is the single source of truth for Mapsift. Every other document
 > (PRD, ADRs, per-task specs, CLAUDE.md constraints, Linear issues) derives from this
 > file and must not contradict it. When a derived document and this file disagree, this
@@ -1575,7 +1575,10 @@ Breaking one is a regression, not a tradeoff. (The exact thresholds marked "targ
 - **I4, tenant isolation:** every data access carries the **tenant** (the top container of an account, a
   personal user account or an organization), enforced **at the SQL layer** by a tenant identifier checked on
   every row (PostgreSQL row-level security or per-tenant views) so that direct-to-PostGIS readers such as the
-  tile server are covered, not only the ORM; cross-tenant read or write is impossible. The **workspace** and
+  tile server are covered, not only the ORM; cross-tenant read or write is impossible, with one deliberate
+  exception: the authenticated user's own `membership` rows are readable across tenants, because "which
+  tenants am I in" is the login path's first question and those rows reveal only the reader's own places
+  (decided 2026-08-05; mechanism in ADR-0005 section 8). The **workspace** and
   **project** below the tenant are organization and permission, not isolation; confidentiality within a tenant
   (between its clients or projects) is the permission model's job, not a second SQL wall. (Revised v0.11: the
   tenant is the top-of-account container, not the project; see section 9.)
@@ -2293,6 +2296,15 @@ state, so the two never diverge. The procedure lives in the project's tracking s
     constitution, where it still read as a costed consequence of a closed decision. It now carries its own
     warning: no source, no date, illustration only, and Hort is the real evidence while not measuring the
     cross-runtime boundary at all.
+- **2026-08-05, foundation v0.17.1 (patch: the wall's single deliberate exception is named in I4).** Annotation
+  only, on the v0.5.1, v0.8.1 and v0.11.1 precedent: no decision, invariant intent, or open question moved.
+  I4's letter said cross-tenant read or write is impossible, while M1 has required since v0.11 that a user
+  with two tenants hold one identity and two memberships the login path must enumerate before any tenant is
+  bound; the two sentences carried a latent tension that surfaced when MAP-27 gave the login question its
+  mechanism, a second permissive policy on `membership`, `FOR SELECT` only (ADR-0005 section 8). Resolved in
+  intent's favour, with the owner's approval: I4 now names the exception, the authenticated user's own
+  membership rows, readable across tenants because they reveal only the reader's own places. Fan-out: PRD
+  v0.16 (T6.1, M1), `CLAUDE.md` C4 and its version pointers, `log.md`.
 - **2026-08-03, foundation v0.17 (the first vertical slice is chosen, so OQ-4 closes).** A one-change round,
   logged as a round rather than a patch because it closes an open question that the document itself called the
   next planning step. No other decision was reopened.

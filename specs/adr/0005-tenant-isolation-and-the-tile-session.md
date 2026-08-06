@@ -4,7 +4,7 @@
 - **Deciders:** the owner, on the probes recorded below
 - **Authority:** derives from `specs/mapsift-foundation.md` v0.17 (section 9, invariant I4) and `specs/PRD.md` v0.12 (T6.1, T6.5, N2, M1). Where this ADR and the foundation disagree, the foundation wins and this ADR is the one that is wrong.
 - **Supersedes:** nothing. **Superseded by:** nothing.
-- **Delivers:** MAP-1, and item 1 of the ADR agenda in `specs/dependencies.md` section 6.
+- **Delivers:** MAP-1, and item 1 of the ADR agenda in `specs/dependencies.md` section 6; section 8 (added 2026-08-05) delivers the MAP-27 decision.
 
 ---
 
@@ -126,6 +126,30 @@ The test PRD N2 requires is **by construction rather than by diligence**, and it
 
 **Which tables are inside the wall.** Every row that belongs to a tenant, per M1, which includes `tenant` itself, `membership`, `workspace`, `project`, `layer` and `feature`. The **global user** record is deliberately outside it, because a user spans tenants by design (M1) and its confidentiality is the permission layer's job rather than a second wall.
 
+### 8. The login question: a second permissive policy on `membership`, keyed on the authenticated user
+
+> **Added (2026-08-05, owner decision, MAP-27), under the revised ADR convention (ADR-0001).** A new decision in the ADR that owns the wall, because a reader who opens this document must not conclude the wall forbids the login path's first question. Decisions 1 to 7 stand untouched.
+
+**The question this answers.** "Which tenants does this user belong to" is the first question the login path asks, and it is cross-tenant by nature: at login there is no tenant to bind, because choosing one is what the answer is for. `membership` is inside the wall, so the tenant-keyed policy of decision 3 answers nothing before a tenant is bound. PRD M1 makes the user the global identity that may belong to several tenants, so the question is legitimate, and it is the only legitimate question of that shape.
+
+**The mechanism.** `membership` gains a second **permissive** policy, **`FOR SELECT` only**, keyed on a second parameter bound beside the tenant:
+
+```sql
+USING (user_id = nullif(current_setting('mapsift.user_id', true), '')::uuid)
+```
+
+Permissive policies on one table combine with `OR`, PostgreSQL's own rule, so the tenant policy answers exactly as it does today and this one adds exactly one thing: the session user's own rows. `FOR SELECT` is load-bearing rather than stylistic: a `FOR ALL` variant would carry a `WITH CHECK` letting any user insert themselves into any tenant, a self-service door through the wall. Writes on `membership` stay under the tenant policy alone, and the catalogue case below pins that.
+
+**The binding.** `mapsift.user_id` obeys decision 3 unchanged: transaction-scoped (`is_local` true, always), parameterised and never interpolated, read through the guarded `nullif` cast because measurement C applies to it identically, and bound **once per authenticated request beside the tenant binding and the N9 correlation keys** rather than by each caller (owner decision, 2026-08-05). The accepted consequence is named rather than implied: in a tenant-bound transaction a `membership` query can also see the session user's own rows from other tenants. Those rows reveal only the reader's own places, which the reader is entitled to in each of those tenants separately, so what I4 protects, one tenant's data against another tenant's session, is untouched.
+
+**The guard.** Decision 4 extends to the new parameter, keyed on what this read actually needs: the login-question read requires the **user** binding, so the application refuses to run it without one in force, whatever else is bound, raising rather than returning an empty result, because answering from the tenant policy alone would hand back every member of that tenant as the reader's own. With the user binding in force, an empty answer is a genuine answer, a user who belongs nowhere, and is returned rather than raised. With both bindings in force the read answers the reader's own rows alone, including those held in other tenants: the two permissive policies combine wider than the question, so the read path narrows to its own key, and that narrowing is witnessed by test rather than trusted to a comment, as are the binding discipline's two arms, the same-user re-entry that is a no-op and the second user that is refused. (Refined 2026-08-05 closing the Window A review: the original sentence said "neither binding" and left the tenant-only refusal and the genuine-absence answer unstated. Extended the same day closing the Window B review, which traced the both-bound state and found its correct answer hanging on one unwitnessed line whose deletion left the whole suite green.)
+
+**The index.** The new query pattern is by user with no tenant bound, so `membership` carries an index on the user column (structural performance, foundation section 10; decision 5's tenant-leading rule governs tenant-scoped queries and does not apply to this one).
+
+**The surface, and where this changes (owner decision, 2026-08-05).** No HTTP surface consumes this yet, deliberately: no authentication surface exists in the data-foundation milestone, and a login endpoint here would drag T6 surface work into it. The deliverable is the policy plus the read path in `accounts` (a selector, ADR-0007), which is the seam the login surface will consume. The trigger for change is the authentication surface itself: when it is built, the endpoint consumes this same selector and nothing about the wall moves. The exit is tracked as MAP-30 rather than remembered, per the owner's rule that a temporary exception leaves when its condition appears.
+
+**The test, extending decision 7's list with case 6.** A user with memberships in two tenants enumerates exactly those two with no tenant bound; a user cannot enumerate anybody else's memberships by any path; without the user binding in force the read path raises rather than returning empty, whatever else is bound, and with it in force a user who belongs nowhere gets an empty answer rather than a raise; and the catalogue pins the wall's whole policy surface, the expected set per table with the exception's `FOR SELECT` command, reading a key that lives in `WITH CHECK` as much as one in `USING`, so a widening of any spelling fails the build, including one arriving as a separate `FOR INSERT` policy whose key exists only in `WITH CHECK`; with both bindings in force the read answers only the reader's own rows; and the user binding's two discipline arms are witnessed the way the tenant scope's are. Cases 1 to 5 stand unchanged. (Case 6's catalogue arm restated 2026-08-05 closing the Window A review, which proved the original wording satisfiable by a scan that misses exactly the door this section names.)
+
 ---
 
 ## Consequences
@@ -143,4 +167,4 @@ The test PRD N2 requires is **by construction rather than by diligence**, and it
 
 **What this forecloses.** Per-tenant views as an isolation mechanism, and any tile server that cannot carry a verified tenant claim into its database session. Nothing else the foundation left open: the tile server product, the identifier variant (MAP-2), and the permission model above the wall are untouched here.
 
-**What must be revisited, and when.** If a measured need ever forces a connection pool that does not preserve transaction boundaries between the application and PostgreSQL, decision 3's transaction-scoped binding is exactly what such a pool breaks, and this ADR is superseded rather than edited. If PostgreSQL ever makes a custom parameter revocable, measurement E's limit narrows and decision 2 can be tightened.
+**What must be revisited, and when.** If a measured need ever forces a connection pool that does not preserve transaction boundaries between the application and PostgreSQL, decision 3's transaction-scoped binding is exactly what such a pool breaks, and this ADR is amended with a dated note. If PostgreSQL ever makes a custom parameter revocable, measurement E's limit narrows and decision 2 can be tightened.
