@@ -47,6 +47,7 @@
           ]
         },
         "mutation_number": {
+          "description": "The per-client monotonic axis the server dedups a resent flush by (C12).",
           "type": "integer",
           "format": "uint64",
           "minimum": 0
@@ -59,153 +60,87 @@
           "type": "integer",
           "format": "uint32",
           "minimum": 0
-        },
-        "operation_type": {
-          "type": "string"
-        },
-        "payload": {
-          "description": "Opaque to the core: the operation type says how to read it, over the catalog M9 owns."
-        },
-        "target": {
-          "$ref": "#/$defs/TargetPath"
         }
       },
+      "discriminator": {
+        "propertyName": "operation_type"
+      },
+      "oneOf": [
+        {
+          "title": "FeatureCreateOperation",
+          "type": "object",
+          "properties": {
+            "operation_type": {
+              "type": "string",
+              "const": "feature.create"
+            },
+            "payload": {
+              "$ref": "#/$defs/FeatureCreatePayload"
+            },
+            "target": {
+              "$ref": "#/$defs/FeatureTarget"
+            }
+          },
+          "required": [
+            "operation_type",
+            "target",
+            "payload"
+          ]
+        },
+        {
+          "title": "FeatureGeometrySetOperation",
+          "type": "object",
+          "properties": {
+            "operation_type": {
+              "type": "string",
+              "const": "feature.geometry.set"
+            },
+            "payload": {
+              "$ref": "#/$defs/FeatureGeometrySetPayload"
+            },
+            "target": {
+              "$ref": "#/$defs/PropertyTarget"
+            }
+          },
+          "required": [
+            "operation_type",
+            "target",
+            "payload"
+          ]
+        }
+      ],
       "required": [
         "operation_id",
         "client_id",
         "mutation_number",
-        "operation_type",
         "operation_schema_version",
         "conflict_rule_version",
-        "target",
-        "payload",
         "author_session_material",
         "created_at",
         "mediation"
       ]
     },
-    "MediationProvenance": {
-      "description": "Present when the write reached the queue through an agent acting for the author, absent when\nthe author wrote directly (C14).",
+    "FeatureCreatePayload": {
+      "description": "What creating a feature carries: nothing beyond the address it creates. Everything the feature\nthen holds arrives as the operations that address it (M9, M15).",
+      "type": "object"
+    },
+    "FeatureGeometrySetPayload": {
+      "description": "The whole geometry the feature is being set to, never a vertex delta, because\npreserve-not-discard needs both whole versions presentable (M9, C7).",
       "type": "object",
       "properties": {
-        "agent": {
-          "type": "string"
+        "geometry": {
+          "description": "A GeoJSON-shaped structure in the M5 storage frame. Opaque to the core until the boundary\nencoding is decided (MAP-33)."
         }
       },
       "required": [
-        "agent"
+        "geometry"
       ]
     },
-    "ServerHalf": {
-      "description": "What the server added when it applied the operation. Authoritative, and never merged into the\nclient's half.",
-      "type": "object",
-      "properties": {
-        "applied_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "applied_rule_version": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
-        },
-        "feature_version": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
-        },
-        "legal_weight_in_force": {
-          "type": "boolean"
-        },
-        "verdict": {
-          "$ref": "#/$defs/Verdict"
-        }
-      },
-      "required": [
-        "applied_at",
-        "feature_version",
-        "applied_rule_version",
-        "legal_weight_in_force",
-        "verdict"
-      ]
-    },
-    "TargetPath": {
-      "description": "The one address an operation targets, at the granularity the conflict unit is measured on\n(M9). Each variant carries its ancestors, so an address is resolvable without a lookup.",
-      "discriminator": {
-        "propertyName": "kind"
-      },
+    "FeatureTarget": {
+      "description": "A whole-feature address, carrying its ancestors so it resolves without a lookup (M9).",
       "oneOf": [
         {
-          "title": "TenantTarget",
-          "type": "object",
-          "properties": {
-            "kind": {
-              "type": "string",
-              "const": "tenant"
-            },
-            "tenant_id": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "required": [
-            "kind",
-            "tenant_id"
-          ]
-        },
-        {
-          "title": "ProjectTarget",
-          "type": "object",
-          "properties": {
-            "kind": {
-              "type": "string",
-              "const": "project"
-            },
-            "project_id": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "tenant_id": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "required": [
-            "kind",
-            "tenant_id",
-            "project_id"
-          ]
-        },
-        {
-          "title": "LayerTarget",
-          "type": "object",
-          "properties": {
-            "kind": {
-              "type": "string",
-              "const": "layer"
-            },
-            "layer_id": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "project_id": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "tenant_id": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "required": [
-            "kind",
-            "tenant_id",
-            "project_id",
-            "layer_id"
-          ]
-        },
-        {
-          "title": "FeatureTarget",
+          "title": "FeatureAddress",
           "type": "object",
           "properties": {
             "feature_id": {
@@ -236,9 +171,26 @@
             "layer_id",
             "feature_id"
           ]
-        },
+        }
+      ]
+    },
+    "MediationProvenance": {
+      "description": "Present when the write reached the queue through an agent acting for the author, absent when\nthe author wrote directly (C14).",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent"
+      ]
+    },
+    "PropertyTarget": {
+      "description": "One property of one feature, the finest granularity the ladder measures a conflict on (M9).",
+      "oneOf": [
         {
-          "title": "PropertyTarget",
+          "title": "PropertyAddress",
           "type": "object",
           "properties": {
             "feature_id": {
@@ -274,6 +226,40 @@
             "property"
           ]
         }
+      ]
+    },
+    "ServerHalf": {
+      "description": "What the server added when it applied the operation. Authoritative, and never merged into the\nclient's half.",
+      "type": "object",
+      "properties": {
+        "applied_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "applied_rule_version": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "feature_version": {
+          "description": "The per-feature axis that orders and detects conflict on one feature (M10).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "legal_weight_in_force": {
+          "type": "boolean"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "applied_at",
+        "feature_version",
+        "applied_rule_version",
+        "legal_weight_in_force",
+        "verdict"
       ]
     },
     "Verdict": {
