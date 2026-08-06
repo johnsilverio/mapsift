@@ -31,13 +31,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
 
 - **`mapsift-foundation.md`** — the constitution and single source of truth: the what and the why, the
   invariants (I1 to I11, each with a scar), and the open-question log (OQ-1 to OQ-24). Every other document
-  derives from it and must not contradict it. Currently at v0.17.
+  derives from it and must not contradict it.
 - **`PRD.md`** — the product requirements, one layer above code (the how). Derives from the foundation; turns
   closed decisions into pass/fail requirements and marks open questions as gaps. Drafted: Layer 1 (native
   capability floor), the anti-requirements, the extension catalog, Layer 2 (transversal system behaviors,
   T1 to T9), Layer 3 (data model and contracts, M1 to M16), Layer 4 (surfaces and platform, S1 to S10), the
   non-functional requirements (N1 to N12), and the design system (U1 to U12). The prose is complete; section 10
-  is the document's own gap list (decisions, artifacts, and measurements). Currently at v0.15.
+  is the document's own gap list (decisions, artifacts, and measurements).
 - **`tasks/`** — the spec-per-task the authority chain ends at, one file per Linear issue that needs one, named
   by its issue ID. It **assembles and cites** what the foundation, the PRD and the ADRs already decided into the
   one contract two windows read, and it decides nothing of its own; where it disagrees with a document it cites,
