@@ -22,6 +22,22 @@ compose := "docker compose -f infra/compose.yaml --env-file infra/.env"
 # fix; it trades the crash for a cache that returns malformed load results.
 run := compose + " run --rm --no-deps -e CI=1"
 
+# The Rust-to-Python contract of PRD M12, whose two ends live in two containers that cannot see
+# each other: the api service bind-mounts apps/api and the CI api image copies it, so libs/core
+# is not on its filesystem either way, and the schema is mounted in.
+#
+# The output path is the load-bearing one. ruff discovers its configuration by walking up from the
+# file it is formatting, so an output outside apps/api never finds that pyproject.toml, formats at
+# ruff's default width of 88 instead of this project's 100, and fails --check against the
+# committed file (ADR-0009 section 2).
+schema := "libs/core/schema/envelope.schema.json"
+emit-schema := run + " -T core cargo run --locked --quiet --bin emit-envelope-schema"
+codegen := run + " -T --volume " + justfile_directory() + "/libs/core/schema:/schema:ro api" + \
+    " datamodel-codegen --input /schema/envelope.schema.json --input-file-type jsonschema" + \
+    " --output mapsift/sync/envelope.py --output-model-type pydantic_v2.BaseModel" + \
+    " --target-python-version 3.13 --use-annotated --use-union-operator --use-title-as-name" + \
+    " --disable-timestamp --formatters ruff-check ruff-format"
+
 # Show the recipes.
 default:
     @just --list --unsorted
@@ -109,15 +125,27 @@ test: core-build ui-build
     {{run}} core cargo test --locked
     {{run}} web npx ng test --watch=false
 
-# Two directions (ADR-0001 section 5, PRD M12), and only one of them has an artifact today.
+# Three directions (ADR-0001 section 5, PRD M12), and one of them still has no artifact.
 
-# Regenerate the cross-language contracts and fail on any drift.
+# Verify every generated cross-language contract is what its source produces right now.
 contracts: core-build
     @test -s libs/core/pkg/mapsift_core.d.ts
     @echo "rust to typescript: regenerated above by wasm-pack, with the definitions emitted from the Rust types"
     @echo "  built reproducibly and untracked, so no committed copy exists to drift from it"
+    emitted="$(mktemp)"; trap 'rm -f "$emitted"' EXIT; \
+      {{emit-schema}} > "$emitted"; \
+      diff -u {{schema}} "$emitted" \
+        || (echo "stale {{schema}}: the Rust types moved. run 'just contracts-generate'" >&2; exit 1)
+    @echo "rust to json schema: the committed schema is what the Rust types emit"
+    {{codegen}} --check
     @echo "openapi to typescript: no generated artifact yet, apps/api has a schema and no consumer"
-    @echo "a scoped 'git diff --exit-code' over the generated paths lands here the day one is committed"
+
+# Rewrite the generated contracts from their sources. `just contracts` is what fails without it.
+contracts-generate: core-build
+    emitted="$(mktemp)"; trap 'rm -f "$emitted"' EXIT; \
+      {{emit-schema}} > "$emitted"; \
+      cp "$emitted" {{schema}}
+    {{codegen}}
 
 fmt:
     {{run}} api ruff format .

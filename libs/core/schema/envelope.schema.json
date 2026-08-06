@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AppliedOperation",
+  "description": "An operation the server has applied: both halves, side by side and separately addressable.",
+  "type": "object",
+  "properties": {
+    "client": {
+      "$ref": "#/$defs/ClientHalf"
+    },
+    "server": {
+      "$ref": "#/$defs/ServerHalf"
+    }
+  },
+  "required": [
+    "client",
+    "server"
+  ],
+  "$defs": {
+    "ClientHalf": {
+      "description": "An operation as the client authored it. Every field here is the client's claim; nothing in it\nis authoritative until the server half exists beside it.",
+      "type": "object",
+      "properties": {
+        "author_session_material": {
+          "description": "Opaque to the core: the proof mechanism is OQ-18's and the server is what verifies it."
+        },
+        "client_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "conflict_rule_version": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "mediation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MediationProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mutation_number": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "operation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "operation_schema_version": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "operation_type": {
+          "type": "string"
+        },
+        "payload": {
+          "description": "Opaque to the core: the operation type says how to read it, over the catalog M9 owns."
+        },
+        "target": {
+          "$ref": "#/$defs/TargetPath"
+        }
+      },
+      "required": [
+        "operation_id",
+        "client_id",
+        "mutation_number",
+        "operation_type",
+        "operation_schema_version",
+        "conflict_rule_version",
+        "target",
+        "payload",
+        "author_session_material",
+        "created_at",
+        "mediation"
+      ]
+    },
+    "MediationProvenance": {
+      "description": "Present when the write reached the queue through an agent acting for the author, absent when\nthe author wrote directly (C14).",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent"
+      ]
+    },
+    "ServerHalf": {
+      "description": "What the server added when it applied the operation. Authoritative, and never merged into the\nclient's half.",
+      "type": "object",
+      "properties": {
+        "applied_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "applied_rule_version": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "feature_version": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "legal_weight_in_force": {
+          "type": "boolean"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "applied_at",
+        "feature_version",
+        "applied_rule_version",
+        "legal_weight_in_force",
+        "verdict"
+      ]
+    },
+    "TargetPath": {
+      "description": "The one address an operation targets, at the granularity the conflict unit is measured on\n(M9). Each variant carries its ancestors, so an address is resolvable without a lookup.",
+      "discriminator": {
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "title": "TenantTarget",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "tenant"
+            },
+            "tenant_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "kind",
+            "tenant_id"
+          ]
+        },
+        {
+          "title": "ProjectTarget",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "project"
+            },
+            "project_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tenant_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "kind",
+            "tenant_id",
+            "project_id"
+          ]
+        },
+        {
+          "title": "LayerTarget",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "layer"
+            },
+            "layer_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "project_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tenant_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "kind",
+            "tenant_id",
+            "project_id",
+            "layer_id"
+          ]
+        },
+        {
+          "title": "FeatureTarget",
+          "type": "object",
+          "properties": {
+            "feature_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "kind": {
+              "type": "string",
+              "const": "feature"
+            },
+            "layer_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "project_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tenant_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "kind",
+            "tenant_id",
+            "project_id",
+            "layer_id",
+            "feature_id"
+          ]
+        },
+        {
+          "title": "PropertyTarget",
+          "type": "object",
+          "properties": {
+            "feature_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "kind": {
+              "type": "string",
+              "const": "property"
+            },
+            "layer_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "project_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "property": {
+              "type": "string"
+            },
+            "tenant_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "kind",
+            "tenant_id",
+            "project_id",
+            "layer_id",
+            "feature_id",
+            "property"
+          ]
+        }
+      ]
+    },
+    "Verdict": {
+      "description": "What the server decided about the operation. A closed set, declared by M13 and grown\nadditively.",
+      "type": "string",
+      "enum": [
+        "applied"
+      ]
+    }
+  }
+}
