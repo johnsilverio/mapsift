@@ -93,7 +93,7 @@ root_package = "mapsift"
 name = "Mapsift package tiers"
 type = "layers"
 containers = ["mapsift"]
-layers = ["layers", "accounts", "common"]
+layers = ["sync", "layers", "accounts", "common"]
 exhaustive = true
 
 # One contract per package, and the split is load-bearing rather than tidy: a `protected` contract
