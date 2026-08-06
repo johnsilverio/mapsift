@@ -7,8 +7,9 @@ ADR-0007 section 7 (the `sync` package arrives here).
 The generated model's field list is deliberately not re-asserted: a generated type is guaranteed
 by the generator plus the freshness gate, and a hand-written copy of its shape is the second copy
 `specs/testing.md` section 7 names. What is pinned here is what the gate cannot see, because
-`datamodel-code-generator` produces a green file in both cases: whether the discriminator survived
-the generator, and whether the opaque payload came through un-narrowed.
+`datamodel-code-generator` produces a green file in both cases: whether each target variant
+survived the generator carrying its `kind` as a required literal, and whether the opaque session
+material came through un-narrowed.
 """
 
 from typing import Any
@@ -30,11 +31,12 @@ A_CLIENT_HALF: JsonObject = {
     "operation_schema_version": 3,
     "conflict_rule_version": 5,
     "target": {
-        "kind": "feature",
+        "kind": "property",
         "tenant_id": "7c0e2b81-9d4f-4a63-b5e8-0c1d2e3f4a5b",
         "project_id": "2b6d4f19-3a8c-4e50-9f27-6d8b1c3a5e70",
         "layer_id": "5e9a7c30-1f4b-4d82-a63e-8b0c2d4f6a19",
         "feature_id": "c4a1e7b2-8d36-4f09-95c7-1e3a5b7d9f02",
+        "property": "geometry",
     },
     "payload": {
         "geometry": {
@@ -81,9 +83,10 @@ def test_the_generated_reader_reaches_both_halves_of_an_applied_operation() -> N
     assert applied.server.model_dump(mode="json") == A_SERVER_HALF
 
 
-def test_a_target_path_outside_the_closed_set_is_refused_by_the_discriminator() -> None:
-    """ADR-0009 section 5. The tell is the error type rather than the fact that something raised:
-    a discriminator that degraded to a plain union still refuses this input, member by member, so
+def test_a_target_path_outside_the_closed_set_is_refused_by_its_variants_kind_literal() -> None:
+    """ADR-0009 section 5, over the concrete variant MAP-8's structural pairing types this field
+    to. The tell is the error type rather than the fact that something raised: a variant whose
+    `kind` degraded from a literal to a plain string still refuses some inputs, so
     `pytest.raises(ValidationError)` alone would pass over the defect this test exists to catch."""
     addressed_at_a_kind_nobody_declared = {
         **A_CLIENT_HALF,
@@ -93,37 +96,22 @@ def test_a_target_path_outside_the_closed_set_is_refused_by_the_discriminator() 
     with pytest.raises(ValidationError) as refused:
         ClientHalf.model_validate(addressed_at_a_kind_nobody_declared)
 
-    assert [error["type"] for error in refused.value.errors()] == ["union_tag_invalid"]
+    assert [error["type"] for error in refused.value.errors()] == ["literal_error"]
 
 
-def test_a_target_path_carrying_no_kind_at_all_is_refused_by_the_discriminator() -> None:
-    """ADR-0009 section 5, the other half: an address with nothing to route on is not guessed."""
-    unaddressed = {
-        **A_CLIENT_HALF,
-        "target": {"tenant_id": "7c0e2b81-9d4f-4a63-b5e8-0c1d2e3f4a5b"},
-    }
+def test_a_target_path_carrying_no_kind_at_all_is_refused_by_its_variants_kind_literal() -> None:
+    """ADR-0009 section 5, the other half: the variant carries its `kind` as a required key, so an
+    address that omits it is refused rather than assumed to be whichever variant is in scope."""
+    unaddressed_target = dict(A_CLIENT_HALF["target"])
+    del unaddressed_target["kind"]
 
     with pytest.raises(ValidationError) as refused:
-        ClientHalf.model_validate(unaddressed)
+        ClientHalf.model_validate({**A_CLIENT_HALF, "target": unaddressed_target})
 
-    assert [error["type"] for error in refused.value.errors()] == ["union_tag_not_found"]
-
-
-def test_the_opaque_payload_crosses_the_generated_reader_unchanged() -> None:
-    """ADR-0009 section 5: a payload the generated reader narrowed or flattened fails here."""
-    a_payload_no_generator_can_type = {
-        "geometry": {"type": "Point", "coordinates": [-47.9, -15.8]},
-        "captured_by": ["gnss", 0.03],
-        "note": None,
-    }
-
-    parsed = ClientHalf.model_validate(
-        {**A_CLIENT_HALF, "payload": a_payload_no_generator_can_type}
-    )
-
-    assert parsed.model_dump(mode="json")["payload"] == a_payload_no_generator_can_type
+    assert [error["type"] for error in refused.value.errors()] == ["missing"]
 
 
+# The payload-opacity pin retired here with MAP-8, which types the payload per catalog member (M9).
 def test_the_opaque_session_material_crosses_the_generated_reader_unchanged() -> None:
     """ADR-0009 section 5, and OQ-18 still owns the shape: a reader that typed this field would
     pin a decision nobody has taken."""
