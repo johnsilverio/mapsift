@@ -114,7 +114,7 @@ There is no root `tests/` folder for application tests. `tests/` at the reposito
 
 ## 6. Traceability: from a requirement to a test
 
-Every PRD acceptance criterion is the upstream of a test, and the link is written rather than remembered: **a test that implements a criterion names its ID** (a C-test, a T, M, S, N or U requirement, or the family item it comes from). Two things follow. A requirement with no test is visible by grep. And a test with no requirement is a candidate for deletion, because it is asserting something nobody agreed to.
+Every PRD acceptance criterion is the upstream of a test, and the link is written rather than remembered: **a test that implements a criterion names its ID** (a C-test, a T, M, S, N or U requirement, or the family item it comes from). The granularity follows the module (settled 2026-08-05, after the rule as first written admitted both readings): the ID is named **per test** where a module's tests differ in what they cover, and **once at the module** where the whole module serves one set. Two things follow. A requirement with no test is visible by grep. And a test with no requirement is a candidate for deletion, because it is asserting something nobody agreed to.
 
 When a requirement changes, the test changes with it in the same pass. That is the fan-out rule applied to the suite.
 

@@ -20,6 +20,8 @@ An operation travels in one envelope defined once in `libs/core`, the client hal
 
 2026-08-05, all registered before this file was written: the toolchain, its guard rules and the single-TypeScript-shape rule in ADR-0009 (with `dependencies.md` section 2 corrected in the same round); the payload opaque with the target path typed per M9, the catalog staying MAP-8's (`specs/log.md`). This is the pointer, not the record.
 
+2026-08-05, closing the Window A review (`specs/log.md` is the record): the server half carries M7's classification in force as the **effective boolean**, the derived record staying on the feature per M7's own shape split, any future derivation arriving as an additive field and never a repurpose; an absent mediation serializes as **explicit null**, because the envelope is self-describing (M8); and `operation_type` is a **string in this slice**, MAP-8 narrowing it to the closed catalog before any deployed consumer exists, so no T9.1 ceremony attaches.
+
 ## Evidence handed over
 
 All from the MAP-31 research round of 2026-08-05, living in `dependencies.md` section 2 with sources; repeated here only because a window will trip on them mid-flight:
