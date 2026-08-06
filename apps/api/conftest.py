@@ -45,8 +45,9 @@ def refused_with(sqlstate: str) -> Iterator[None]:
 
 @dataclass(frozen=True)
 class Party:
-    """One tenant holding one workspace and one project: the smallest shape the wall reads on."""
+    """One user in one tenant, holding one workspace and one project: what the wall reads on."""
 
+    user_id: UUID
     tenant_id: UUID
     workspace_id: UUID
     project_id: UUID
@@ -65,7 +66,12 @@ def _party(email: str, name: str) -> Party:
             name=name,
         )
 
-    return Party(tenant_id=membership.tenant_id, workspace_id=workspace_id, project_id=project_id)
+    return Party(
+        user_id=membership.user_id,
+        tenant_id=membership.tenant_id,
+        workspace_id=workspace_id,
+        project_id=project_id,
+    )
 
 
 def second_project_of(party: Party) -> UUID:
