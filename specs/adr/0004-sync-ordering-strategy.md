@@ -114,4 +114,4 @@ B is faster and its read is as cheap. It comes back only if **both** of these ho
 
 **What this forecloses.** Nothing the foundation left open, beyond the cross-project atomicity named above.
 
-**What must be revisited, and when.** If measured single-project load approaches the ceiling, or if a cross-project atomic operation is specified, this ADR is superseded rather than edited. The spike's harness is throwaway and is deleted; its test cases are re-derived as real tests inside `apps/api`, and the list of them is in Stage B of the spike document.
+**What must be revisited, and when.** If measured single-project load approaches the ceiling, or if a cross-project atomic operation is specified, this ADR is amended with a dated note. The spike's harness is throwaway and is deleted; its test cases are re-derived as real tests inside `apps/api`, and the list of them is in Stage B of the spike document.

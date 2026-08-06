@@ -9,7 +9,9 @@
 
 ## ADR conventions (stated here because this is the first one)
 
-ADRs live in `specs/adr/`, numbered `NNNN-kebab-title.md` starting at 0001, in Context / Decision / Consequences form. An accepted ADR is **not edited to change its decision**: it is superseded by a later ADR that says what it replaces and why, so the reasoning chain stays readable years later. Editing an accepted ADR is allowed only for a correction that does not alter the decision (a typo, a dead link), the same patch-versus-round rule the foundation uses. An ADR records **code shape**; the *what* and the *why* live in the foundation, the *how* one layer above code lives in the PRD.
+ADRs live in `specs/adr/`, numbered `NNNN-kebab-title.md` starting at 0001, in Context / Decision / Consequences form. **The set reads as the current truth: when a decision changes or grows, its ADR is edited in place, and every such change carries a short dated note saying what changed and why**, so a reader who opens one document gets the live decision with its history beside it, while git carries the full prior text. A new numbered ADR is opened for a new decision area, never for revising an existing one, and a change is never quiet: an edit without its dated note is the drift the fan-out exists to prevent. An ADR records **code shape**; the *what* and the *why* live in the foundation, the *how* one layer above code lives in the PRD.
+
+> **Changed (2026-08-05, owner decision, the MAP-27 round).** The original convention was supersede-not-edit, for the reasoning chain's sake. Reversed because a reader who opens a superseded ADR first and not its successor walks away with a wrong architecture: the chain served the writer where the set must serve the reader, and git history carries the chain either way.
 
 ---
 
@@ -95,4 +97,4 @@ Creating any of these early is not neutral. It invites code to be written agains
 
 **What this forecloses.** Nothing that the foundation left open. This ADR takes no position on sync internals, storage engines, tile serving, identifier format, or wire encodings, all of which are named above as separate ADRs behind the dependency survey.
 
-**What must be revisited, and when.** If the OQ-10 spike changes the shape of the flush endpoint or introduces an ephemeral store (a Client View Record in Redis is one of the three candidate strategies), that is an addition to `infra/` and to `apps/api`, not a change to this baseline. If it ever demanded a separate sync runtime, `apps/sync` appears then, under the rule in section 8, and this ADR is superseded rather than edited.
+**What must be revisited, and when.** If the OQ-10 spike changes the shape of the flush endpoint or introduces an ephemeral store (a Client View Record in Redis is one of the three candidate strategies), that is an addition to `infra/` and to `apps/api`, not a change to this baseline. If it ever demanded a separate sync runtime, `apps/sync` appears then, under the rule in section 8, and this ADR is amended with a dated note.
