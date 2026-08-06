@@ -90,6 +90,28 @@ jobs:
       - name: Test
         run: docker run --rm --network ci -e SECRET_KEY -e DATABASE_URL mapsift-api pytest
 
+      # The Python half of the generated-contract rule (ADR-0001 section 5, ADR-0009 section 2).
+      # The schema is mounted rather than copied into the image because this image is apps/api's
+      # and sees nothing of libs/core. The output path is the one that must not move: ruff
+      # discovers its configuration by walking up from the file it formats, so an output outside
+      # apps/api formats at ruff's default width of 88 instead of this project's 100 and fails
+      # --check against a file that is not stale at all.
+      - name: Contract freshness, the envelope reader against the schema
+        run: |
+          docker run --rm --volume "$PWD/libs/core/schema:/schema:ro" mapsift-api \
+            datamodel-codegen \
+              --input /schema/envelope.schema.json \
+              --input-file-type jsonschema \
+              --output mapsift/sync/envelope.py \
+              --output-model-type pydantic_v2.BaseModel \
+              --target-python-version 3.13 \
+              --use-annotated \
+              --use-union-operator \
+              --use-title-as-name \
+              --disable-timestamp \
+              --formatters ruff-check ruff-format \
+              --check
+
   core:
     name: libs/core
     runs-on: ubuntu-latest
@@ -111,6 +133,14 @@ jobs:
 
       - name: Test
         run: docker run --rm mapsift-core cargo test --locked
+
+      # The schema is a committed artifact, so it drifts the moment the Rust types move without
+      # it. The diff runs on the runner rather than in the image, which keeps `diff` off the
+      # toolchain image's dependency list (ADR-0009 section 2).
+      - name: Contract freshness, the schema against the Rust types
+        run: |
+          docker run --rm mapsift-core cargo run --locked --quiet --bin emit-envelope-schema \
+            | diff -u libs/core/schema/envelope.schema.json -
 
   web:
     name: apps/web and libs/ui

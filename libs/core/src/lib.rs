@@ -6,4 +6,5 @@
 //! See `specs/mapsift-foundation.md` section 9.6.
 
 pub mod boundary;
+pub mod envelope;
 pub mod metric;

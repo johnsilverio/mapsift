@@ -13,11 +13,14 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    # The generator and the formatter it is told to call are pinned exactly and moved together,
+    # because their output is a committed artifact the `--check` gate diffs (ADR-0009 section 2).
+    "datamodel-code-generator==0.72.1",
     "django-stubs[compatible-mypy]>=6.0.7",
     "import-linter>=2.13",
     "pytest>=9.1.1",
     "pytest-django>=4.12.0",
-    "ruff>=0.16.1",
+    "ruff==0.16.1",
 ]
 
 # The gates of ADR-0001 section 6.
@@ -44,6 +47,11 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["ANN201", "ANN001"]
+# The generated envelope reader carries the rustdoc from libs/core across as field descriptions,
+# and a long string literal is the one thing the formatter will not wrap. The file is generated
+# and never hand-edited (M12, ADR-0009 section 2), so the only place a wrap could be applied is
+# the Rust doc comment, which is the contract's documentation rather than this file's formatting.
+"mapsift/sync/envelope.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 # Ruff infers first-party from what is on disk, so an app a red test names before window B
