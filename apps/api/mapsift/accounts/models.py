@@ -10,7 +10,7 @@ from uuid import uuid4
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 
-from mapsift.common.binding import TenantOwnedManager
+from mapsift.common.binding import TenantOwnedManager, session_user_in_force
 
 
 class User(AbstractBaseUser):
@@ -39,6 +39,16 @@ class Tenant(models.Model):
     objects = TenantOwnedManager["Tenant"]()
 
 
+class SessionUserMembershipsManager(models.Manager["Membership"]):
+    """The login question's read path: the session user's own places, in every tenant they hold."""
+
+    def get_queryset(self) -> models.QuerySet["Membership"]:
+        # Not redundant against the policy: where a tenant is also bound the two permissive
+        # policies combine with OR, so dropping this answers with that tenant's whole membership
+        # roll (ADR-0005 section 8).
+        return super().get_queryset().filter(user_id=session_user_in_force())
+
+
 class Membership(models.Model):
     """One user's place in one tenant: their governance role and their licence there (M1, T6.2)."""
 
@@ -60,12 +70,18 @@ class Membership(models.Model):
     licence = models.CharField(max_length=32, choices=Licence.choices)
 
     objects = TenantOwnedManager["Membership"]()
+    of_the_session_user = SessionUserMembershipsManager()
 
     class Meta:
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(
                 fields=["tenant", "user"], name="one_membership_per_user_per_tenant"
             )
+        ]
+        indexes: ClassVar[list[models.Index]] = [
+            # The tenant deliberately does not lead: decision 5's rule governs tenant-scoped
+            # queries, and the login question binds no tenant at all (ADR-0005 section 8).
+            models.Index(fields=["user"], name="membership_by_user_for_login")
         ]
 
 
