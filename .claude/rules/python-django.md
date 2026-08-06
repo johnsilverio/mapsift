@@ -116,6 +116,10 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
   to every query on the table (structural performance, foundation section 10).
 - DO let the application raise when a tenant-scoped query runs with no binding in force. The policy denies
   silently by construction, and a silent empty result is indistinguishable from an empty tenant (N9, N12).
+- The wall's one deliberate exception is the login question (ADR-0005 section 8): `membership` carries a
+  second permissive policy, **`FOR SELECT` only**, keyed on `mapsift.user_id`, which obeys the same binding
+  rules as the tenant parameter. DON'T widen it to `FOR ALL`, and DON'T answer the login question with
+  `BYPASSRLS` or through the owning role.
 
 ## Queries
 
