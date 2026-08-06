@@ -98,8 +98,9 @@ without a root cause, which is what `systematic-debugging` exists for.
 Status lives only in Linear, and **git moves it**, never a human clicking:
 
 - The branch is created **from the Linear issue**, so the identifier is in the name and the link is automatic.
-- Pushed branch moves the issue to In Progress; an opened pull request moves it to In Review; a merge to the
-  default branch moves it to Done.
+- Moving an issue to In Progress is a **human act**, performed through the MCP at pickup on the owner's OK
+  (ADR-0008 section 4, note of 2026-08-06); an opened pull request moves it to In Review; a merge to the
+  default branch moves it to Done. Nothing moves an issue into In Progress automatically.
 - Use a **closing magic word** plus the identifier when the pull request finishes the issue, and the bare
   identifier when it only touches it.
 - A change spanning both stacks is **one** pull request citing `MAP-123`, and it carries the closing word

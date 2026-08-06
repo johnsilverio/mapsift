@@ -56,6 +56,12 @@ AI attribution trailer (the `dev-workflow` skill); the change reaches `main` onl
 with green required checks. Status moves **from git to Linear, one direction**: a pushed branch to In
 Progress, an opened pull request to In Review, a merge to Done.
 
+> **Changed (2026-08-06, closing the divergence the MAP-7 round recorded).** The pushed-branch wire is
+> deliberately not built. Moving an issue to In Progress is a **human act**, performed through the MCP at
+> pickup on the owner's OK, because starting work is a decision rather than a side effect of a push. The
+> letter above is corrected to: an opened pull request moves In Review, a merge moves Done, and nothing
+> moves an issue into In Progress automatically. The GitHub automation stays deliberately narrow.
+
 ### 5. Skills inject their dependencies
 
 A skill that depends on a spec's content to function **loads it from disk at dispatch** with a `!` command
