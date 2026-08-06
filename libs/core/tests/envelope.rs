@@ -23,11 +23,12 @@ const A_CLIENT_HALF: &str = r#"{
   "operation_schema_version": 3,
   "conflict_rule_version": 5,
   "target": {
-    "kind": "feature",
+    "kind": "property",
     "tenant_id": "7c0e2b81-9d4f-4a63-b5e8-0c1d2e3f4a5b",
     "project_id": "2b6d4f19-3a8c-4e50-9f27-6d8b1c3a5e70",
     "layer_id": "5e9a7c30-1f4b-4d82-a63e-8b0c2d4f6a19",
-    "feature_id": "c4a1e7b2-8d36-4f09-95c7-1e3a5b7d9f02"
+    "feature_id": "c4a1e7b2-8d36-4f09-95c7-1e3a5b7d9f02",
+    "property": "geometry"
   },
   "payload": {
     "geometry": {
@@ -93,11 +94,14 @@ fn the_four_envelope_borne_version_axes_are_four_distinct_fields() {
     assert_eq!(server.feature_version, 11);
 }
 
+// Read through the wire form rather than through the field: MAP-8 closes the catalog, so the type
+// stops being a free-standing string field, and what M8 requires the envelope to carry is the type
+// on the wire beside the payload it says how to read.
 #[test]
 fn an_operation_carries_the_type_that_says_how_to_read_its_payload() {
-    let client = a_client_half();
+    let wire = serde_json::to_value(a_client_half()).expect("a client half must serialize");
 
-    assert_eq!(client.operation_type, "feature.geometry.set");
+    assert_eq!(wire["operation_type"], json!("feature.geometry.set"));
 }
 
 #[test]
@@ -136,23 +140,8 @@ fn an_applied_operation_keeps_the_clients_claimed_time_beside_the_servers_stamp(
     assert_eq!(wire["server"]["applied_at"], json!("2026-08-05T12:00:03Z"));
 }
 
-#[test]
-fn the_payload_crosses_uninterpreted_whatever_shape_it_carries() {
-    let a_payload_the_core_has_no_type_for = json!({
-        "geometry": {"type": "Point", "coordinates": [-47.9, -15.8]},
-        "captured_by": ["gnss", 0.03],
-        "note": null
-    });
-    let operation = ClientHalf {
-        payload: a_payload_the_core_has_no_type_for.clone(),
-        ..a_client_half()
-    };
-
-    let wire = serde_json::to_value(&operation).expect("a client half must serialize");
-
-    assert_eq!(wire["payload"], a_payload_the_core_has_no_type_for);
-}
-
+// The payload-opacity pin retired here with MAP-8, which types the payload per catalog member (M9).
+// The session material stays opaque because its shape is OQ-18's.
 #[test]
 fn the_author_session_material_crosses_uninterpreted_whatever_shape_it_carries() {
     let session_material_the_core_has_no_type_for = json!({
@@ -200,24 +189,27 @@ fn a_target_path_parses_into_the_variant_its_kind_names() {
             "property":"geometry"}"#,
     );
 
+    // The patterns wrap rather than destructure because MAP-8 gives each variant a standalone
+    // type: a catalog member's target field is typed to one of them, which is what makes the
+    // type-to-target-kind pairing structural instead of a rule somebody remembers (M9).
     assert!(
-        matches!(tenant, TargetPath::Tenant { .. }),
+        matches!(tenant, TargetPath::Tenant(..)),
         "a tenant address parsed as {tenant:?}"
     );
     assert!(
-        matches!(project, TargetPath::Project { .. }),
+        matches!(project, TargetPath::Project(..)),
         "a project address parsed as {project:?}"
     );
     assert!(
-        matches!(layer, TargetPath::Layer { .. }),
+        matches!(layer, TargetPath::Layer(..)),
         "a layer address parsed as {layer:?}"
     );
     assert!(
-        matches!(feature, TargetPath::Feature { .. }),
+        matches!(feature, TargetPath::Feature(..)),
         "a feature address parsed as {feature:?}"
     );
     assert!(
-        matches!(property, TargetPath::Property { .. }),
+        matches!(property, TargetPath::Property(..)),
         "a property address parsed as {property:?}"
     );
 }

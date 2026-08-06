@@ -14,11 +14,12 @@ const AN_APPLIED_OPERATION: AppliedOperation = {
     operation_schema_version: 3,
     conflict_rule_version: 5,
     target: {
-      kind: 'feature',
+      kind: 'property',
       tenant_id: '7c0e2b81-9d4f-4a63-b5e8-0c1d2e3f4a5b',
       project_id: '2b6d4f19-3a8c-4e50-9f27-6d8b1c3a5e70',
       layer_id: '5e9a7c30-1f4b-4d82-a63e-8b0c2d4f6a19',
       feature_id: 'c4a1e7b2-8d36-4f09-95c7-1e3a5b7d9f02',
+      property: 'geometry',
     },
     payload: {
       geometry: {
