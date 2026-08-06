@@ -130,3 +130,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     orchestrator with sequential dispatch (the method itself stays in `specs/testing.md` section 1), the rule
     that a skill injects the spec it depends on, the one-pull-request rule for crossing changes, the refusal
     of autonomous issue-to-pull-request automation with its reopening gate, and worktrees for parallel work.
+  - **`adr/0009-type-generation-toolchain.md`** — the envelope contract's generation toolchain, decided after
+    a verification round refuted two survey assumptions: Rust is the single source; schemars pinned to JSON
+    Schema 2020-12 emits the schema; datamodel-code-generator generates the Pydantic v2 model with its native
+    check as the CI freshness gate; tsify lands the named TypeScript in the wasm-pack pkg with ts-rs into
+    `libs/contracts` as the recorded exit path; the OpenAPI side references the core-generated type and never
+    redeclares it; the Dart half stays open on the `apps/mobile` trigger.
