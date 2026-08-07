@@ -313,21 +313,12 @@ const result = account.withdraw(amount);
 
 ## Comments
 
-### When to Write Comments
+**This ecosystem's rule is stricter than the generic one, and it lives in `CLAUDE.md` rather than here.**
 
-**Only write comments to explain WHY, not WHAT or HOW.**
-
-Code explains what and how. Comments explain business reasons, non-obvious decisions, or warnings.
-
-```typescript
-// BAD: Explains what (redundant)
-// Add 1 to counter
-counter++;
-
-// GOOD: Explains why
-// Compensate for 0-based indexing in legacy API
-counter++;
-```
+A comment is a **trap**, not an explanation. It earns its place only when the correct code looks wrong, or
+the wrong code looks right, so that without the note somebody "fixes" the line and reintroduces the defect.
+"Explains why" is not the bar, because every line has a why and a rule that admits every line is not a rule.
+The tests a comment has to pass, the citation budget and the worked examples are in `implement` section 5.
 
 ### Prefer Self-Documenting Code
 
