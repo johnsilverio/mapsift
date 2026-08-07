@@ -151,6 +151,13 @@ two levels where a guard clause would do, a boundary with no explicit type, an e
 one that restates a decision the canon documents is a second copy that will drift; one that protects a
 line where the correct code looks wrong has earned its place.
 
+**The replacement is judged on the next reader, never on the line count.** A shorter form that hides a
+tradeoff names the tradeoff or is not raised, and a construct the canon made deliberately verbose is not a
+finding at all: the five single-variant target enums (M9's structural pairing), the hand-spelled
+`#[tsify(type = ...)]` (ADR-0009 section 3), a closed set carrying one variant today (M13) and an empty
+payload struct each look like something to collapse, and each is law. **A review that always recommends the
+shorter form has stopped exercising the judgement this axis exists for.**
+
 ## Stage 3: the finding format, and the bar a finding has to clear
 
 Every finding carries, without exception:
@@ -160,6 +167,13 @@ Every finding carries, without exception:
   axis, named as a judgement call with no identifier;
 - **the failure**: concrete inputs or state, and the wrong output, refusal or corruption that results.
   "This could be a problem" is not a finding.
+
+**On the Craft axis the third element is the replacement, not the failure.** A smell produces no wrong
+output, so demanding one either kills the finding or invites the hedge that fills its place, which is how a
+complexity review degenerates into "have you considered whether this is more complex than necessary". Name
+what replaces it, concretely enough to apply: *twenty-seven-line validator, the standard library ships this*,
+*abstraction with one implementation, inline it until a second exists*, *manual loop building a dict,
+`dict(zip(...))`*. **A Craft finding with no replacement is an opinion, and an opinion goes unstated.**
 
 **Report only what you are confident of.** A reviewer asked to find gaps will produce some even when the
 work is sound, because that is what it was asked to do, and chasing every one of them buys defensive code,
