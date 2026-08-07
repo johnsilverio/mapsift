@@ -72,7 +72,7 @@ Two reasons the run is not optional. A test can be red for the right reason and 
 
 The consequence is the rule that tells you whether a test is good: **a test changes only when a requirement changes.** A test that has to be edited because a function was renamed or a class was split was testing the wrong thing, and it will keep charging that tax on every refactor.
 
-One behaviour per test, one test per behaviour. Arrange, act, assert, in that order and visibly. A test whose name needs "and" is two tests.
+One behaviour per test, one test per behaviour. Arrange, act, assert, in that order and **separated by a blank line rather than labelled with `// Arrange` comments**, which say what the code already says and are the naming failure the comment discipline forbids. A test whose name needs "and" is two tests.
 
 ---
 

@@ -64,7 +64,8 @@ never `test_layer_2`. A name that needs "and" is two tests.
 or `M9` in its name, its docstring or a single comment (`specs/testing.md` section 6). A requirement with no
 test naming it is invisible to grep, which is the property that section exists to buy.
 
-**One behaviour per test, one test per behaviour.** Arrange, act, assert, visibly.
+**One behaviour per test, one test per behaviour.** Arrange, act, assert, separated by a blank line and
+never labelled with `// Arrange` comments (`specs/testing.md` section 2).
 
 ### The three ways a red test still pins the wrong thing
 
