@@ -68,6 +68,11 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     configuration it was taken in, and the block was rewritten mid-task rather than left to be believed.
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
+  - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim
+    verified against it, opened after a review found the first write path had no source for its tenant but
+    the request body. Its evidence block carries the probe that shows Django's default test client hiding the
+    CSRF check, and its out-of-scope block is deliberately long, because a missing line in a sibling's is what
+    caused the round it exists to fix.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
@@ -148,3 +153,10 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     check as the CI freshness gate; tsify lands the named TypeScript in the wasm-pack pkg with ts-rs into
     `libs/contracts` as the recorded exit path; the OpenAPI side references the core-generated type and never
     redeclares it; the Dart half stays open on the `apps/mobile` trigger.
+  - **`adr/0010-the-authenticated-request.md`** — the authenticated request as one decision: Django's session
+    with CSRF on, over a **same-origin premise recorded as a requirement while what satisfies it in production
+    stays open**, the CSRF names left as Django's with the web client adapting because CSRF is a browser
+    concern only, the mechanism confined to one swappable point with the bearer-token exit triggered by the
+    first non-browser client, and the tenant read from the envelope and **verified** against the principal
+    rather than trusted or duplicated. Its measurements are the reason it exists: a suite using Django's
+    default test client goes green while the real browser POST is refused.
