@@ -95,15 +95,39 @@ at every boundary; and error messages that carry the value and the expectation r
 correct code **looks wrong**, or the wrong code looks right, so that without the note somebody "fixes" it
 and reintroduces the defect. An explanation of what the code does is a naming failure.
 
-**A decision the canon already documents is cited by identifier and never restated**: `M9`, `C7`,
-`ADR-0005 section 3`. Restating the reasoning creates a second copy that drifts, because nothing propagates
-into a comment. A docstring on a public surface saying what the thing **guarantees** is a different artifact
-and is welcome.
+**The default is zero, and a file that comes back with no inline comment is the expected result rather than
+a suspicious one.** That default exists because the condition above is judged by the pass that just wrote
+the line, and to whoever just wrote it everything looks slightly less obvious than it is. Two mechanical
+tests before a comment survives.
 
-The worked example of a comment that earns its place is in `CLAUDE.md` and it is this project's own:
-`geodesic_area_unsigned` has an obvious-looking name and returns the rest of the planet for a reversed ring,
-so the line that calls `geodesic_area_signed().abs()` instead carries a note, because without it somebody
-"fixes" it back.
+- **The no-op test** (`writing-for-agents`, pointed at code here): delete the line. If a maintainer would
+  still make the same edit, it was buying nothing.
+- **The ratio**: a comment longer than the code it guards has lost, because the guard is now the thing that
+  needs explaining.
+
+**A citation is a pointer, not a footnote habit.** A decision the canon already documents is cited by
+identifier (`M9`, `C7`, `ADR-0005 section 3`) **once, on the line whose shape that decision made
+surprising**, and never repeated on every line the decision touched. Restating the reasoning creates a
+second copy that drifts, because nothing propagates into a comment. A docstring on a public surface saying
+what the thing **guarantees** is a different artifact and is welcome.
+
+```rust
+// ❌  Flatten the operation so its keys sit beside the envelope's
+    #[serde(flatten)]
+
+// ❌  M8: the envelope is self-describing
+    pub operation_schema_version: u32,
+
+// ✅  Not `geodesic_area_unsigned`, whose name lies: it returns the area enclosed under the
+//     ring's own orientation, so a reversed ring yields the rest of the planet. Measured on
+//     a one-degree square: 1.23e10 the right way round, 5.10e14 the wrong way.
+    value: polygon.geodesic_area_signed().abs(),
+```
+
+The first says what the attribute below it already says. The second staples an identifier to a line nobody
+was going to touch, which is the citation budget spent on nothing. **The third is the only shape that
+survives**, and it is real (`libs/core/src/metric.rs`): without it the next reader reaches for the
+obvious-looking name and puts the defect back.
 
 ## 6. Scope
 
