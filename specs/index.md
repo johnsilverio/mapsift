@@ -56,6 +56,18 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     carries the two things reading the code found: `Project` lacks the `UNIQUE (tenant_id, id)` a composite
     reference needs, and `django.contrib.gis` is absent from `INSTALLED_APPS` while the engine is already the
     PostGIS backend.
+  - **`tasks/MAP-7-operation-envelope.md`** — the envelope of M8 as a generated cross-language contract, with
+    the acceptance split between what a Rust test can pin and what only the generated Python and TypeScript
+    forms can, and the ADR-0009 section 5 guard rules carried as part of the task's acceptance.
+  - **`tasks/MAP-8-operation-catalog.md`** — the closed operation catalog of M9 and the one target path per
+    operation, whose review turned the type-to-target-kind pairing from a metadata reading into structural
+    contract and sharpened M9's acceptance in the process.
+  - **`tasks/MAP-9-version-axes.md`** — the five version axes of M10 as five types rather than five field
+    names, and the per-project version reaching code for the first time. Its evidence block is the worked
+    example of the rule this folder's README states: a handed-over measurement was generalized past the
+    configuration it was taken in, and the block was rewritten mid-task rather than left to be believed.
+  - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
+    the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
