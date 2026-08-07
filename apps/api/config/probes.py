@@ -2,6 +2,8 @@
 
 Liveness answers whether the process should be restarted; readiness answers whether this instance
 should receive traffic, and names what is out rather than presenting an outage as a blank result.
+
+Both are exempted from the credential by name (ADR-0010 decision 6's addition).
 """
 
 from http import HTTPStatus
@@ -25,7 +27,7 @@ class ReadinessReport(Schema):
     unavailable: list[str]
 
 
-@router.get("/health", response=ServiceStatus)
+@router.get("/health", response=ServiceStatus, auth=None)
 def health(request: HttpRequest) -> ServiceStatus:
     """Liveness (N12): whether the process should be restarted. It touches no dependency."""
     return ServiceStatus(status="ok")
@@ -34,6 +36,7 @@ def health(request: HttpRequest) -> ServiceStatus:
 @router.get(
     "/ready",
     response={HTTPStatus.OK: ReadinessReport, HTTPStatus.SERVICE_UNAVAILABLE: ReadinessReport},
+    auth=None,
 )
 def ready(request: HttpRequest) -> Status[ReadinessReport]:
     """Readiness (N12): whether this instance should receive traffic, naming whatever is out."""
