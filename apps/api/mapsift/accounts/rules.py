@@ -8,5 +8,7 @@ def resolve_tenant(*, member_of: AbstractSet[UUID], resource_tenant: UUID | None
     """The tenant a session may act in for this resource, or None when it holds no claim to it.
 
     A resource in no tenant the session holds answers exactly as one that does not exist (T6.1).
+    Decides over a membership set already in hand; `the_session_user_holds_a_membership_in` is the
+    read that asks the database about one named tenant.
     """
     return resource_tenant if resource_tenant in member_of else None
