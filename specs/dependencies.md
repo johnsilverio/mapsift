@@ -210,6 +210,28 @@ import a module directly, from an allow-list, which is what turns "a package is 
 and services, never through its models" (ADR-0007 section 3) from a convention a reviewer must remember into
 a build that fails. A sibling project's equivalent ADR could only leave that half as a convention.
 
+### django-ninja's session authentication enforces CSRF, and Django's default test client hides it
+
+*Probed 2026-08-07 at the MAP-34 pickup, against the pinned django-ninja 1.6.2 and Django 5.2.16, by reading
+the installed source and then running the four cases end to end. The decision this fed is **ADR-0010**.*
+
+`django_auth` is `SessionAuth`, which subclasses `APIKeyCookie`, whose `__init__` takes `csrf: bool = True`
+and calls `check_csrf`. Measured: unauthenticated gives `401 {"detail": "Unauthorized"}` with no code of ours
+entered, authenticated through the default `Client()` gives `200`, the same request through
+`Client(enforce_csrf_checks=True)` gives `403 {"detail": "CSRF check Failed"}`, and with the token `200`.
+
+**The particularity that bites:** Django's default test `Client()` carries `enforce_csrf_checks=False`, so a
+suite that uses it proves nothing about whether the endpoint is reachable from a browser. **A write test uses
+`Client(enforce_csrf_checks=True)`**, and this is the third distinct shape in this survey of a check that
+reports success about something it never exercised.
+
+The names the two stacks expect differ and neither default is wrong: Django ships `CSRF_COOKIE_NAME =
+"csrftoken"` with `CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"`, the installed Angular 22.1.0 ships `XSRF-TOKEN`
+and `X-XSRF-TOKEN` with `withXsrfConfiguration` to change them. **The name carries no security property**;
+what does is that the cookie stays readable by same-origin JavaScript (`CSRF_COOKIE_HTTPONLY` defaults to
+`False` for exactly that, and hardening it to `True` breaks the pattern and buys nothing), that a
+cross-origin page cannot set a custom header, and `SameSite`, which Django defaults to `Lax`.
+
 ---
 
 ## 2. Client core, `libs/core`
