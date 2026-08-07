@@ -10,9 +10,13 @@ section 4 for why the envelope types are never hand-written.
 
 ## What this task owns
 
-One transactional django-ninja call that accepts a batch of client-authored operations and persists them,
-in order, as rows in an append-only log inside the tenant wall. It creates the `sync` package as a Django
-app, its first migration, and its router.
+One transactional django-ninja call that accepts a batch of client-authored operations and persists them as
+rows in an append-only log inside the tenant wall. It creates the `sync` package as a Django app, its first
+migration, and its router.
+
+**Order is deliberately not claimed here** (corrected 2026-08-07): the server-owned key that orders these
+rows is the per-project version and it is MAP-11's, so this slice asserts that every operation of a batch
+lands and none is lost, and asserts nothing about the sequence they land in.
 
 ## Out of scope
 
@@ -30,6 +34,12 @@ Named explicitly, each with the owner it goes to.
   input is OQ-8. A green build here proves ordering, not the moral line.
 - **Anything on the WebSocket tier.** T2.2 is carried here as the negative half: no authoritative state is
   read from it, and this task does not build it.
+- **Where the request's authenticated principal comes from, and the binding built on it.** Owner: the
+  authenticated-request seam, which is a prerequisite of this task rather than a parallel one. **This line
+  was missing from the first version of this file and its absence is what the MAP-10 Window A review
+  found** (2026-08-07): with nothing saying where the tenant comes from, the only shape available to a
+  window was to bind it from the value the client sent, which is C13's "free client field" and OWASP
+  API1:2023 in one move. This task **consumes** that seam and does not build it.
 
 ## Boundary decisions the owner closed
 
@@ -76,12 +86,20 @@ From the requirements, with the clause of each that this slice carries.
 
 - **T2.2:** the op-queue flush is a transactional API call the database orders, and no authoritative state
   is read from the WebSocket tier. The gap-detection-and-resync clause of T2.2's acceptance is MAP-22's.
-- **M15:** the runtime role holds `SELECT, INSERT` and no `UPDATE, DELETE` on the log, so an in-place
-  rewrite is refused by the database for every caller, and the test asserts that refusal **while
-  distinguishing it from a statement that matched no rows**. The reproducible-projection and
-  user-deletion clauses need the projection and are not this slice's.
+- **M15:** the runtime role holds `SELECT, INSERT` and no `UPDATE, DELETE, TRUNCATE` on the log, so an
+  in-place rewrite is refused by the database on the runtime path, and the test asserts that refusal
+  **while distinguishing it from a statement that matched no rows**. The owner profile is outside that
+  guarantee and ADR-0005 section 2 says why. The reproducible-projection and user-deletion clauses need the
+  projection and are not this slice's. **What the row must carry is M15's Shape**, the M8 envelope as
+  applied: these rows are the only record this slice produces, so a log of bare identifiers satisfies
+  nothing downstream and starves MAP-12, whose dedup reads the clientID and the mutation number off them.
 - **M9:** an unknown operation type is rejected with a typed error rather than ignored.
-- **C4:** the new table is inside the wall on the same terms as every other tenant-owned table, and the
-  cross-tenant case is impossible by construction rather than by a guard. **ADR-0005 section 4's silence
-  is the trap here twice over:** the wall denies by returning nothing and the grant denies by raising, so a
-  test that asserts an empty result must say which of the two it caught.
+- **C4 and C13:** the new table is inside the wall on the same terms as every other tenant-owned table, and
+  the cross-tenant case is impossible by construction rather than by a guard. The tenant a flush binds is
+  the one the seam above resolved and verified against the authenticated principal, never the one the
+  request asserted about itself. **ADR-0005 section 4's silence is the trap here twice over:** the wall
+  denies by returning nothing and the grant denies by raising, so a test that asserts an empty result must
+  say which of the two it caught.
+- **T2.2's transactional clause needs a case the code under test can fail.** `tenant_scope` opens
+  `transaction.atomic()` itself (`mapsift/common/binding.py`), so a test whose only transaction is the one
+  its own context manager opened is green against an implementation that has no transaction at all.
