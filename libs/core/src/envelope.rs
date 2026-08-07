@@ -1,7 +1,8 @@
 //! The operation envelope, defined once and read everywhere else through a generated form.
 //!
 //! Trace: M8 (the envelope and its two halves), M9 (one target path per operation, and the
-//! type-to-target-kind pairing), M10 and T9.2 (the four envelope-borne version axes), T5.3
+//! type-to-target-kind pairing), M10 and T9.2 (the five envelope-borne version axes, each of them
+//! a type), ADR-0004 section 4 (the fifth is the per-project version, the resync cursor), T5.3
 //! (created-at against applied-at), M7 (the classification in force), T8.2 and C14 (mediation),
 //! ADR-0009 (the generation toolchain).
 
@@ -13,6 +14,26 @@ use tsify::Tsify;
 use uuid::Uuid;
 
 use crate::catalog::Operation;
+
+/// The per-client monotonic axis the server dedups a resent flush by (C12).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+pub struct MutationNumber(pub u64);
+
+/// The build-time axis, one per operation type, that drives upcasting (T9.3).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+pub struct OperationSchemaVersion(pub u32);
+
+/// The build-time axis, one per runtime, that detects temporal skew between them (T4.3).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+pub struct ConflictRuleVersion(pub u32);
+
+/// The per-feature axis that orders and detects conflict on one feature (M10).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+pub struct FeatureVersion(pub u64);
+
+/// The per-project axis a client presents as its resync cursor (M10, ADR-0004 section 4).
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+pub struct ProjectVersion(pub u64);
 
 /// An operation as the client authored it. Every field here is the client's claim; nothing in it
 /// is authoritative until the server half exists beside it.
@@ -27,16 +48,15 @@ pub struct ClientHalf {
     pub operation_id: Uuid,
     #[tsify(type = "string")]
     pub client_id: Uuid,
-    /// The per-client monotonic axis the server dedups a resent flush by (C12).
-    pub mutation_number: u64,
+    pub mutation_number: MutationNumber,
     /// The catalog member this operation is, with the target and payload that member declares.
     // Flattened so the type, the target and the payload stay flat sibling keys of the envelope
     // (M8): a nested object here would be a wire change nobody asked for.
     #[serde(flatten)]
     #[tsify(type = "Operation")]
     pub operation: Operation,
-    pub operation_schema_version: u32,
-    pub conflict_rule_version: u32,
+    pub operation_schema_version: OperationSchemaVersion,
+    pub conflict_rule_version: ConflictRuleVersion,
     /// Opaque to the core: the proof mechanism is OQ-18's and the server is what verifies it.
     #[tsify(type = "unknown")]
     pub author_session_material: Value,
@@ -51,9 +71,9 @@ pub struct ClientHalf {
 pub struct ServerHalf {
     #[tsify(type = "string")]
     pub applied_at: DateTime<Utc>,
-    /// The per-feature axis that orders and detects conflict on one feature (M10).
-    pub feature_version: u64,
-    pub applied_rule_version: u32,
+    pub feature_version: FeatureVersion,
+    pub project_version: ProjectVersion,
+    pub applied_rule_version: ConflictRuleVersion,
     pub legal_weight_in_force: bool,
     pub verdict: Verdict,
 }

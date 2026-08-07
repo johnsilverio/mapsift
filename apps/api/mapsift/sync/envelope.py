@@ -10,6 +10,16 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, Field, RootModel
 
 
+class ConflictRuleVersion(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="The build-time axis, one per runtime, that detects temporal skew between them (T4.3).",
+            ge=0,
+        ),
+    ]
+
+
 class FeatureCreatePayload(BaseModel):
     pass
 
@@ -40,8 +50,48 @@ class FeatureTarget(RootModel[FeatureAddress]):
     ]
 
 
+class FeatureVersion(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="The per-feature axis that orders and detects conflict on one feature (M10).",
+            ge=0,
+        ),
+    ]
+
+
 class MediationProvenance(BaseModel):
     agent: str
+
+
+class MutationNumber(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="The per-client monotonic axis the server dedups a resent flush by (C12).",
+            ge=0,
+        ),
+    ]
+
+
+class OperationSchemaVersion(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="The build-time axis, one per operation type, that drives upcasting (T9.3).",
+            ge=0,
+        ),
+    ]
+
+
+class ProjectVersion(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="The per-project axis a client presents as its resync cursor (M10, ADR-0004 section 4).",
+            ge=0,
+        ),
+    ]
 
 
 class PropertyAddress(BaseModel):
@@ -74,18 +124,12 @@ class FeatureCreateOperation(BaseModel):
         ),
     ]
     client_id: UUID
-    conflict_rule_version: Annotated[int, Field(ge=0)]
+    conflict_rule_version: ConflictRuleVersion
     created_at: AwareDatetime
     mediation: MediationProvenance | None
-    mutation_number: Annotated[
-        int,
-        Field(
-            description="The per-client monotonic axis the server dedups a resent flush by (C12).",
-            ge=0,
-        ),
-    ]
+    mutation_number: MutationNumber
     operation_id: UUID
-    operation_schema_version: Annotated[int, Field(ge=0)]
+    operation_schema_version: OperationSchemaVersion
     operation_type: Literal["feature.create"]
     payload: FeatureCreatePayload
     target: FeatureTarget
@@ -99,18 +143,12 @@ class FeatureGeometrySetOperation(BaseModel):
         ),
     ]
     client_id: UUID
-    conflict_rule_version: Annotated[int, Field(ge=0)]
+    conflict_rule_version: ConflictRuleVersion
     created_at: AwareDatetime
     mediation: MediationProvenance | None
-    mutation_number: Annotated[
-        int,
-        Field(
-            description="The per-client monotonic axis the server dedups a resent flush by (C12).",
-            ge=0,
-        ),
-    ]
+    mutation_number: MutationNumber
     operation_id: UUID
-    operation_schema_version: Annotated[int, Field(ge=0)]
+    operation_schema_version: OperationSchemaVersion
     operation_type: Literal["feature.geometry.set"]
     payload: FeatureGeometrySetPayload
     target: PropertyTarget
@@ -128,15 +166,10 @@ class ClientHalf(RootModel[FeatureCreateOperation | FeatureGeometrySetOperation]
 
 class ServerHalf(BaseModel):
     applied_at: AwareDatetime
-    applied_rule_version: Annotated[int, Field(ge=0)]
-    feature_version: Annotated[
-        int,
-        Field(
-            description="The per-feature axis that orders and detects conflict on one feature (M10).",
-            ge=0,
-        ),
-    ]
+    applied_rule_version: ConflictRuleVersion
+    feature_version: FeatureVersion
     legal_weight_in_force: bool
+    project_version: ProjectVersion
     verdict: Verdict
 
 

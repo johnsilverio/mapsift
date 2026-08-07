@@ -28,9 +28,7 @@
           "format": "uuid"
         },
         "conflict_rule_version": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
+          "$ref": "#/$defs/ConflictRuleVersion"
         },
         "created_at": {
           "type": "string",
@@ -47,19 +45,14 @@
           ]
         },
         "mutation_number": {
-          "description": "The per-client monotonic axis the server dedups a resent flush by (C12).",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
+          "$ref": "#/$defs/MutationNumber"
         },
         "operation_id": {
           "type": "string",
           "format": "uuid"
         },
         "operation_schema_version": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
+          "$ref": "#/$defs/OperationSchemaVersion"
         }
       },
       "discriminator": {
@@ -120,6 +113,12 @@
         "mediation"
       ]
     },
+    "ConflictRuleVersion": {
+      "description": "The build-time axis, one per runtime, that detects temporal skew between them (T4.3).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
     "FeatureCreatePayload": {
       "description": "What creating a feature carries: nothing beyond the address it creates. Everything the feature\nthen holds arrives as the operations that address it (M9, M15).",
       "type": "object"
@@ -174,6 +173,12 @@
         }
       ]
     },
+    "FeatureVersion": {
+      "description": "The per-feature axis that orders and detects conflict on one feature (M10).",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
     "MediationProvenance": {
       "description": "Present when the write reached the queue through an agent acting for the author, absent when\nthe author wrote directly (C14).",
       "type": "object",
@@ -185,6 +190,24 @@
       "required": [
         "agent"
       ]
+    },
+    "MutationNumber": {
+      "description": "The per-client monotonic axis the server dedups a resent flush by (C12).",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "OperationSchemaVersion": {
+      "description": "The build-time axis, one per operation type, that drives upcasting (T9.3).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "ProjectVersion": {
+      "description": "The per-project axis a client presents as its resync cursor (M10, ADR-0004 section 4).",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
     },
     "PropertyTarget": {
       "description": "One property of one feature, the finest granularity the ladder measures a conflict on (M9).",
@@ -237,18 +260,16 @@
           "format": "date-time"
         },
         "applied_rule_version": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
+          "$ref": "#/$defs/ConflictRuleVersion"
         },
         "feature_version": {
-          "description": "The per-feature axis that orders and detects conflict on one feature (M10).",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
+          "$ref": "#/$defs/FeatureVersion"
         },
         "legal_weight_in_force": {
           "type": "boolean"
+        },
+        "project_version": {
+          "$ref": "#/$defs/ProjectVersion"
         },
         "verdict": {
           "$ref": "#/$defs/Verdict"
@@ -257,6 +278,7 @@
       "required": [
         "applied_at",
         "feature_version",
+        "project_version",
         "applied_rule_version",
         "legal_weight_in_force",
         "verdict"
