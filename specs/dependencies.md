@@ -232,6 +232,32 @@ what does is that the cookie stays readable by same-origin JavaScript (`CSRF_COO
 `False` for exactly that, and hardening it to `True` breaks the pattern and buys nothing), that a
 cross-origin page cannot set a custom header, and `SameSite`, which Django defaults to `Lax`.
 
+### django-ninja consumes the core-generated envelope types directly, and the discriminated union refuses an unknown operation type before any code runs
+
+*Probed 2026-08-07 at the MAP-10 pickup, against the pinned django-ninja 1.6.2, pydantic 2.13.4 and Django
+5.2.16, first by reading the installed source and then end to end with the real generated `ClientHalf`.*
+
+The question mattered because the two facts either side of it point in opposite directions: `mapsift/sync/envelope.py`
+is datamodel-code-generator output, so **plain `BaseModel` and `RootModel`, never `ninja.Schema`**, while
+ADR-0009 section 4 forbids hand-writing a generated type. Had django-ninja required its own base class, the
+flush would have needed a translation layer nobody had budgeted.
+
+It does not. `is_pydantic_model` in `ninja/signature/details.py` reduces to `issubclass(cls, pydantic.BaseModel)`,
+and `RootModel` is a `BaseModel` subclass, so the acceptance is structural rather than incidental. Measured:
+a plain `BaseModel`, a `RootModel` over a scalar, a `RootModel` over a model, and `list[RootModel]` all bind
+as a request body and return 200; `list[ClientHalf]` binds and discriminates on `operation_type`; and the
+OpenAPI schema emits `{"items": {"$ref": "#/components/schemas/ClientHalf"}}` with the type in `components`,
+so the M12 chain from the Python contract to the TypeScript one stays intact rather than collapsing into an
+inline anonymous schema.
+
+**The finding that changes what a test asserts rather than what code does:** an `operation_type` outside the
+catalog is refused by the generated discriminated union itself, as a typed pydantic `union_tag_invalid` at
+the boundary, before any handler is entered. PRD M9's "an unknown operation type is rejected with a typed
+error rather than ignored" is therefore satisfied by the contract, and the work is to **assert** that
+refusal, never to write it. The load-bearing caution is the one this survey has now recorded three times in
+a different costume: that guarantee is the *generated* union's, so it holds exactly while the catalog member
+is generated rather than hand-added, which is ADR-0009 section 4 again from the other side.
+
 ---
 
 ## 2. Client core, `libs/core`
