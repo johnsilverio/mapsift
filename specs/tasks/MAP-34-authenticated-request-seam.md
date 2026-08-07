@@ -82,5 +82,14 @@ From the requirements, with the clause of each this slice carries.
   never the other in the same request. The selector answers with only the user binding in force, which is
   what makes the check possible before a tenant exists.
 - **ADR-0010 decision 6:** all operations of one batch must agree on their tenant, and a disagreement is a
-  typed refusal rather than a first-wins read.
+  typed refusal rather than a first-wins read. Its **addition of 2026-08-07** fixes the route and the body
+  shape, makes an **empty batch a second and distinct typed refusal**, and states the testable form of
+  not-found: the answer to a claim on a real tenant the principal does not hold and the answer to a claim on
+  a tenant that does not exist are **the same response**, so anything differing between the two is the leak.
 - **ADR-0010 decision 1:** the suite exercises a write route through `Client(enforce_csrf_checks=True)`.
+
+**One clause needs an instrument the obvious one does not provide.** "Transaction scoped" (ADR-0005 section
+3, measurement D) is the arm that catches a binding leaking into the next request on a pooled connection,
+and it is invisible to anything that only records which parameter was set and with what value: the
+session-scoped spelling differs from the correct one **only in `set_config`'s third argument**. A witness
+that ignores that argument reports both identically.

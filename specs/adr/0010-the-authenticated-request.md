@@ -79,6 +79,14 @@ PRD M8 requires the envelope to be self-describing enough to route without infer
 
 **A claim the principal cannot back is refused as not-found**, indistinguishable from a resource that never existed, which is PRD T6.5's cross-tenant half rather than this ADR's invention. The refusal happens **before** the binding, so the wall is never asked to police a value it was configured from.
 
+> **Addition (2026-08-07), closing the MAP-34 Window A review, which found three contract facts this decision left for a window to invent.**
+>
+> **The route is `POST /api/operations` and its body is `{"operations": [<client half>, ...]}`.** The named key rather than a bare array is the point: a bare `list[ClientHalf]` binds (measured, `specs/dependencies.md` section 1) and would have to change shape the moment MAP-12 adds the echoed cursor to the response's sibling request contract, so the key is what lets this grow without a wire break. This ADR fixes the request shape; **the response body stays MAP-10's** and nothing here constrains it.
+>
+> **An empty batch is its own typed refusal and is not a disagreement.** A batch of no operations does not disagree with itself, it names no tenant at all, so there is nothing to verify and nothing to bind. Collapsing the two into one exception makes two different refusals indistinguishable to the client, which is the same defect this decision refuses on the first-wins read. Two named refusals, not one.
+>
+> **Not-found is a property of the whole response, not of its status line.** T6.5 says indistinguishable from a resource that never existed, so a body naming the tenant, the membership, or the reason defeats it while the status code still reads 404. The testable form is comparative: **the answer to a claim on a real tenant the principal does not hold, and the answer to a claim on a tenant that does not exist, are the same response.** Anything that differs between those two is the leak.
+
 ### 7. The session store is the database until Redis exists
 
 Django's `SESSION_ENGINE` defaults to `backends.db`, one primary-key lookup per authenticated request. Beside a flush that opens a transaction, sets a parameter, verifies a membership and inserts in bulk, that is noise, and PRD N1 is a floor rather than a target to optimise against without a number.
