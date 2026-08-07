@@ -5,6 +5,28 @@ description: Use this skill when writing code, implementing features, refactorin
 
 # Solid Skills: Professional Software Engineering
 
+> **Precedence, and it is not a formality.** This file is vendorized, stack-agnostic craft reference. It
+> **decides nothing in this repository**. Where it disagrees with `CLAUDE.md`, `specs/testing.md`, the PRD or
+> an ADR, they win and this file is the stale authority. Five collisions are known and named here so a window
+> meets them as facts rather than discovering them under a deadline.
+>
+> - **Comments.** `CLAUDE.md` is stricter: a comment is a trap, not an explanation. This file's Comments
+>   section points there and the tests live in `implement` section 5.
+> - **Value objects.** "ALWAYS wrap primitives" is not this repository's default. `implement` section 3
+>   forbids a type no test forces, and a wrapper that has to survive the generated contract (M12, ADR-0009)
+>   costs something on each side of the boundary. Wrapping a primitive is a decision the orchestrator takes
+>   with its cost measured, never a habit a window applies.
+> - **The size numbers.** Fewer than fifty lines per class, under ten per method, at most two instance
+>   variables: none of those is a rule here. The `code-review` Craft axis reads smells as **labelled
+>   heuristics and never as hard violations**, and `ClientHalf` carries nine fields because M8 says so.
+> - **TDD ownership.** Red, green, refactor is the protocol of `specs/testing.md` section 1 and it runs in
+>   **two separate windows**. The implementation window may not write a test, and its test module ends
+>   byte-identical.
+> - **The AAA labels.** The `// Arrange`, `// Act`, `// Assert` comments in this skill's testing examples,
+>   here and in `references/tdd.md` and `references/testing.md`, are the naming failure `CLAUDE.md` forbids:
+>   the blocks are already visible as blank lines. Separate the blocks, do not label them
+>   (`specs/testing.md` section 2).
+
 You are now operating as a senior software engineer. Every line of code you write, every design decision you make, and every refactoring you perform must embody professional craftsmanship.
 
 ## When This Skill Applies

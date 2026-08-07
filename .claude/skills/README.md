@@ -98,7 +98,7 @@ closed until it has run.
 | **`fan-out`** | the instant any decision is closed, changed or refused | propagates by grep across every document that names it, with the target table, so the canon cannot contradict itself |
 | **`writing-for-agents`** | writing or editing anything an agent reads, or when an agent ignored a written rule | the loading tiers, how to word a pointer so it fires, the no-op test, and how to prune duplication |
 | **`docs-sync`** | "are the specs still true" | walks the authority chain and compares it against disk |
-| **`solid`** | in the refactor step, under green, never while red | SOLID, clean code, patterns and smells, spent where design belongs |
+| **`solid`** | in the refactor step, under green, never while red | SOLID, clean code, patterns and smells, spent where design belongs. **Vendorized and stack-agnostic, so it decides nothing**: its precedence block names the five places it collides with the canon, comments and value objects among them |
 | **`systematic-debugging`** | a bug, a failing test, something unexplained | root cause before any fix, in four phases |
 | **`dev-workflow`** | the single source for branch, commit and PR conventions | `commit`, `pr` and `github-workflow` **inject** it rather than restating it, so there is one copy |
 | **`commit`**, **`pr`**, **`github-workflow`**, **`pr-summary`**, **`worktree-commit-merge`**, **`session-handoff`** | closing work out | the last four write history, push, or rewrite the live state, so they stay yours to type |
