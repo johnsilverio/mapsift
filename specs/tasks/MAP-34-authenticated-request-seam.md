@@ -29,6 +29,11 @@ Named explicitly, each with the owner it goes to.
 - **The web client's side of the CSRF configuration and the dev-server proxy.** Owner: **MAP-20**, which is
   where the first real browser request happens and therefore the only place the same-origin premise can be
   proven. ADR-0010's Consequences say so.
+
+**One thing is in scope that reads like it is not.** Putting authentication on the API makes every published
+operation require a credential, so the **availability probes must be exempted explicitly** or N12's liveness
+and readiness stop being reachable. That exemption is a direct consequence of ADR-0010 decision 4 and it is
+this task's, even though the file it lands in belongs to `config/`. Settled 2026-08-07.
 - **The session store.** `SESSION_ENGINE` stays Django's default; ADR-0010 decision 7 names the Redis
   trigger that changes it.
 
