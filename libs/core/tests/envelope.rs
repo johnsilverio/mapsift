@@ -1,19 +1,24 @@
 //! The operation envelope where it is defined: one definition, two halves that never mix.
 //!
 //! Trace: M8 (the shape, and its first two acceptance bullets), M9 (one target address per
-//! operation), M10 and T9.2 (the four envelope-borne version axes), T5.3 (created-at is the
-//! client's claim, applied-at the server's stamp), T8.2 and C14 (mediation carried as a field),
-//! ADR-0009 section 5 (both guard rules, on the source side).
+//! operation), M10 and T9.2 (the five envelope-borne version axes, each of them a type),
+//! ADR-0004 section 4 (the fifth is the per-project version, the resync cursor), T5.3 (created-at
+//! is the client's claim, applied-at the server's stamp), T8.2 and C14 (mediation carried as a
+//! field), ADR-0009 section 5 (both guard rules, on the source side).
 //!
 //! The third acceptance bullet, that every language reads a generated form, is pinned where the
 //! generated forms are read: `apps/api/mapsift/sync/tests` and `apps/web/src/app/core`.
 
+use std::any::TypeId;
+use std::collections::HashSet;
+
 use mapsift_core::envelope::{
-    AppliedOperation, ClientHalf, MediationProvenance, ServerHalf, TargetPath,
+    AppliedOperation, ClientHalf, ConflictRuleVersion, FeatureVersion, MediationProvenance,
+    MutationNumber, OperationSchemaVersion, ProjectVersion, ServerHalf, TargetPath,
 };
 use serde_json::json;
 
-// The four version-axis values differ from one another on purpose: equal values would let two
+// The five version-axis values differ from one another on purpose: equal values would let two
 // axes be wired to one field and every assertion below would still pass.
 const A_CLIENT_HALF: &str = r#"{
   "operation_id": "9f1c0d3a-6b2e-4f57-8c19-2d4a7e5b0c31",
@@ -44,6 +49,7 @@ const A_CLIENT_HALF: &str = r#"{
 const A_SERVER_HALF: &str = r#"{
   "applied_at": "2026-08-05T12:00:03Z",
   "feature_version": 11,
+  "project_version": 41,
   "applied_rule_version": 6,
   "legal_weight_in_force": true,
   "verdict": "applied"
@@ -84,14 +90,35 @@ fn the_wire_form_of_a_server_half_survives_a_round_trip_unchanged() {
 }
 
 #[test]
-fn the_four_envelope_borne_version_axes_are_four_distinct_fields() {
+fn the_five_envelope_borne_version_axes_are_five_distinct_fields() {
     let client = a_client_half();
     let server = a_server_half();
 
-    assert_eq!(client.mutation_number, 7);
-    assert_eq!(client.operation_schema_version, 3);
-    assert_eq!(client.conflict_rule_version, 5);
-    assert_eq!(server.feature_version, 11);
+    assert_eq!(client.mutation_number, MutationNumber(7));
+    assert_eq!(client.operation_schema_version, OperationSchemaVersion(3));
+    assert_eq!(client.conflict_rule_version, ConflictRuleVersion(5));
+    assert_eq!(server.feature_version, FeatureVersion(11));
+    assert_eq!(server.project_version, ProjectVersion(41));
+}
+
+#[test]
+fn the_five_version_axes_are_five_types_rather_than_five_names_for_one_integer() {
+    // A `type MutationNumber = FeatureVersion` satisfies every other assertion in this file and
+    // still lets the compiler accept the substitution M10 forbids. The set is what refuses it,
+    // because two names for one type share a TypeId.
+    let axes = HashSet::from([
+        TypeId::of::<MutationNumber>(),
+        TypeId::of::<OperationSchemaVersion>(),
+        TypeId::of::<ConflictRuleVersion>(),
+        TypeId::of::<FeatureVersion>(),
+        TypeId::of::<ProjectVersion>(),
+    ]);
+
+    assert_eq!(
+        axes.len(),
+        5,
+        "two of the five axes are the same type, so one reads as another"
+    );
 }
 
 // Read through the wire form rather than through the field: MAP-8 closes the catalog, so the type
@@ -123,8 +150,10 @@ fn an_applied_operation_keeps_the_rule_version_the_client_claimed_beside_the_one
         server: a_server_half(),
     };
 
-    assert_eq!(applied.client.conflict_rule_version, 5);
-    assert_eq!(applied.server.applied_rule_version, 6);
+    // Six version fields against five axes is correct: the rule version is claimed once and
+    // applied once. Giving `applied_rule_version` a type of its own would make it a sixth axis.
+    assert_eq!(applied.client.conflict_rule_version, ConflictRuleVersion(5));
+    assert_eq!(applied.server.applied_rule_version, ConflictRuleVersion(6));
 }
 
 #[test]
