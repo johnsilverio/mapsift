@@ -4,6 +4,13 @@ import type { AppliedOperation, TargetPath } from '@mapsift/core';
  * The envelope as `apps/web` reads it: M8's third acceptance bullet on the TypeScript side, over
  * the core-generated declaration and no other (ADR-0009 sections 3 and 4). The assertions below
  * are deliberately thin; what this file buys is the compile-time check they drag in.
+ *
+ * M10's other half, that no code path reads one axis as another, is **not** asserted here and its
+ * absence is deliberate. tsify emits each axis as `export type X = number`, a structural alias
+ * mutually assignable with the primitive, so the substitution compiles on this runtime; the
+ * measurement is `specs/dependencies.md` section 2 and the only mechanism that would close it is
+ * a hand-written declaration of a generated type, which ADR-0009 section 4 refuses. A
+ * `@ts-expect-error` written here would go unused and fail the build.
  */
 const AN_APPLIED_OPERATION: AppliedOperation = {
   client: {
@@ -41,6 +48,7 @@ const AN_APPLIED_OPERATION: AppliedOperation = {
   server: {
     applied_at: '2026-08-05T12:00:03Z',
     feature_version: 11,
+    project_version: 41,
     applied_rule_version: 6,
     legal_weight_in_force: true,
     verdict: 'applied',
@@ -69,6 +77,10 @@ describe('the operation envelope as the web client reads it', () => {
   it('keeps the client half and the server half separately addressable', () => {
     expect(AN_APPLIED_OPERATION.client.mutation_number).toBe(7);
     expect(AN_APPLIED_OPERATION.server.feature_version).toBe(11);
+  });
+
+  it('reads the resync cursor off the server half, beside the per-feature version', () => {
+    expect(AN_APPLIED_OPERATION.server.project_version).toBe(41);
   });
 
   it('narrows a target path on its kind, over the closed set M9 names', () => {

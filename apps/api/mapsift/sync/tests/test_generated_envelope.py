@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from mapsift.sync.envelope import AppliedOperation, ClientHalf
+from mapsift.sync.envelope import AppliedOperation, ClientHalf, FeatureVersion
 
 # `Any` because a fixture here is a decoded JSON document rather than a modelled shape: its whole
 # job is to reach the generated reader untyped, the way a wire payload arrives.
@@ -52,6 +52,7 @@ A_CLIENT_HALF: JsonObject = {
 A_SERVER_HALF: JsonObject = {
     "applied_at": "2026-08-05T12:00:03Z",
     "feature_version": 11,
+    "project_version": 41,
     "applied_rule_version": 6,
     "legal_weight_in_force": True,
     "verdict": "applied",
@@ -81,6 +82,34 @@ def test_the_generated_reader_reaches_both_halves_of_an_applied_operation() -> N
 
     assert applied.client.model_dump(mode="json") == A_CLIENT_HALF
     assert applied.server.model_dump(mode="json") == A_SERVER_HALF
+
+
+def test_each_version_axis_reaches_python_as_its_own_type_and_not_as_a_bare_integer() -> None:
+    """M10 as sharpened 2026-08-07. The `.root` read is the tell that the axis reached Python as a
+    type at all: degraded to a bare integer it round-trips byte-identically, so nothing else in
+    this module would notice, and the freshness gates compare the generated form against its
+    source rather than against what that form still carries. The mechanism that degrades it, and
+    the one latent trigger left, are `specs/dependencies.md` section 2."""
+    applied = AppliedOperation.model_validate({"client": A_CLIENT_HALF, "server": A_SERVER_HALF})
+
+    assert applied.client.root.mutation_number.root == 7
+    assert applied.client.root.operation_schema_version.root == 3
+    assert applied.client.root.conflict_rule_version.root == 5
+    assert applied.server.feature_version.root == 11
+    assert applied.server.project_version.root == 41
+
+
+def test_reading_the_resync_cursor_as_a_feature_version_is_refused_by_the_type_checker() -> None:
+    """M10: no code path reads one axis as another. The directive is the assertion and it cuts both
+    ways, since `--strict` carries `--warn-unused-ignores`: mypy reports the substitution while the
+    two axes are distinct types, and reports this ignore as unused the moment they are not. The
+    runtime is not the wall here, which is why the read below succeeds."""
+    applied = AppliedOperation.model_validate({"client": A_CLIENT_HALF, "server": A_SERVER_HALF})
+
+    cursor = applied.server.project_version
+    read_as_a_feature_version: FeatureVersion = cursor  # type: ignore[assignment]
+
+    assert read_as_a_feature_version.root == 41
 
 
 def test_a_target_path_outside_the_closed_set_is_refused_by_its_variants_kind_literal() -> None:
