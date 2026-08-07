@@ -1,0 +1,87 @@
+# MAP-10: a batch of client operations reaches the database, once, in one transaction, and can never be rewritten
+
+## Trace
+
+PRD **T2.2** (ordering authority and transport separation) and **M15** (the append-only log), with the
+unknown-type clause of **M9**'s acceptance. Invariants **I2** and **I9**; constraints **C9**, **C4**, **C5**.
+**ADR-0004** decision 2 for the shape of the transaction, **ADR-0005** sections 2 and 3 for the wall and the
+role grants, **ADR-0007** sections 1 and 3 for where each file goes and what it may import, **ADR-0009**
+section 4 for why the envelope types are never hand-written.
+
+## What this task owns
+
+One transactional django-ninja call that accepts a batch of client-authored operations and persists them,
+in order, as rows in an append-only log inside the tenant wall. It creates the `sync` package as a Django
+app, its first migration, and its router.
+
+## Out of scope
+
+Named explicitly, each with the owner it goes to.
+
+- **The projection.** Nothing in this task updates a feature, a layer, or any current-state row. Owner:
+  the operation-log projection-strategy ADR, which M15 leaves open and which has no issue yet.
+- **The per-project version and the two ADR-0004 lock rules.** Owner: **MAP-11**. This task fixes only the
+  *place* the allocation will go, per the boundary decision below.
+- **Dedup by mutation number and the echoed last-applied cursor.** Owner: **MAP-12**, including the clause
+  MAP-10's own tracker acceptance points at.
+- **Contiguity and the typed resend-from-cursor on a gap.** Owner: **MAP-13**.
+- **The correlation keys and the redaction on the logging path.** Owner: **MAP-14**.
+- **Conflict resolution, the per-feature version, and preserve-not-discard.** Owner: the next slice, whose
+  input is OQ-8. A green build here proves ordering, not the moral line.
+- **Anything on the WebSocket tier.** T2.2 is carried here as the negative half: no authoritative state is
+  read from it, and this task does not build it.
+
+## Boundary decisions the owner closed
+
+All six on **2026-08-07**, each registered in the document that owns it before this file was written; the
+reasoning is one grep away in `specs/log.md` under that date.
+
+1. **This task owns the M15 log table**, because no issue in milestone 3 did.
+2. **The flush appends and does not write the projection.**
+3. **The echoed cursor is MAP-12's**, not this task's.
+4. **MAP-10 dispatches alone, with ADR-0004's LATE ordering fixed as a constraint on shape:** validation and
+   the log write happen before any version allocation, and the allocation is the last thing before commit.
+   MAP-11 adds the allocation into that slot. This is the performance rule of foundation section 10 applied
+   at design time, where it is free.
+5. **Both armed re-checks return negative** as a consequence of decision 2, and re-arm at the first slice
+   that reads a target path server-side.
+6. **Append-only is enforced by privilege, not watched by a test:** ADR-0005 section 2, addition of
+   2026-08-07, and M15's sharpened acceptance.
+
+## Evidence handed over
+
+Transcribed rather than cited, because it exists nowhere else and was bought with a probe.
+
+**django-ninja consumes the generated envelope types directly** (probed 2026-08-07 against the pinned
+django-ninja 1.6.2, pydantic 2.13.4, Django 5.2.16; full record in `specs/dependencies.md` section 1).
+`list[ClientHalf]` binds as a request body, discriminates on `operation_type`, and emits a `$ref` into
+`components` so the M12 chain survives. **No adapter and no hand-written `ninja.Schema` is needed, and
+writing one would violate ADR-0009 section 4.**
+
+**An unknown `operation_type` is already refused at the boundary** by the generated discriminated union, as
+a typed pydantic `union_tag_invalid`, before a handler is entered. M9's clause is therefore **asserted**
+here, never implemented.
+
+**Measured on disk at the pickup.** `mapsift/sync/` is not yet a Django app: it holds only the generated
+`envelope.py` and an `__init__.py`, has no `apps.py`, no `models.py` and no `migrations/`, and is absent
+from `INSTALLED_APPS`. `import-linter` already names `sync` as the top tier of the layers contract, so the
+package is anticipated by the gate and adding it must not break `exhaustive = true`.
+
+**Inherited from MAP-5 and still true:** `django.contrib.gis` is in `INSTALLED_APPS` and the engine is the
+PostGIS backend.
+
+## Acceptance
+
+From the requirements, with the clause of each that this slice carries.
+
+- **T2.2:** the op-queue flush is a transactional API call the database orders, and no authoritative state
+  is read from the WebSocket tier. The gap-detection-and-resync clause of T2.2's acceptance is MAP-22's.
+- **M15:** the runtime role holds `SELECT, INSERT` and no `UPDATE, DELETE` on the log, so an in-place
+  rewrite is refused by the database for every caller, and the test asserts that refusal **while
+  distinguishing it from a statement that matched no rows**. The reproducible-projection and
+  user-deletion clauses need the projection and are not this slice's.
+- **M9:** an unknown operation type is rejected with a typed error rather than ignored.
+- **C4:** the new table is inside the wall on the same terms as every other tenant-owned table, and the
+  cross-tenant case is impossible by construction rather than by a guard. **ADR-0005 section 4's silence
+  is the trap here twice over:** the wall denies by returning nothing and the grant denies by raising, so a
+  test that asserts an empty result must say which of the two it caught.
