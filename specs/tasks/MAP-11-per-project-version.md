@@ -19,8 +19,13 @@ of the batch, and persists each operation's version beside its log entry. The fl
 in a way a failure can actually reach.
 
 **The route, the request body and the append already exist** (`mapsift/sync/api.py` and
-`mapsift/sync/services.py`, delivered by MAP-34 and MAP-10). This task adds what runs after the append and
-what the log entry needs in order to carry the result.
+`mapsift/sync/services.py`, delivered by MAP-34 and MAP-10). This task adds the allocation that runs before
+the append and what the log entry needs in order to carry its result.
+
+**The order inside the lock is allocation and then bulk insert, and it is forced rather than chosen**
+(ADR-0004 decision 2, sharpening of 2026-08-10). This file said the opposite in three places until that
+date, and the wrong reading reached a test; the sharpening carries why, and it also names the one shortcut
+that would satisfy every case here and reintroduce silent loss.
 
 **The counter is a tenant-owned table and is therefore inside the wall** (C4, PRD N2, ADR-0005 sections 1
 and 3). That is not a new criterion, it is C4 reaching a new table, and the evidence block below carries the
@@ -83,9 +88,9 @@ Transcribed rather than cited, because it exists nowhere else yet.
 - **The append-only grant does not reach the owner profile**, and migrations, tests and CI all connect as
   the owner (ADR-0005 section 2, correction of 2026-08-07). Anything asserting a privilege on the new table
   inherits that limit, and a grant assertion written against the owner proves nothing.
-- **What was not measured, said plainly so nobody treats it as handed over:** how to make the allocation
-  fail after the append has run. No probe was taken. Choosing the instrument is Window A's, and a mock of an
-  internal that bypasses the route would fail the trap above rather than satisfy it.
+- **What was not measured, said plainly so nobody treats it as handed over:** how to make one of the two
+  statements fail while the other has already run. No probe was taken. Choosing the instrument is Window A's,
+  and a mock of an internal that bypasses the route would fail the trap above rather than satisfy it.
 
 Three more were measured at the **Window A review** and are handed over because they change what the next
 pass has to do.
@@ -112,17 +117,26 @@ transactional call. **Nothing here is invented in this file.**
 - a batch whose operations disagree on their project is refused at the boundary, before anything is bound
 - a batch takes the project lock exactly once, asserted by a test rather than by reading the code
 - the version table is separate from project metadata and carries its autovacuum settings in the migration
-- a failure in the version allocation rolls back the append that preceded it, so the flush is one
-  transaction
+- a failure in the append rolls back the allocation that preceded it, so the flush is one transaction
 
 **A fifth clause was struck on 2026-08-10** at the Window A review: "batch size is a declared knob, starting
 at 500" reached this file from ADR-0004 decision 3 by way of the issue, and it has no consumer on the
 server. It is MAP-22's now. It is recorded here rather than removed silently, because a task spec that
 quietly loses a clause is indistinguishable from one that never carried it.
 
-**One note on the last clause, because this repository has already been burned by it.** MAP-10's spec put an
-atomicity clause into **T2.2's acceptance**, where T2.2 does not carry one, and it was struck on 2026-08-10
-as a spec inventing an acceptance criterion. The clause is legitimate here and its upstream is named
-precisely: **T2.2's requirement sentence** that the op-queue flush is a transactional API call the database
-orders, plus **ADR-0004's LATE rule**, which is what puts a second statement after the append and therefore
-creates the failure the clause describes. It is not a bullet added to T2.2's acceptance list.
+**Two notes on the last clause, because this repository has already been burned by it twice.**
+
+**Its upstream is named precisely**, since MAP-10's spec put an atomicity clause into **T2.2's acceptance**
+where T2.2 does not carry one, and it was struck on 2026-08-10 as a spec inventing a criterion. The clause is
+legitimate here and it comes from **T2.2's requirement sentence** that the op-queue flush is a transactional
+API call the database orders, plus **ADR-0004's LATE rule**, which puts a second statement inside the lock
+and therefore creates a failure that can leave one of the two behind. It is not a bullet added to T2.2's
+acceptance list.
+
+**Its direction was wrong until 2026-08-10 and this file is where it was wrong.** It read "a failure in the
+allocation rolls back the append", which cannot happen: the allocation runs **first**, because the version is
+a column on the log row and `mapsift_app` holds no `UPDATE` on that table, so nothing can stamp a version
+onto a row already written. The reachable form is the mirror, and it is what the bullet now says. **The
+inversion was introduced by decision 4's addition of the same day**, which made the version a column; before
+it the clause was coherent and nobody re-read it against the change. That is the whole lesson and it is in
+`specs/log.md`.

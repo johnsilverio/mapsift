@@ -66,6 +66,12 @@ Serialisation is not caused by the number of writers. It is caused by **how long
 - **RANGE.** A flush allocates its whole range in one statement (`version + N`) and distributes the N versions internally. A 500-operation batch takes the lock **once**, never 500 times. Ordering still holds because the allocation happens inside the transaction under the lock.
 - **LATE.** The allocation is the **last** thing before commit. Dedup, contiguity, feature-version assignment, the conflict rule and every validation run before it. Under the lock there is one allocation and one bulk insert.
 
+> **Sharpened 2026-08-10, at MAP-11's implementation review, because the LATE bullet has been read backwards twice and both readings reached code.** **LATE is a claim about the critical section, not about the two statements inside it.** What is last is the lock: validation, dedup, contiguity, feature versions and the conflict rule all run before it, so the push can grow without the critical section growing. **Inside the lock the order is the one the bullet's own last sentence already gives, allocation and then bulk insert**, and reading "last thing before commit" as "the insert precedes the allocation" is what MAP-11's issue, its task spec and its first test all did.
+>
+> **After decision 4's addition of the same date, that order stopped being a preference and became forced**, which is why this note exists rather than a clarification. The per-project version is a **column on the log row**, and `mapsift_app` holds `SELECT, INSERT` on that table and no `UPDATE` (ADR-0005 section 2, addition of 2026-08-07), so **there is no second write that could stamp a version onto a row already appended**. The range can only come from the counter, and the counter may be touched once. The allocation therefore runs first, and any implementation that appends first is either wrong or is reading its range from somewhere other than the counter.
+>
+> **The escape that must not be taken, named because a window under pressure to go green will find it.** Reading the range from `max(project_version)` off the log and letting the counter statement trail behind as a mirror satisfies every case written for this decision. **It is the sequence trap wearing a new costume:** two concurrent flushes read the same maximum and hand two operations the same version, which is the silent loss this entire ADR exists to close at the root.
+
 **Measured, ten people editing interactively while a field client flushes 3,000 operations:**
 
 | | batch | interactive p95 | worst interactive save | flush |
