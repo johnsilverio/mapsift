@@ -24,6 +24,8 @@ class OperationLogEntry(models.Model):
     )
     operation_id = models.UUIDField()
     client_half = models.JSONField()
+    project_id = models.UUIDField()
+    project_version = models.BigIntegerField()
 
     objects = TenantOwnedManager["OperationLogEntry"]()
 
@@ -34,3 +36,31 @@ class OperationLogEntry(models.Model):
                 name="one_entry_per_operation_within_its_tenant",
             )
         ]
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(
+                fields=["tenant", "project_id", "project_version"],
+                name="log_by_project_version",
+            )
+        ]
+
+
+class ProjectVersionCounter(models.Model):
+    """The row a flush locks to allocate its range of per-project versions (ADR-0004 decision 2).
+
+    Narrow because the width is the point: an update to a wide row with several indexes stops
+    being HOT, and this one is updated once per flush of its project.
+    """
+
+    pk = models.CompositePrimaryKey("tenant", "project_id")
+    tenant = models.ForeignKey(
+        "accounts.Tenant",
+        on_delete=models.CASCADE,
+        related_name="project_version_counters",
+        db_index=False,
+    )
+    # Not a foreign key, and adding one breaks the flush: the row is created on first use, for a
+    # project the tables have never seen (ADR-0004 decision 4, second addition of 2026-08-10).
+    project_id = models.UUIDField()
+    version = models.BigIntegerField()
+
+    objects = TenantOwnedManager["ProjectVersionCounter"]()

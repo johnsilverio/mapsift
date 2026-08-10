@@ -21,6 +21,10 @@ class BatchClaimsNoTenant(MalformedBatch):
     """Raised when a batch carries no operation, so it names no tenant (ADR-0010 decision 6)."""
 
 
+class OperationsDisagreeOnTheirProject(MalformedBatch):
+    """Raised when one batch addresses more than one project (ADR-0010 decision 6)."""
+
+
 def the_tenant_every_operation_claims(operations: Sequence[ClientHalf]) -> UUID:
     """The one tenant a batch addresses, refusing rather than reading the first one it finds."""
     claimed = {the_address_of(operation).tenant_id for operation in operations}
@@ -34,6 +38,21 @@ def the_tenant_every_operation_claims(operations: Sequence[ClientHalf]) -> UUID:
     raise OperationsDisagreeOnTheirTenant(
         f"One batch addressed {len(claimed)} tenants and a flush addresses exactly one "
         f"(ADR-0010 decision 6)."
+    )
+
+
+def the_project_every_operation_claims(operations: Sequence[ClientHalf]) -> UUID:
+    """The one project a batch addresses, refusing rather than reading the first one it finds.
+
+    Answers for a batch that already named one tenant, which is what makes an empty one somebody
+    else's refusal: it claims no tenant either, and that one is taken first (ADR-0010 decision 6).
+    """
+    claimed = {the_address_of(operation).project_id for operation in operations}
+    if len(claimed) == 1:
+        return claimed.pop()
+    raise OperationsDisagreeOnTheirProject(
+        f"One batch addressed {len(claimed)} projects and a flush addresses exactly one "
+        f"(ADR-0010 decision 6's addition of 2026-08-10)."
     )
 
 

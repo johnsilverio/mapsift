@@ -11,23 +11,30 @@ from mapsift.accounts.selectors import the_session_user_holds_a_membership_in
 from mapsift.common.binding import tenant_scope, user_scope
 from mapsift.common.principal import AuthenticatedRequest
 from mapsift.sync.envelope import ClientHalf
-from mapsift.sync.rules import MalformedBatch, the_tenant_every_operation_claims
+from mapsift.sync.rules import (
+    MalformedBatch,
+    the_project_every_operation_claims,
+    the_tenant_every_operation_claims,
+)
 from mapsift.sync.services import append_to_the_operation_log
 
 router = Router(tags=["sync"])
 
 
 class OperationBatch(Schema):
-    """One flush's operations, which address one tenant between them (ADR-0010 decision 6)."""
+    """One flush's operations, addressing one tenant and one project (ADR-0010 decision 6)."""
 
     operations: list[ClientHalf]
 
     _tenant_claimed: UUID = PrivateAttr()
 
     @model_validator(mode="after")
-    def _read_the_one_tenant_this_batch_claims(self) -> Self:
+    def _read_the_tenant_and_refuse_a_batch_of_more_than_one_project(self) -> Self:
         try:
             self._tenant_claimed = the_tenant_every_operation_claims(self.operations)
+            # Second, and the order is the contract: a batch of no operations names no project
+            # either, and the refusal ADR-0010 decision 6 gives it is the tenant's.
+            the_project_every_operation_claims(self.operations)
         except MalformedBatch as refusal:
             raise ValueError(str(refusal)) from refusal
         return self
