@@ -39,6 +39,13 @@ Named explicitly, each with the owner it goes to.
   MAP-10's own tracker acceptance points at.
 - **Contiguity and the typed resend-from-cursor on a gap.** Owner: **MAP-13**.
 - **The correlation keys and the redaction on the logging path.** Owner: **MAP-14**.
+- **Normalizing the author an operation claims against the session that can prove it.** Owner: **MAP-37**,
+  filed at this task's implementation review on 2026-08-10. The envelope carries
+  `author_session_material` and M15's Shape requires it stored as authored, so this slice writes the claim
+  and verifies none of it, which is C13's authorship half left open. **This line was missing while the
+  implementation was written**, which is the same absence that blocked this task's first Window A, and it
+  is written here rather than only in the tracker for that reason. The mechanism's offline half is OQ-18
+  and stays open.
 - **Conflict resolution, the per-feature version, and preserve-not-discard.** Owner: the next slice, whose
   input is OQ-8. A green build here proves ordering, not the moral line.
 - **Anything on the WebSocket tier.** T2.2 is carried here as the negative half: no authoritative state is
@@ -162,6 +169,17 @@ puts the server half beside it, so the accessor does not have to be renamed when
 Two additions to `apps/api/conftest.py` are ratified with it: the `UNIQUE_VIOLATION` SQLSTATE constant, and
 three optional keyword arguments on `a_feature_create_claiming` (`operation_id`, `client_id`,
 `mutation_number`), all defaulted so no existing call site changed.
+
+## Ruled at the Window B review, 2026-08-10
+
+**`editable=False` stays on the primary key and comes off `operation_id` and `client_half`.** On the key it
+is the idiom Django's own generator writes for a defaulted UUID primary key. On the other two it has no
+runtime effect in a project with no forms and no admin, and it sits three lines under a docstring saying
+that what makes this table append-only is the grant in the migration and never a model option. A field
+option that reads like the enforcement, directly beneath a sentence denying model-level enforcement, is a
+signal pointed at the wrong mechanism, and the next reader is who pays for it. The cost of the correction
+is regenerating the migration, which is one command while nothing outside a development volume has applied
+it and a data migration afterwards, which is why it is taken now rather than carried.
 
 **The trap that killed the first Window A's transactional tests, kept because it still governs anything
 written near the wall:** `tenant_scope` opens `transaction.atomic()` itself
