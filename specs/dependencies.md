@@ -481,11 +481,21 @@ These are not libraries, and they move, so they carry the same verification disc
 
 ---
 
-## 5.9 Advisories assessed and deliberately not acted on
+## 5.9 Advisories assessed, and the verdict each one got
 
 An advisory that is real and does not reach this product still needs a written verdict with a date and a
 re-check trigger, because the alternative is rediscovering the same reasoning every quarter, or worse,
 acting on it and breaking something that was never at risk.
+
+**The heading was "assessed and deliberately not acted on" until 2026-08-10**, when the second entry below
+took the opposite verdict on the same exposure. A heading is a claim about the contents, and one that says
+"not acted on" over a list where something was acted on teaches the wrong rule to the next reader.
+
+**The rule the two entries establish together, which neither shows alone: exposure and remedy are assessed
+separately, and the verdict is the pair.** Zero exposure is not by itself a reason to refuse, and a real
+advisory is not by itself a reason to act. What decides is what the fix costs against what the exposure is,
+so the same package can be refused in August and taken a week later with nothing about the risk having
+changed.
 
 - **`@hono/node-server` path traversal in `serve-static` (< 2.0.5), raised by Dependabot 2026-08-04.** An
   encoded backslash lets a request read static files under a middleware-guarded prefix. **Not exploitable
@@ -501,7 +511,26 @@ acting on it and breaking something that was never at risk.
   compatibility gamble taken to fix something that cannot fire.
 - **Re-check trigger, so this is deferred rather than forgotten:** an `@angular/cli` release whose
   `@modelcontextprotocol/sdk` takes the patched Hono. Until then the alert is dismissed as *vulnerable code
-  not in use*, and this entry is the record of why.
+  not in use*, and this entry is the record of why. **Still dismissed as of 2026-08-10:** the entry below
+  moves `hono`, which is a different package, and does not reach `@hono/node-server` at all.
+
+- **Three `hono` advisories (< 4.12.34), raised by Dependabot 2026-08-10, and these were acted on.** SSR
+  output retained across requests by `memo()` (GHSA-f23p-vx2j-j53r, medium, cross-user data disclosure);
+  algorithmic-complexity denial of service in the language middleware (GHSA-54fx-42gc-7vw4, medium); and the
+  proxy helper not removing response headers listed in `Connection` (GHSA-79qm-7rj5-m7r9, low).
+  **The exposure is zero on the same grounds the entry above used**, and Dependabot itself classifies all
+  three as `development` scope: `hono` reaches this tree only through `@modelcontextprotocol/sdk` and
+  `@hono/node-server`, so it enters no browser bundle and runs on no server of ours, and none of the three
+  vulnerable paths has a caller here, because nothing in this repository renders through Hono's SSR, mounts
+  its language middleware, or uses its proxy helper. The web runtime is Angular.
+- **Why the verdict differs from the entry above, and it is the cost side rather than the exposure side.**
+  That one was refused because the remedy was worse than the exposure: a forced `@angular/cli` downgrade or
+  an `overrides` pin across a major. **This one costs nothing.** The Dependabot pull request changes one
+  package and one version line, `hono` 4.12.33 to 4.13.1, a minor inside the `^4` that `@hono/node-server`
+  already declares; no downgrade, no `overrides`, no new package. **A free remedy for a zero exposure is
+  still worth taking**, because three standing alerts on the default branch are the noise that makes the
+  next real one easy to ignore. Merged as pull request 24 on 2026-08-10, taking the repository's open
+  Dependabot alert count from three to zero.
 
 ---
 
