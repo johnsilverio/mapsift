@@ -83,10 +83,32 @@ Stage explicit paths, never `git add -A`.
 
 1. Push the branch and open a PR to `main` (`/pr` does this with its preconditions).
 2. Wait for the repository's required CI checks (`gh pr checks --watch`).
-3. Merge only when they are green. Never push to `main` directly, never force-push anything.
+3. Merge only when they are green. Never push to `main` directly.
 
 There is no path in this project where a branch reaches `main` without a PR and green checks. A local merge
 into `main` bypasses the gates ADR-0001 section 6 exists to enforce.
+
+**When `main` moves under an open pull request, and it always does** (added 2026-08-10). The ruleset
+requires branches to be up to date before merging, so every merge puts every other open pull request
+behind. **`reference.md` under "Repository protection" already answers the ordinary case and this section
+does not restate it**: the branch is `BEHIND` and clean, and the fix is **Update with rebase**
+(`gh pr update-branch --rebase`), never the plain update, which would put a merge commit inside the branch
+and fight the required linear history.
+
+**The case it does not answer is a branch that goes `CONFLICTING`**, where no server-side update can
+resolve anything. There the branch is rebased locally and pushed with **`git push --force-with-lease`**.
+The lease is the whole point: unlike `--force`, it **refuses the push if the remote moved since your last
+fetch**, so it cannot overwrite somebody else's work. **Never force-push `main`, and never force-push a
+branch somebody else has pulled.**
+
+**This is legal as well as safe, and it was measured rather than assumed** (2026-08-10,
+`gh api repos/johnsilverio/mapsift/rulesets/<id>`): the ruleset's conditions are
+`include: ["~DEFAULT_BRANCH"]` with an empty exclude, so `non_fast_forward`, the rule that blocks force
+pushes, **covers `main` and no feature branch**. This paragraph replaced a blanket "never force-push
+anything" that had no answer for a moved base; the alternatives it left were worse rather than safer, since
+merging `main` into the branch leaves the merge commit the `--rebase` merge then has to replay, and closing
+the pull request to recreate the branch breaks the one-issue-one-pull-request rule of ADR-0008 section 6 to
+avoid running one command.
 
 **Merge with rebase, and the exception is named.** `gh pr merge --rebase --delete-branch` is the default,
 because this project writes atomic commits with one purpose each and rebase replays every one of them onto
