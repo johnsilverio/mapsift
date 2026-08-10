@@ -85,7 +85,7 @@ closed until it has run.
 | Skill | The moment you reach for it | What typing it does |
 | --- | --- | --- |
 | **`orchestrate`** | opening a session with no task chosen, or asking "what is next" | injects the tree, the tracker and the live state, then takes the orchestrator role. **Dispatches each window itself** on the owner's go, showing the prompt first. **It does not implement and does not touch code**: a finding goes back to a window, never into your own edit |
-| **`orchestrate-manual`** | the same, while the task is **still being understood** | identical in every respect except that the owner opens the windows. Injects `orchestrate` whole rather than restating it, and overrides one paragraph |
+| **`orchestrate-manual`** | the same, while the task is **still being understood** | identical in every respect except that the owner opens the windows |
 | **`onboard`** | a task exists and you need **its** context | directs the reading for that task, traces it to the requirement and the invariants, explores the code that will change |
 | **`test`** | Window A, or any "write the tests for X" | writes failing tests as behaviour and nothing else; carries naming, what a test may assert, the three ways a red test still pins the wrong thing, and the report format |
 | **`implement`** | Window B, or "make it green" | minimum to pass, triangulation, refactor under green, and the rule it will not break: **the test module ends byte-identical** |
@@ -171,22 +171,27 @@ which was true for as long as a human sat between every instruction and every fi
 
 | Hook | Fires | Refuses |
 | --- | --- | --- |
-| `check-prose.sh` | `PostToolUse` on `Write`, `Edit` | an em dash, en dash or double hyphen in prose in any `.md` |
+| `check-prose.sh` | `PostToolUse` on `Write`, `Edit` | an em dash, en dash or double hyphen in prose in any `.md` (`writing-for-agents`) |
 | `block-main-push.sh` | `PreToolUse` on `Bash` | a push touching `main` (`dev-workflow` section 5) |
 | `block-production-secrets.sh` | `PreToolUse` on `Bash`, `Write`, `Edit` | a credential written or staged, and `git add -A` (C6, I7) |
 
-**Three properties, measured 2026-08-10 rather than assumed, and the first two are what make unattended
-dispatch safe at all.** A subagent **inherits the root `CLAUDE.md`** before it reads anything, so tier 0
-survives isolation. A **path-scoped rule arrives on demand inside a subagent**, delivered with the result of
-the `Read` that matches its glob, and only the matching one, so tier 1 survives too but lazily. And **the
-hooks fire without a session restart**: the first version of the secrets hook blocked its own test command
-minutes after the file was written.
+**What a subagent inherits was measured rather than assumed, and it lives in ADR-0008 section 4** with the
+decision that rests on it. The hooks also fire **without a session restart**, learned when the first secrets
+hook blocked its own test command minutes after being written.
 
-**Two rules for anybody adding or changing one.** **Trip it deliberately or it does not exist**: all three
-here have a case per branch, and the suite is what caught a false positive that would have made one of them
-unusable. And **a guard wider than its rule gets switched off, which is worse than not having it**, so a
-pattern matches at a command position rather than anywhere in a string, and prose exemptions the canon has
-already written (the two catalog files, fenced blocks, inline spans) are honoured rather than rediscovered.
+**The suite is `.claude/hooks/hooks-test.sh` and it is the rule** (ADR-0002 section 5): a hook is proven by
+tripping it, never by prose. Thirty cases, and the ones marked REGRESSION are the five defects the first
+three hooks shipped with, each of which **passed** before the fix.
+
+**A guard wider than its rule gets switched off, which is worse than not having it.** That is not a maxim
+here, it is what happened: one version refused the rebase recovery `dev-workflow` section 5 prescribes, and
+another refused every edit to `README.md` over a shields.io escaped hyphen. Match at a command position and
+per token, and honour the exemptions the canon has already written.
+
+`settings.json` also carries the allow list that stops a session prompting on the ordinary `git` and `gh`
+verbs, `add` and `commit` included. **The hooks are what make that list defensible**, since staging a
+credential or staging everything, and a push touching `main`, are refused by rule regardless of the
+permission.
 
 ## What this folder does not have, and why
 

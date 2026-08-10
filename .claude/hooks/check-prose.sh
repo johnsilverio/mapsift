@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # Blocks an em dash, an en dash or a double hyphen in prose, in any markdown this repository owns.
+# The rule is `.claude/skills/writing-for-agents/SKILL.md` and `specs/session-handoff.md`; MAP-40 is
+# why it is a script.
 #
-# Why a hook and not a rule: `CLAUDE.md` and four other documents have forbidden these since the
-# first commit, and `.claude/skills/README.md` recorded the absence of this file as "a known gap
-# rather than a decision". A prose rule is a request that a long session drops; this is the
-# enforcement half, and it is the layer that covers a dispatched subagent nobody is watching.
+# PostToolUse on Write|Edit. Exit 2 returns the message to the model.
 #
-# PostToolUse on Write|Edit. Exit 2 blocks the turn and returns the message to the model.
+# TRAP, and read it before "fixing" this to PreToolUse. PostToolUse is deliberate: an Edit's
+# `new_string` is a FRAGMENT, so a fence or an inline span that opens outside it is undecidable, and
+# a pre-write check on fragments false-positives on every flag inside a code block. The file on disk
+# is the only text where the exclusions below are decidable. The cost is stated rather than hidden:
+# the write lands and is handed back, so a turn that ends first leaves the violation on disk, and a
+# markdown written through Bash is never seen at all. That is why the code-review Craft axis still
+# reads prose in a diff.
 set -euo pipefail
+
+command -v jq >/dev/null || { echo "check-prose.sh requires jq" >&2; exit 2; }
 
 path=$(jq -r '.tool_input.file_path // empty')
 [[ -z "$path" ]] && exit 0
@@ -16,31 +23,29 @@ path=$(jq -r '.tool_input.file_path // empty')
 
 # The one exception in this canon, and it is written rather than assumed: `specs/index.md` and
 # `specs/log.md` are flat catalogs whose one-line-per-entry format uses a dash as a structural
-# separator between an identifier and its description (session-handoff header, Language note).
-# That is tabular punctuation and it stays, so the two files are exempt whole. Narrowing this to
-# the separator position would fail on every historical version line the moment anybody appends.
-case "${path#"$CLAUDE_PROJECT_DIR/"}" in
+# separator (session-handoff header, Language note). Exempt whole, because narrowing it to the
+# separator position would fail on every historical line the moment anybody appends.
+case "${path#"${CLAUDE_PROJECT_DIR:-}/"}" in
   specs/log.md|specs/index.md) exit 0 ;;
 esac
 
-# Fenced blocks are not prose: a diagram arrow and a shell flag are not punctuation. Inline spans
-# are stripped for the same reason, which is what lets `--strict` be written about.
-#
-# The inline strip is a whole-file pass rather than a line pass, and that is a deliberate departure
-# from the version this was adapted from: that one scans line by line, so a code span whose closing
-# backtick lands on the next line reads as prose and false-positives. The replacement keeps the
-# span's newlines so the reported line numbers stay true.
+# Four things are not prose and are blanked before the check. Every pass PRESERVES THE LINE COUNT,
+# because the reported line number is the whole value of the message: a fenced block (a diagram
+# arrow is not punctuation), an inline span (which is what lets `--strict` be written about), an
+# HTML comment, and a URL. The last two are why this once refused every edit to README.md, where a
+# shields.io badge escapes a literal hyphen as `--` and collapsing it silently breaks the badge.
 stripped=$(
-  awk '/^[[:space:]]*```/{f=!f; next} !f' "$path" |
-  perl -0777 -pe 's/`([^`]*)`/"`" . ($1 =~ s{[^\n]}{}gr) . "`"/ge'
+  awk '/^[[:space:]]*```/{f=!f; print ""; next} {print (f ? "" : $0)}' "$path" |
+  perl -0777 -pe 's/`([^`]*)`/"`" . ($1 =~ s{[^\n]}{}gr) . "`"/ge' |
+  perl -0777 -pe 's{<!--.*?-->|\bhttps?://\S+}{$& =~ s/[^\n]//gr}ge'
 )
 
 fail() {
   printf '%s\n\n%s\n\n%s\n' "$1" "$2" \
-"CLAUDE.md forbids all three, everywhere, including under .claude/. Replace with a comma, a period,
-or two sentences. A CLI flag such as --strict is a flag and an arrow inside a fenced block is not
-prose; both are already excluded, as is anything inside inline code. specs/log.md and
-specs/index.md are exempt whole, by the exception written in the session-handoff header." >&2
+"The rule is in .claude/skills/writing-for-agents/SKILL.md and specs/session-handoff.md: no em dash
+and no double hyphen in prose, anywhere, including under .claude/. The en dash is swept with them.
+Replace with a comma, a period, or two sentences. Fenced blocks, inline code, HTML comments and URLs
+are already excluded, and specs/log.md and specs/index.md are exempt whole." >&2
   exit 2
 }
 
@@ -48,10 +53,9 @@ if grep -qP '[\x{2014}\x{2013}]' <<<"$stripped"; then
   fail "Em dash or en dash found in prose in $path." "$(grep -nP '[\x{2014}\x{2013}]' <<<"$stripped" | head -5)"
 fi
 
-# The double hyphen half of the same rule. The pattern matches exactly two hyphens and never a
-# longer run, because a thematic break, a table rule and a YAML fence are three or more and are
-# structure rather than prose. A bare --flag written outside backticks is flagged on purpose: the
-# convention in this tree is that a flag is code.
+# The double hyphen half. Exactly two hyphens and never a longer run, because a thematic break, a
+# table rule and a YAML fence are three or more and are structure. A bare --flag outside backticks is
+# flagged on purpose: the convention in this tree is that a flag is code.
 DOUBLE='(^|[^-])--([^-]|$)'
 if grep -qE "$DOUBLE" <<<"$stripped"; then
   fail "Double hyphen found in prose in $path." "$(grep -nE "$DOUBLE" <<<"$stripped" | head -5)"

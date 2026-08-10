@@ -25,12 +25,9 @@ Why two windows and not two intentions: a single context that writes both sides 
 Window B's brief before Window A's result has been reviewed, because that brief **is** the review.
 
 **A window is opened by the orchestrator or by the owner, and nothing in this section changes either way**
-(added 2026-08-10, ADR-0008 section 4). Automatic is the default: the orchestrator asks, and on the owner's
-go runs the window as an isolated context carrying **the same prompt the manual mode would have produced**,
-then reviews it by running before the next one exists. Manual is the `orchestrate-manual` skill and it is a
-mode rather than a legacy path, because what the automatic one gives up is not isolation but **the chance to
-interrupt**, which is worth little once the contract is written and a great deal while the task is still
-being understood. Everything below this paragraph holds in both.
+(added 2026-08-10, ADR-0008 section 4). Automatic is the default and carries the same prompt;
+`orchestrate-manual` is the named alternative and the condition selecting it is in the ADR. Everything below
+this paragraph holds in both.
 
 A window is opened by a briefing, and the briefing is where the separation above is most easily thrown away. **A window is given the goal, the boundary of what is out of scope, where the authority lives, and the standard its result will be held to. It is not given a step list, a file list, or a name it could have read from the canon.**
 

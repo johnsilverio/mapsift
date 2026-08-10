@@ -134,11 +134,9 @@ read is a briefing nobody reviewed, and the prompt is the most carefully constru
 background so the session stays usable. The window invokes its own skill; `test` and `implement` carry no
 `disable-model-invocation`, which is what makes that possible and is why this works at all.
 
-**Three harness facts a dispatch depends on, measured 2026-08-10 rather than assumed.** The root `CLAUDE.md`
-**is** inherited before the window reads anything, so the prompt's opening line is true in there. A
-**path-scoped rule arrives on demand**, with the `Read` that matches its glob rather than at launch, so a
-window owing a stack rule meets it only after opening a file in that stack. And a window's own **`gitStatus`
-block can be stale**, so every prompt tells it to measure the tree rather than read that block.
+**Every prompt tells the window to measure the tree rather than read its own `gitStatus` block**, which was
+measured stale on 2026-08-10. What a subagent inherits, and why that makes this safe at all, is ADR-0008
+section 4.
 
 **When to use `orchestrate-manual` instead**, and it is a condition rather than a mood: while the task is
 **still being understood**. What the automatic mode gives up is not isolation, which it gains, but the

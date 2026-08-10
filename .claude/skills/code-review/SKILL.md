@@ -69,11 +69,11 @@ stack the diff never touched is reporting that it does not know what it is looki
 **If a machine gate is red the review stops here and reports that.** A judgement review over a red build
 is a report about code that does not run.
 
-**Prose hygiene is enforced at write time since 2026-08-10** by `.claude/hooks/check-prose.sh`, so a
-violation is refused as it is written rather than found here. What is left on the Craft axis is what a
-line-based guard cannot see: a document that reads badly, not one that carries the wrong punctuation.
-**A file written before that hook existed carries no such guarantee**, so the axis still reads prose in a
-diff that touches one.
+**Prose is caught by `.claude/hooks/check-prose.sh` since 2026-08-10, and the axis still reads it.** The
+hook is `PostToolUse`: the write **lands** and the violation is handed back to the model to fix, which is
+not the same as refusing it. Two things it cannot see, and they are why nothing here was narrowed on the
+strength of it: a markdown file written through `Bash` rather than `Write` or `Edit` is never checked at
+all, and a turn that ends before the model acts leaves the violation on disk.
 
 **Run them yourself.** Do not read the window's claim that they passed. Coding-agent benchmarks record
 models that build a reasonable thing and then hallucinate their own inspection, and this project's own
@@ -102,15 +102,9 @@ two instrumentation lines** asking whether the root `CLAUDE.md` was already in c
 call was intercepted. They cost nothing and they are what turns a claim about the harness into a
 measurement.
 
-**Three facts were measured before this became the default:**
-
-- **A subagent inherits the root `CLAUDE.md`** before it reads anything itself, so a prompt saying it loads
-  on its own is **true inside a subagent** and tier 0 is not lost.
-- **A path-scoped rule arrives on demand**, delivered alongside the `Read` that matches its glob and only
-  the matching one, rather than at launch. Tier 1 survives isolation lazily, so an axis that never opens a
-  file in a stack never meets that stack's rule.
-- **The hooks fire and block for a subagent's calls.** That is the layer covering the contexts nobody is
-  watching, and it did not exist here until MAP-40.
+**What a subagent inherits is in ADR-0008 section 4**, with the decision that rests on it. One consequence
+belongs here rather than there: **a path-scoped rule arrives on demand**, so an axis that never opens a file
+in a stack never meets that stack's rule.
 
 **One caution the prompts carry because it was found rather than expected:** a subagent's injected
 `gitStatus` block can be **stale**. Every axis is told to run the range command itself rather than read its
