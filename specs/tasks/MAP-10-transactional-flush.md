@@ -77,11 +77,18 @@ those dates.
    carried an atomicity clause** (gap detection and resync, and no authoritative state from the WebSocket
    tier, are its two clauses), so nothing in the canon is weakened; the clause was this file's own invention
    and is struck.
-8. **The log carries `UNIQUE (tenant_id, operation_id)`, led by the tenant.** Structural integrity rather
-   than a feature: M8 makes `operation_id` the operation's identity and a log admitting the same operation
-   twice cannot support the idempotency MAP-12 will claim over it. Distinct from MAP-12's dedup key, which
-   is `(client_id, mutation_number)` across batches. The leading column is the wall's index rule
-   (`.claude/rules/python-django.md`, ADR-0005).
+8. **The same operation never lands twice, refused by the database rather than by a check the writer
+   remembers.** Structural integrity rather than a feature: M8 makes `operation_id` the operation's
+   identity and a log admitting the same operation twice cannot support the idempotency MAP-12 will claim
+   over it. Distinct from MAP-12's dedup key, which is `(client_id, mutation_number)` across batches.
+   **The constraint that carries it is `UNIQUE (tenant_id, operation_id)`, and that spelling is a shape
+   instruction for the implementing window, not a property a test pins** (corrected 2026-08-10 at the
+   Window A review, which is where the over-specification was caught). The reason it is not a test's
+   business: a test that named the constraint would be asserting implementation against
+   `specs/testing.md` section 2, and the tenant half is already held by construction, since
+   `tests/test_tenant_isolation.py` drives every tenant-owned table through a catalogue case refusing any
+   non-primary unique index whose leading column is not `tenant_id`. What a test here may assert is the
+   SQLSTATE, which separates a database refusal from a Python guard ahead of the insert.
 9. **The flush answers with no body in this slice.** ADR-0010 decision 6's addition leaves the response
    shape to this task and constrains nothing; the only thing a client needs in order to advance its cursor
    is MAP-12's echoed last-applied, so inventing a shape now is the wire break the named request key exists
@@ -124,7 +131,10 @@ the envelope builders, which MAP-34 landed in `apps/api/conftest.py` and which
 From the requirements, with the clause of each that this slice carries.
 
 - **T2.2:** no authoritative state is read from the WebSocket tier, which is the clause of T2.2's acceptance
-  this slice carries. The other, gap detection and resync from the database, is MAP-22's.
+  this slice carries. The other, gap detection and resync from the database, is MAP-22's. **This bullet has
+  no test and is satisfied by construction**, written down 2026-08-10 rather than left for a reader to count
+  as covered: it is a negative about a tier this task does not build, and the honest form of the guarantee is
+  that no module here imports Channels. When the tier exists, the assertion becomes MAP-21's.
 - **M15:** the runtime role holds `SELECT, INSERT` and no `UPDATE, DELETE, TRUNCATE` on the log, so an
   in-place rewrite is refused by the database on the runtime path, and the test asserts that refusal
   **while distinguishing it from a statement that matched no rows**. The owner profile is outside that
@@ -139,8 +149,19 @@ From the requirements, with the clause of each that this slice carries.
   request asserted about itself. **ADR-0005 section 4's silence is the trap here twice over:** the wall
   denies by returning nothing and the grant denies by raising, so a test that asserts an empty result must
   say which of the two it caught.
-- **M8:** the same operation never lands twice, refused by `UNIQUE (tenant_id, operation_id)` at the
-  database rather than by a check the writer remembers, per boundary decision 8.
+- **M8:** the same operation never lands twice, and the refusal is the database's rather than a check the
+  writer remembers, per boundary decision 8.
+
+## Ratified at the Window A review, 2026-08-10
+
+The names the suite chose and the implementing window is held to, so the shape is not guessed and then
+defended. **`OperationLogEntry`** is the model and **`entry.client_half`** is where the stored envelope is
+read from, chosen over `operation` or `envelope` because this slice persists only the client half and MAP-11
+puts the server half beside it, so the accessor does not have to be renamed when that lands.
+**`append_to_the_operation_log(list[ClientHalf])`** in `services.py` is the writer, and it is the only one.
+Two additions to `apps/api/conftest.py` are ratified with it: the `UNIQUE_VIOLATION` SQLSTATE constant, and
+three optional keyword arguments on `a_feature_create_claiming` (`operation_id`, `client_id`,
+`mutation_number`), all defaulted so no existing call site changed.
 
 **The trap that killed the first Window A's transactional tests, kept because it still governs anything
 written near the wall:** `tenant_scope` opens `transaction.atomic()` itself
