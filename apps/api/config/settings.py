@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "mapsift.accounts",
     "mapsift.layers",
+    "mapsift.sync",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

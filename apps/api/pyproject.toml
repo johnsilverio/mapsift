@@ -120,3 +120,9 @@ name = "layers is reached through its selectors and services, never its models"
 type = "protected"
 protected_modules = ["mapsift.layers.models"]
 allowed_importers = ["mapsift.layers"]
+
+[[tool.importlinter.contracts]]
+name = "sync is reached through its selectors and services, never its models"
+type = "protected"
+protected_modules = ["mapsift.sync.models"]
+allowed_importers = ["mapsift.sync"]
