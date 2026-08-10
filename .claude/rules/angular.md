@@ -13,9 +13,10 @@ official Angular style guide (angular.dev/style-guide), the design system in PRD
 this repo's `CLAUDE.md`.
 
 **Version note.** Verified against Angular v22 (the stable line since 2026-06-03) and the toolchain installed
-in `tests/prototypes/editor` (`@angular/core` 22.0.3, `@angular/cli` 22). Nothing is pinned yet: `apps/web`
-does not exist and `specs/dependencies.md`, the canonical home for versions, is still to be written. When it
-exists, it wins over this file for any version claim.
+in `tests/prototypes/editor` (`@angular/core` 22.0.3, `@angular/cli` 22). **`apps/web` and
+`specs/dependencies.md` both exist now, and both outrank this file:** the survey is the canonical home for a
+version claim and `package-lock.json` is what pins one. This note records what the rule below was verified
+against, never what is installed.
 
 ## Generate with the CLI, then edit (non-negotiable)
 

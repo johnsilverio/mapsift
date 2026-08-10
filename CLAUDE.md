@@ -356,7 +356,7 @@ rules) is deferred to the PRD and is NOT pre-decided here.
 
 ## Testing & TDD (the development method)
 
-Mapsift is built **test-first**. A canonical testing spec (`specs/testing.md`, to be created) governs it;
+Mapsift is built **test-first**. A canonical testing spec (`specs/testing.md`) governs it;
 read it before writing any code or test. The essentials:
 
 - **Red, Green, Refactor, always**, in **two clean-context windows**: window A writes the failing tests as

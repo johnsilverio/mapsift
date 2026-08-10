@@ -14,9 +14,10 @@ no HTMX**, and it is not Django REST Framework. Input validation lives at the AP
 schemas. No Rust runs here (foundation 9.6.6): the authoritative conflict rule is the Python implementation,
 kept identical to the client core by golden tests.
 
-**Version note.** Nothing is pinned yet (no lockfile exists until the scaffold), and `specs/dependencies.md` now exists as the survey to check first. Do not assert a library
-version from memory, and do not introduce a dependency the foundation has not ratified without walking that
-gate.
+**Version note.** `apps/api/uv.lock` exists and is what pins a version; `specs/dependencies.md` is the survey
+that says why a choice was made and which particularity of it bites. Check the survey first and the lockfile
+for the number. Do not assert a library version from memory, and do not introduce a dependency the foundation
+has not ratified without walking that gate.
 
 ## Generate with the CLI, then edit (non-negotiable)
 

@@ -1926,7 +1926,7 @@ covered domain is not scope creep.
 
 ## 14. Development method
 
-Mapsift is built **test-first**. The canonical testing spec (to be created) governs the discipline; the
+Mapsift is built **test-first**. The canonical testing spec (`specs/testing.md`) governs the discipline; the
 essentials: Red, Green, Refactor, always, in two clean-context windows (one writes the failing tests as
 behavior, the other implements the minimum to green using those tests as a contract); test behavior, not
 implementation; **separate decisions (pure) from effects (I/O)**, where the decisions (sync conflict
