@@ -12,6 +12,7 @@ from mapsift.common.binding import tenant_scope, user_scope
 from mapsift.common.principal import AuthenticatedRequest
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.rules import MalformedBatch, the_tenant_every_operation_claims
+from mapsift.sync.services import append_to_the_operation_log
 
 router = Router(tags=["sync"])
 
@@ -39,12 +40,11 @@ class OperationBatch(Schema):
 
 @router.post("/operations")
 def flush_operations(request: AuthenticatedRequest, batch: OperationBatch) -> None:
-    """Accept a batch under a tenant claim the principal is verified to hold (MAP-34)."""
+    """Append a batch to the operation log under a tenant claim the principal holds (M15)."""
     with user_scope(request.auth.id):
         _refuse_a_claim_this_principal_cannot_back(batch.tenant_claimed)
         with tenant_scope(batch.tenant_claimed):
-            # The binding is what this slice delivers; MAP-10 puts the flush inside it.
-            return None
+            append_to_the_operation_log(batch.operations)
 
 
 def _refuse_a_claim_this_principal_cannot_back(tenant_id: UUID) -> None:
