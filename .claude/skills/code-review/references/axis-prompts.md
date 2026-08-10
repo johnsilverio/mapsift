@@ -1,13 +1,8 @@
 # The three axis prompts
 
-> **Why these live in git rather than being composed each time.** The criteria are identical on every
-> review, so writing them fresh into three prompts per run pays for them every run and lets the three copies
-> drift. It is the same argument that moved the window protocol's standing discipline into the `test` and
-> `implement` skills (`specs/testing.md` section 1.1). **What varies is three values and nothing else.**
->
-> Copy each block verbatim into an `Agent` call. **All three go in one message** so they run concurrently,
-> with `subagent_type: general-purpose` and `model: opus`, because the axes are the judgement half of this
-> loop and every window of the protocol runs the same model.
+> **Copy each block verbatim into an `Agent` call.** The table below is the only thing that varies; why
+> they live here and how they are dispatched is `SKILL.md` stage 2. **Composing one of these by hand instead
+> of copying it is the drift this file exists to prevent, and it happened on the first run.**
 
 **The three values a dispatch fills in:**
 

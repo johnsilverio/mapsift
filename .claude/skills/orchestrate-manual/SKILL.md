@@ -30,12 +30,8 @@ three parallel subagents**, because that isolation is about the review and not a
 
 ## When this mode is the right one
 
-**While the task is still being understood.** What automatic dispatch gives up is not isolation, which it
-gains, but **the chance to interrupt**: to watch a window take a wrong turn in its second minute and stop
-it. Once the task spec exists and the boundary decisions are registered, that chance is worth little,
-because the contract is what the window follows. Before then it is worth a great deal.
-
-Three other cases, each a real one rather than a preference. **A prompt that needs editing before it runs**,
+Three cases beyond the condition the injected section above already states, each a real one rather than a
+preference. **A prompt that needs editing before it runs**,
 which happens when the orchestrator and the owner disagree about scope. **A task whose canon reading is
 itself in doubt**, where watching which documents the window opens is the finding. And **anything the owner
 wants to comb through**, which needs no justification.

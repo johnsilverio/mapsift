@@ -55,6 +55,38 @@ File and class naming follow what the current schematic emits, which on Angular 
 
 The decision is here. The enforceable restatement is in `.claude/rules/*.md` with a `paths` frontmatter so it loads when a matching file is read. The per-stack `CLAUDE.md` is written after the scaffold and carries only operational residue. **A rules file may not decide anything this ADR does not say**; if a rule needs to change, this ADR is amended first and the rules file follows, never the reverse.
 
+> **Added 2026-08-10 (MAP-40), and the way it was added is the reason it is written here at all.** A fourth
+> mechanism now exists: **`.claude/hooks/`, a script that refuses a tool call**. It sits below the three
+> levels above and outranks all of them, because they are read while it is executed: a rule asks and a hook
+> terminates the call. **It was built before this amendment existed**, which is the inversion the paragraph
+> above forbids in the rules file's own case, and the same branch got it right one level up by amending
+> ADR-0008 before touching a skill. Recorded rather than quietly corrected, because the standard was known
+> and applied unevenly in one sitting.
+>
+> **Three rules govern it, and the first two are the ones that keep it alive.**
+>
+> **A hook is proven by a committed suite that trips it, never by prose.** A guard nobody has defeated on
+> purpose is a guard nobody has tested, and the first three here shipped with five real defects that twenty
+> minutes of adversarial probing found: a guard that blocked the recovery procedure `dev-workflow` section 5
+> prescribes, one that blocked every edit to `README.md` over a shields.io escape, an exemption wrong in both
+> directions, a branch read from the wrong repository under the worktrees ADR-0008 section 8 mandates, and
+> silent non-enforcement when a dependency is missing.
+>
+> **A guard wider than its rule gets switched off, which is worse than not having it.** So a pattern matches
+> at a command position and per token, never anywhere in a string, and the refusal message never offers
+> working around it as a routine option.
+>
+> **A hook states the guarantee it actually gives.** A `PostToolUse` check runs after the write lands and
+> hands the violation back to the model; calling that "enforced at write time" is a claim the mechanism does
+> not support, and the harm is not the wording. It was used in the same commit to narrow the `code-review`
+> Craft axis, which removed the only reader that would have caught what the hook cannot see: a file written
+> through `Bash`, and a turn that ends before the model acts on the message.
+>
+> **The same amendment covers one promotion in `code-review`**, which had the same defect and is corrected
+> with it: the three judgement axes moved from "separate contexts where available" to **three parallel
+> subagents** with a fixed subagent type and model. That is a mechanism decision and it lives here, with the
+> measurements behind it in ADR-0008 section 4.
+
 ---
 
 ## Consequences
