@@ -74,6 +74,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     atomicity clause it added to T2.2 was struck on 2026-08-10 and moved to MAP-11, where a failure can
     actually reach it. Its evidence block carries the probe that proved the generated envelope types bind as
     a django-ninja body.
+  - **`tasks/MAP-11-per-project-version.md`** — the server-owned key that orders what MAP-10 appends,
+    allocated in one statement and taken last, with the four boundary decisions of its pickup pointing at the
+    ADR sections that hold them rather than restating any. Its evidence block is the worked example of the
+    rule that a spec hands over what cost a measurement and **says so when nothing was measured**: the
+    instrument for making the allocation fail after the append is named as Window A's to choose, precisely so
+    it is not mistaken for handed-over knowledge. Its acceptance carries the correction MAP-10 earned, naming
+    T2.2's *requirement sentence* rather than T2.2's acceptance list as the upstream of the atomicity clause.
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
   - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim
