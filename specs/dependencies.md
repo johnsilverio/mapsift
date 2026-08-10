@@ -258,6 +258,25 @@ refusal, never to write it. The load-bearing caution is the one this survey has 
 a different costume: that guarantee is the *generated* union's, so it holds exactly while the catalog member
 is generated rather than hand-added, which is ADR-0009 section 4 again from the other side.
 
+### Django writes migrations through black when black is importable, and black arrived here as somebody else's transitive dependency
+
+*Observed at the MAP-10 implementation review, 2026-08-10, and verified rather than accepted: `black`
+imports in the api image at **26.5.1**, and `apps/api/pyproject.toml` carries
+`extend-exclude = ["migrations"]` under `[tool.ruff]`.*
+
+`django.db.migrations.writer` formats its output with black when it can import it, and falls back to its
+own long-line output when it cannot. Nobody chose black for this repository: it entered the api image as a
+transitive dependency of **datamodel-code-generator**, which arrived with ADR-0009. Both migrations written
+before that date carry Django's raw output and every migration written after it carries black's, in the same
+tree.
+
+**The particularity that bites is not the style, it is that no gate can see it.** Migrations are excluded
+from ruff, so neither `ruff format --check` nor `ruff check` reads them, and the two styles coexist with
+nothing reporting the split. A reader who finds it later has no way to date it from the files themselves.
+The rule stands unchanged, that the generator writes what the installed version produces and its output is
+not hand-reformatted; what is recorded here is **why the same generator produces two shapes in one
+repository**, so the next person does not go looking for a decision that was never taken.
+
 ---
 
 ## 2. Client core, `libs/core`
