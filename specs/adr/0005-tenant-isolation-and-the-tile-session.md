@@ -75,6 +75,12 @@ Two connection profiles select the role from the environment: **migrate** connec
 >
 > **The trap it creates, and it is section 4's silence generalized:** a refused in-place write surfaces as a *permission* error rather than a logical one, so a test that asserts append-only must distinguish the grant denying it from a statement that simply matched no rows. Asserting only that nothing changed passes for the wrong reason under both.
 
+> **Addition (2026-08-10), at the MAP-11 pickup: the per-project version table is the counter-example to the addition above, and it takes `UPDATE`.** The log narrowed its grant because rewriting an entry is the one thing it exists to prevent. The ADR-0004 version row is the opposite shape: its normal operation **is** an in-place increment, so `mapsift_app` holds `SELECT, INSERT, UPDATE` on it and anything narrower stops a flush from running at all.
+>
+> This is written here rather than left for a reviewer to infer, because after 2026-08-07 a grant carrying `UPDATE` reads against this repository's newest habit, and somebody will eventually flag it as the defect the log's grant was. **The two guarantees do not touch:** different tables, and the log's privileges are unchanged by this.
+>
+> **What the pair establishes is the rule the bullet above did not carry: the grant is decided per table by what that table guarantees.** A new tenant-owned table states its own set rather than inheriting the sentence about "the tenant-owned tables", and the version table is the second table to exercise that, in the opposite direction from the first.
+
 ### 3. The tenant binding is transaction-scoped, parameterised, and guarded against the empty string
 
 The first statement inside the transaction that serves a request or a background task is
