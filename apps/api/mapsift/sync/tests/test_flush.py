@@ -1,52 +1,66 @@
-"""The flush: one transactional call that appends a batch of client operations to the log.
+"""The flush: the call that puts a client's queued operations into the append-only log.
 
-Trace: T2.2 (the op-queue flush is the transactional API call the database orders), M9 (an
-operation type outside the closed catalog is refused with a typed error), C4 with N2 and ADR-0005
-sections 3 and 4 (the wall, and which of its two silences answered); C9, I2.
+Trace: T2.2 (the clause this slice carries is that no authoritative state is read from the
+WebSocket tier), M15 (a log entry is the M8 envelope as applied), M9 (an operation type outside the
+closed catalog is refused with a typed error), C4 with N2 and ADR-0005 sections 3 and 4 (the wall,
+and which of its two silences answered); C9, I2. The route, the request body and the client a write
+test may use are ADR-0010 decision 6 with its addition of 2026-08-07, and not this suite's to pick.
 
 What is deliberately not here, each with the issue that owns it: the per-project version that will
-order these rows (MAP-11), the dedup and the echoed cursor (MAP-12), the contiguity and the typed
-resend on a gap (MAP-13), and the projection, which no flush in this slice writes.
+order these rows (MAP-11), so what lands is asserted as a set and never as a sequence; the assertion
+that the flush is one transaction (MAP-11, by boundary decision 7 of 2026-08-10, because no failure
+reachable through this route can falsify it and a test written here would pass for the wrong
+reason); the dedup and the echoed cursor (MAP-12); the contiguity and the typed resend on a gap
+(MAP-13); and the projection, which no flush in this slice writes.
 """
 
 from http import HTTPStatus
 from uuid import uuid4
 
 import pytest
-from django.test import Client
 
-from conftest import POLICY_VIOLATION, Party, refused_with
+from conftest import (
+    POLICY_VIOLATION,
+    Party,
+    a_browser,
+    a_feature_create_claiming,
+    a_geometry_set_claiming,
+    refused_with,
+)
 from mapsift.common.binding import tenant_scope
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.models import OperationLogEntry
 from mapsift.sync.services import append_to_the_operation_log
-from mapsift.sync.tests.envelopes import an_operation_addressed_at
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
-FLUSH_PATH = "/api/sync/flush"
+OPERATIONS_PATH = "/api/operations"
+JSON = "application/json"
 
 
-def _an_entry_of(party: Party, *, mutation_number: int = 0) -> ClientHalf:
-    return ClientHalf.model_validate(
-        an_operation_addressed_at(party, operation_id=uuid4(), mutation_number=mutation_number)
-    )
-
-
-def test_a_flush_lands_every_operation_of_its_batch_in_the_log(
-    client: Client, alice: Party
-) -> None:
+def test_a_flush_lands_every_operation_of_its_batch_in_the_log(alice: Party) -> None:
     """T2.2, C9: the flush is the API call that puts a client's queue into the database, which is
-    the only place the order those operations are read back in can come from."""
-    first, second = uuid4(), uuid4()
+    the only place the order those operations are read back in can come from. Every operation of
+    the batch lands and none is lost; the sequence they land in is the per-project version's and
+    MAP-11 is what claims it. The two operations come from one client and carry consecutive
+    mutation numbers, because that is what a flush is (M4, C12) and a batch spelled any other way
+    asserts something about batches that this slice has no business deciding."""
+    first, second, one_client = uuid4(), uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
 
-    response = client.post(
-        FLUSH_PATH,
-        data=[
-            an_operation_addressed_at(alice, operation_id=first, mutation_number=0),
-            an_operation_addressed_at(alice, operation_id=second, mutation_number=1),
-        ],
-        content_type="application/json",
+    response = browser.post(
+        OPERATIONS_PATH,
+        {
+            "operations": [
+                a_feature_create_claiming(
+                    alice.tenant_id, operation_id=first, client_id=one_client, mutation_number=1
+                ),
+                a_feature_create_claiming(
+                    alice.tenant_id, operation_id=second, client_id=one_client, mutation_number=2
+                ),
+            ]
+        },
+        JSON,
     )
 
     assert response.status_code == HTTPStatus.OK
@@ -56,58 +70,71 @@ def test_a_flush_lands_every_operation_of_its_batch_in_the_log(
     assert landed == {first, second}
 
 
+def test_a_logged_entry_replays_the_operation_its_client_authored(alice: Party) -> None:
+    """M15's Shape, the M8 envelope as applied. These rows are the only record this slice produces,
+    so an entry that kept the identifier and dropped the envelope satisfies nothing downstream and
+    starves MAP-12, whose dedup reads the clientID and the mutation number off them. The whole
+    envelope is asserted through the generated reader rather than field by field, because a
+    field-by-field assertion pins the fields somebody remembered."""
+    authored = a_feature_create_claiming(alice.tenant_id)
+    browser = a_browser(authenticated_as=alice.user_id)
+
+    browser.post(OPERATIONS_PATH, {"operations": [authored]}, JSON)
+
+    with tenant_scope(alice.tenant_id):
+        entry = OperationLogEntry.objects.get()
+
+    assert ClientHalf.model_validate(entry.client_half) == ClientHalf.model_validate(authored)
+
+
+def test_a_logged_entry_replays_the_catalogs_other_operation_with_its_payload(
+    alice: Party,
+) -> None:
+    """M15 with M9, and not a duplicate of the case above. The two catalog members carry
+    structurally different targets and only this one carries a payload, so an entry shaped around
+    `feature.create` drops the geometry of a `feature.geometry.set` while the case above stays
+    green, which is exactly the log MAP-11's replay could not read back."""
+    authored = a_geometry_set_claiming(alice.tenant_id)
+    browser = a_browser(authenticated_as=alice.user_id)
+
+    browser.post(OPERATIONS_PATH, {"operations": [authored]}, JSON)
+
+    with tenant_scope(alice.tenant_id):
+        entry = OperationLogEntry.objects.get()
+
+    assert ClientHalf.model_validate(entry.client_half) == ClientHalf.model_validate(authored)
+
+
 def test_an_operation_type_outside_the_closed_catalog_is_refused_at_the_flush_boundary(
-    client: Client, alice: Party
+    alice: Party,
 ) -> None:
     """M9, and ADR-0009 section 4 with it. The tell is the error type rather than the status: a
     hand-written schema in front of the generated union, or a discriminator that degraded to a
-    plain union, still refuses this document, so a bare `422` would pass over both."""
+    plain union, still refuses this document, so a bare `422` would pass over both. The status is
+    the ratified one of ADR-0010 decision 6's addition and stands as the positive control."""
     nobody_declared_it = {
-        **an_operation_addressed_at(alice, operation_id=uuid4(), mutation_number=0),
+        **a_feature_create_claiming(alice.tenant_id),
         "operation_type": "basin.dredge",
     }
+    browser = a_browser(authenticated_as=alice.user_id)
 
-    response = client.post(FLUSH_PATH, data=[nobody_declared_it], content_type="application/json")
+    response = browser.post(OPERATIONS_PATH, {"operations": [nobody_declared_it]}, JSON)
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert [refusal["type"] for refusal in response.json()["detail"]] == ["union_tag_invalid"]
-
-
-def test_a_batch_carrying_an_operation_nobody_declared_lands_none_of_it(
-    client: Client, alice: Party
-) -> None:
-    """M9 with T2.2: the batch is one transaction, so the well-formed operation beside a refused
-    one is not half-applied. Green from the first line, because the whole body is one generated
-    union and no handler is entered; kept because an implementation that validated operation by
-    operation would land the first one and report nothing about it."""
-    well_formed = an_operation_addressed_at(alice, operation_id=uuid4(), mutation_number=0)
-    nobody_declared_it = {
-        **an_operation_addressed_at(alice, operation_id=uuid4(), mutation_number=1),
-        "operation_type": "basin.dredge",
-    }
-
-    client.post(FLUSH_PATH, data=[well_formed, nobody_declared_it], content_type="application/json")
-
-    with tenant_scope(alice.tenant_id):
-        assert not OperationLogEntry.objects.exists()
 
 
 def test_an_operation_addressed_at_another_tenant_is_refused_by_the_wall(
     alice: Party, bob: Party
 ) -> None:
     """C4, N2, ADR-0005 sections 3 and 4: a log entry carries the tenant its operation is
-    addressed at, so the policy's WITH CHECK is what refuses this one, and a Python comparison
-    that refused it first would leave the wall itself unexercised. The suite connects as the
-    owner, which holds every privilege on this table, so 42501 here can only be the policy."""
+    addressed at, so the policy's WITH CHECK is what refuses this one, and a Python comparison that
+    refused it first would leave the wall itself unexercised. Reached through the writer rather
+    than the route, because ADR-0010 decision 6 refuses a disagreeing batch at the boundary and the
+    wall has to hold for every caller, not only the one that route admits. The suite connects as
+    the owner, which holds every privilege on this table, so the 42501 caught here can only be the
+    policy and never the grant the append-only suite measures."""
+    addressed_at_bob = ClientHalf.model_validate(a_feature_create_claiming(bob.tenant_id))
+
     with refused_with(POLICY_VIOLATION), tenant_scope(alice.tenant_id):
-        append_to_the_operation_log([_an_entry_of(bob)])
-
-
-def test_a_batch_the_wall_refuses_lands_none_of_its_operations(alice: Party, bob: Party) -> None:
-    """T2.2 with C4: one transaction for the whole batch, so the operation the wall accepts does
-    not survive beside the one it refuses."""
-    with refused_with(POLICY_VIOLATION), tenant_scope(alice.tenant_id):
-        append_to_the_operation_log([_an_entry_of(alice), _an_entry_of(bob, mutation_number=1)])
-
-    with tenant_scope(alice.tenant_id):
-        assert not OperationLogEntry.objects.exists()
+        append_to_the_operation_log([addressed_at_bob])

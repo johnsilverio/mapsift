@@ -32,6 +32,7 @@ TENANT_COLUMN = "tenant_id"
 POLICY_VIOLATION = "42501"
 NOT_NULL_VIOLATION = "23502"
 FOREIGN_KEY_VIOLATION = "23503"
+UNIQUE_VIOLATION = "23505"
 # PostGIS raises this one from the column's own type modifier, which is why it needs no constraint.
 INVALID_PARAMETER_VALUE = "22023"
 
@@ -263,12 +264,23 @@ def _a_csrf_pair() -> tuple[str, str]:
     return minted.META["CSRF_COOKIE"], token
 
 
-def a_feature_create_claiming(tenant_id: UUID) -> JsonObject:
-    """One catalog operation as the client authored it, addressed at a tenant (M8, M9)."""
+def a_feature_create_claiming(
+    tenant_id: UUID,
+    *,
+    operation_id: UUID | None = None,
+    client_id: UUID | None = None,
+    mutation_number: int = 1,
+) -> JsonObject:
+    """One catalog operation as the client authored it, addressed at a tenant (M8, M9).
+
+    The three client-minted fields are settable because a flush is one client's queue and the
+    suites that post more than one operation have to say so (M4, C12); each defaults to what a
+    caller that does not care about them would have written anyway.
+    """
     return {
-        "operation_id": str(uuid4()),
-        "client_id": str(uuid4()),
-        "mutation_number": 1,
+        "operation_id": str(operation_id or uuid4()),
+        "client_id": str(client_id or uuid4()),
+        "mutation_number": mutation_number,
         "operation_type": "feature.create",
         "operation_schema_version": 1,
         "conflict_rule_version": 1,
