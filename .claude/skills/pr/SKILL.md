@@ -32,7 +32,8 @@ Run `git fetch origin` first so the comparisons are accurate, then check all of:
 git push -u origin <branch>
 ```
 
-Never force-push, and never push to `main`.
+Never push to `main`. Force-push is governed by the `dev-workflow` skill section 5, which names the single
+case where it is correct and the flag that makes it safe; this skill does not carry a second copy of it.
 
 ## 3. Open the pull request
 
