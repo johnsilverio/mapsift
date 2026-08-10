@@ -111,8 +111,39 @@ and then carries only what this task knows. **Window B's prompt cannot be writte
 has been reviewed**, because its `<semantics>` block is that review, and handing over both at once turns the
 protocol into theatre.
 
+**Dispatching the window, which by default you do yourself** (ADR-0008 section 4, addition of 2026-08-10).
+The next section is how.
+
 **Reviewing what comes back, by running it yourself**, through `code-review`: the machine gates first, and
-only over a green build the three isolated judgement axes. Never approve on a window's own report.
+only over a green build the three isolated judgement axes, **as three parallel subagents**. Never approve on
+a window's own report.
+
+## Dispatching a window, which is the default and not the exception
+
+**You run the window. The owner decides when.** Ask, in one sentence naming which window and what it will
+do, and on the go run it as an isolated context. Then review by running, report, and ask again before the
+next one. **Never dispatch two windows in one message**, which is the same defect as writing both halves in
+one context.
+
+**The prompt is the artifact, not the mechanism.** What you dispatch is **byte for byte what you would have
+handed the owner to paste**, in the XML shape of `specs/testing.md` section 1.1, naming the `test` or
+`implement` skill and pointing at the task spec. **Show it before you run it.** A dispatch the owner cannot
+read is a briefing nobody reviewed, and the prompt is the most carefully constructed artifact of the loop.
+
+**Use `Agent` with `subagent_type: general-purpose` and `model: opus`**, one call, and let it run in the
+background so the session stays usable. The window invokes its own skill; `test` and `implement` carry no
+`disable-model-invocation`, which is what makes that possible and is why this works at all.
+
+**Three harness facts a dispatch depends on, measured 2026-08-10 rather than assumed.** The root `CLAUDE.md`
+**is** inherited before the window reads anything, so the prompt's opening line is true in there. A
+**path-scoped rule arrives on demand**, with the `Read` that matches its glob rather than at launch, so a
+window owing a stack rule meets it only after opening a file in that stack. And a window's own **`gitStatus`
+block can be stale**, so every prompt tells it to measure the tree rather than read that block.
+
+**When to use `orchestrate-manual` instead**, and it is a condition rather than a mood: while the task is
+**still being understood**. What the automatic mode gives up is not isolation, which it gains, but the
+chance to interrupt a window in its second minute. Once the task spec exists and the boundary decisions are
+registered, that chance is worth little. Before then it is worth a lot.
 
 **Recording**, through `fan-out`. A decision that lands in code and not in the canon is the contradiction the
 next adversarial pass finds. When work is approved you release the commit with a suggested Conventional

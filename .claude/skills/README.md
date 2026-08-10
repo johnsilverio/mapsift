@@ -68,8 +68,9 @@ spec at `specs/tasks/MAP-<n>-<slug>.md`, and brings you the boundary decisions w
 cost each. You rule. It **registers your verdict in the canon before dispatching anything**, because a
 decision that exists only in a chat message is invisible to the next clean window.
 
-**Then the two windows, one at a time.** Window A runs **`test`** and writes the failing tests. The
-orchestrator closes it by **running** `code-review`, never by reading its report. Only then does Window B's
+**Then the two windows, one at a time, dispatched by the orchestrator on your go** (ADR-0008 section 4;
+`orchestrate-manual` if you would rather open them yourself). Window A runs **`test`** and writes the
+failing tests. The orchestrator closes it by **running** `code-review`, never by reading its report. Only then does Window B's
 brief exist, because that brief is the review; Window B runs **`implement`** and reaches green without
 touching a test. The gate runs again, and you get a verdict plus a suggested commit message.
 
@@ -83,7 +84,8 @@ closed until it has run.
 
 | Skill | The moment you reach for it | What typing it does |
 | --- | --- | --- |
-| **`orchestrate`** | opening a session with no task chosen, or asking "what is next" | injects the tree, the tracker and the live state, then takes the orchestrator role. **It does not implement and does not touch code**: a finding goes back to a window, never into your own edit |
+| **`orchestrate`** | opening a session with no task chosen, or asking "what is next" | injects the tree, the tracker and the live state, then takes the orchestrator role. **Dispatches each window itself** on the owner's go, showing the prompt first. **It does not implement and does not touch code**: a finding goes back to a window, never into your own edit |
+| **`orchestrate-manual`** | the same, while the task is **still being understood** | identical in every respect except that the owner opens the windows. Injects `orchestrate` whole rather than restating it, and overrides one paragraph |
 | **`onboard`** | a task exists and you need **its** context | directs the reading for that task, traces it to the requirement and the invariants, explores the code that will change |
 | **`test`** | Window A, or any "write the tests for X" | writes failing tests as behaviour and nothing else; carries naming, what a test may assert, the three ways a red test still pins the wrong thing, and the report format |
 | **`implement`** | Window B, or "make it green" | minimum to pass, triangulation, refactor under green, and the rule it will not break: **the test module ends byte-identical** |

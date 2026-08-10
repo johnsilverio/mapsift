@@ -81,13 +81,44 @@ rule predates that evidence: verify against disk, never against a report.
 
 ## Stage 2: three axes, in isolated contexts, never merged
 
-Run the three in **separate contexts** (parallel subagents where available), each seeing the diff, the
-commit list and its own criteria, and **not** the reasoning that produced the change. A fresh reader
-evaluates the result on its own terms; a shared context lets one axis mask another, which is the whole
-reason they are separate.
+Run the three as **three parallel subagents**, each seeing the diff, the commit list and its own criteria,
+and **not** the reasoning that produced the change. A fresh reader evaluates the result on its own terms; a
+shared context lets one axis mask another, which is the whole reason they are separate.
 
 **Do not merge or rerank the three reports.** Present them under their own headings. A change can pass one
 axis and fail another, and a single ranked list is where that gets lost.
+
+### How they are dispatched, measured 2026-08-10 rather than assumed
+
+**The three prompts are in [`references/axis-prompts.md`](references/axis-prompts.md), copied verbatim
+rather than composed each time.** Only three values vary: the range, one clause naming the change, and the
+task spec path. The criteria are identical on every review, so writing them fresh per run pays for them per
+run and lets the copies drift, which is the argument that moved the window protocol's standing discipline
+into `test` and `implement`.
+
+**Three `Agent` calls in one message** so they run concurrently, `subagent_type: general-purpose`, and
+**`model: opus`** on each, because the axes are the judgement half of this loop. Every prompt **ends with
+two instrumentation lines** asking whether the root `CLAUDE.md` was already in context and whether any tool
+call was intercepted. They cost nothing and they are what turns a claim about the harness into a
+measurement.
+
+**Three facts were measured before this became the default:**
+
+- **A subagent inherits the root `CLAUDE.md`** before it reads anything itself, so a prompt saying it loads
+  on its own is **true inside a subagent** and tier 0 is not lost.
+- **A path-scoped rule arrives on demand**, delivered alongside the `Read` that matches its glob and only
+  the matching one, rather than at launch. Tier 1 survives isolation lazily, so an axis that never opens a
+  file in a stack never meets that stack's rule.
+- **The hooks fire and block for a subagent's calls.** That is the layer covering the contexts nobody is
+  watching, and it did not exist here until MAP-40.
+
+**One caution the prompts carry because it was found rather than expected:** a subagent's injected
+`gitStatus` block can be **stale**. Every axis is told to run the range command itself rather than read its
+own context block for the state of the branch.
+
+**The orchestrator still runs the machine gates itself** (stage 1) and still reads the diff. The axes judge;
+they never replace the run. **If the axes are run inline instead**, which is a deliberate departure and not
+a default, say so in the verdict: a reader has to know whether one axis could have masked another.
 
 ### Axis 1: Canon. Blocking.
 
