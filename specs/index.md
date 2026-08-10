@@ -67,10 +67,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     example of the rule this folder's README states: a handed-over measurement was generalized past the
     configuration it was taken in, and the block was rewritten mid-task rather than left to be believed.
   - **`tasks/MAP-10-transactional-flush.md`** — the first server-side write path: a batch of client
-    operations persisted in one transaction as an append-only log inside the wall, with the projection, the
-    version allocation, the dedup and the contiguity each deferred to the issue that owns them. Its boundary
-    block is the worked example of the rule that a task spec cites rather than restates, and its evidence
-    block carries the probe that proved the generated envelope types bind as a django-ninja body.
+    operations persisted as an append-only log inside the wall, with the projection, the version allocation,
+    the dedup, the contiguity and the atomicity assertion each deferred to the issue that owns them. Its
+    boundary block is the worked example of the rule that a task spec cites rather than restates, and of the
+    rule that a task spec may not invent an acceptance clause the requirement it cites does not carry: the
+    atomicity clause it added to T2.2 was struck on 2026-08-10 and moved to MAP-11, where a failure can
+    actually reach it. Its evidence block carries the probe that proved the generated envelope types bind as
+    a django-ninja body.
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
   - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim

@@ -1,4 +1,4 @@
-# MAP-10: a batch of client operations reaches the database, once, in one transaction, and can never be rewritten
+# MAP-10: a batch of client operations reaches the database, once, and can never be rewritten
 
 ## Trace
 
@@ -6,17 +6,22 @@ PRD **T2.2** (ordering authority and transport separation) and **M15** (the appe
 unknown-type clause of **M9**'s acceptance. Invariants **I2** and **I9**; constraints **C9**, **C4**, **C5**.
 **ADR-0004** decision 2 for the shape of the transaction, **ADR-0005** sections 2 and 3 for the wall and the
 role grants, **ADR-0007** sections 1 and 3 for where each file goes and what it may import, **ADR-0009**
-section 4 for why the envelope types are never hand-written.
+section 4 for why the envelope types are never hand-written, and **ADR-0010** decision 6 with its addition
+for the route this task fills, the request body it is handed, and the client a write test is allowed to use.
 
 ## What this task owns
 
-One transactional django-ninja call that accepts a batch of client-authored operations and persists them as
-rows in an append-only log inside the tenant wall. It creates the `sync` package as a Django app, its first
-migration, and its router.
+The body of the django-ninja call the authenticated-request seam already publishes: it accepts a batch of
+client-authored operations and persists them as rows in an append-only log inside the tenant wall. It creates
+the `sync` package as a Django app and its first migrations. **The router already exists** (`mapsift/sync/api.py`,
+delivered by MAP-34) and this task fills the handler that today binds the tenant and returns nothing.
 
 **Order is deliberately not claimed here** (corrected 2026-08-07): the server-owned key that orders these
 rows is the per-project version and it is MAP-11's, so this slice asserts that every operation of a batch
 lands and none is lost, and asserts nothing about the sequence they land in.
+
+**Atomicity is not claimed here either** (corrected 2026-08-10, boundary decision 7 below): this slice
+asserts that a batch lands, not that it lands or fails as one.
 
 ## Out of scope
 
@@ -26,6 +31,10 @@ Named explicitly, each with the owner it goes to.
   the operation-log projection-strategy ADR, which M15 leaves open and which has no issue yet.
 - **The per-project version and the two ADR-0004 lock rules.** Owner: **MAP-11**. This task fixes only the
   *place* the allocation will go, per the boundary decision below.
+- **The assertion that the flush is one transaction.** Owner: **MAP-11**, by boundary decision 7 of
+  2026-08-10. There is no failure reachable through the route in this slice that a non-transactional
+  implementation would survive, so any test written here would pass for the wrong reason, which is the
+  defect the first Window A review already found in another costume.
 - **Dedup by mutation number and the echoed last-applied cursor.** Owner: **MAP-12**, including the clause
   MAP-10's own tracker acceptance points at.
 - **Contiguity and the typed resend-from-cursor on a gap.** Owner: **MAP-13**.
@@ -43,8 +52,9 @@ Named explicitly, each with the owner it goes to.
 
 ## Boundary decisions the owner closed
 
-All six on **2026-08-07**, each registered in the document that owns it before this file was written; the
-reasoning is one grep away in `specs/log.md` under that date.
+The first six on **2026-08-07** and three more at the resumption on **2026-08-10**, each registered in the
+document that owns it before this file was written; the reasoning is one grep away in `specs/log.md` under
+those dates.
 
 1. **This task owns the M15 log table**, because no issue in milestone 3 did.
 2. **The flush appends and does not write the projection.**
@@ -57,6 +67,25 @@ reasoning is one grep away in `specs/log.md` under that date.
    that reads a target path server-side.
 6. **Append-only is enforced by privilege, not watched by a test:** ADR-0005 section 2, addition of
    2026-08-07, and M15's sharpened acceptance.
+7. **The atomicity assertion moves to MAP-11, and the reason is that MAP-34 closed the last failure that
+   reached it.** ADR-0010 decision 6 refuses a batch disagreeing on its tenant at the Pydantic boundary,
+   before any binding, so no cross-tenant operation reaches the wall through the route any more. Nothing runs
+   after the append in this slice, the log holds no foreign key to a layer or a feature, and a duplicate
+   `operation_id` fails a single `INSERT` whole, which a non-transactional implementation survives
+   identically. MAP-11 puts the version allocation after the append, which is the second statement a failure
+   can roll the first one back from, and the assertion is written there. **PRD T2.2's acceptance never
+   carried an atomicity clause** (gap detection and resync, and no authoritative state from the WebSocket
+   tier, are its two clauses), so nothing in the canon is weakened; the clause was this file's own invention
+   and is struck.
+8. **The log carries `UNIQUE (tenant_id, operation_id)`, led by the tenant.** Structural integrity rather
+   than a feature: M8 makes `operation_id` the operation's identity and a log admitting the same operation
+   twice cannot support the idempotency MAP-12 will claim over it. Distinct from MAP-12's dedup key, which
+   is `(client_id, mutation_number)` across batches. The leading column is the wall's index rule
+   (`.claude/rules/python-django.md`, ADR-0005).
+9. **The flush answers with no body in this slice.** ADR-0010 decision 6's addition leaves the response
+   shape to this task and constrains nothing; the only thing a client needs in order to advance its cursor
+   is MAP-12's echoed last-applied, so inventing a shape now is the wire break the named request key exists
+   to avoid. The handler keeps returning nothing.
 
 ## Evidence handed over
 
@@ -72,20 +101,30 @@ writing one would violate ADR-0009 section 4.**
 a typed pydantic `union_tag_invalid`, before a handler is entered. M9's clause is therefore **asserted**
 here, never implemented.
 
-**Measured on disk at the pickup.** `mapsift/sync/` is not yet a Django app: it holds only the generated
-`envelope.py` and an `__init__.py`, has no `apps.py`, no `models.py` and no `migrations/`, and is absent
-from `INSTALLED_APPS`. `import-linter` already names `sync` as the top tier of the layers contract, so the
-package is anticipated by the gate and adding it must not break `exhaustive = true`.
+**Measured on disk at the resumption, 2026-08-10, and it replaces the pickup's own measurement, which MAP-34
+overtook.** `mapsift/sync/` is still not a Django app: it has no `apps.py`, no `models.py` and no
+`migrations/`, and `mapsift.sync` is absent from `INSTALLED_APPS`. It now holds `api.py`, `rules.py` and a
+`tests/` package as well as the generated `envelope.py`. `import-linter` already names `sync` as the top tier
+of the layers contract, so the package is anticipated by the gate and adding it must not break
+`exhaustive = true`.
 
 **Inherited from MAP-5 and still true:** `django.contrib.gis` is in `INSTALLED_APPS` and the engine is the
 PostGIS backend.
+
+**What went stale in the first Window A while this task was blocked, which is state rather than canon and is
+why it is written here.** Those tests were authored on 2026-08-07 before ADR-0010 existed, so three contract
+facts they encode are now wrong and the documents that hold the right ones are already in the reading
+protocol: the route and the request body (ADR-0010 decision 6's addition), the client a write test is
+allowed to use (the same addition, and `specs/dependencies.md` section 1 for the measurement under it), and
+the envelope builders, which MAP-34 landed in `apps/api/conftest.py` and which
+`mapsift/sync/tests/envelopes.py` now duplicates. The correction round owns all three.
 
 ## Acceptance
 
 From the requirements, with the clause of each that this slice carries.
 
-- **T2.2:** the op-queue flush is a transactional API call the database orders, and no authoritative state
-  is read from the WebSocket tier. The gap-detection-and-resync clause of T2.2's acceptance is MAP-22's.
+- **T2.2:** no authoritative state is read from the WebSocket tier, which is the clause of T2.2's acceptance
+  this slice carries. The other, gap detection and resync from the database, is MAP-22's.
 - **M15:** the runtime role holds `SELECT, INSERT` and no `UPDATE, DELETE, TRUNCATE` on the log, so an
   in-place rewrite is refused by the database on the runtime path, and the test asserts that refusal
   **while distinguishing it from a statement that matched no rows**. The owner profile is outside that
@@ -100,6 +139,11 @@ From the requirements, with the clause of each that this slice carries.
   request asserted about itself. **ADR-0005 section 4's silence is the trap here twice over:** the wall
   denies by returning nothing and the grant denies by raising, so a test that asserts an empty result must
   say which of the two it caught.
-- **T2.2's transactional clause needs a case the code under test can fail.** `tenant_scope` opens
-  `transaction.atomic()` itself (`mapsift/common/binding.py`), so a test whose only transaction is the one
-  its own context manager opened is green against an implementation that has no transaction at all.
+- **M8:** the same operation never lands twice, refused by `UNIQUE (tenant_id, operation_id)` at the
+  database rather than by a check the writer remembers, per boundary decision 8.
+
+**The trap that killed the first Window A's transactional tests, kept because it still governs anything
+written near the wall:** `tenant_scope` opens `transaction.atomic()` itself
+(`mapsift/common/binding.py`), so a test whose only transaction is the one its own context manager opened is
+green against an implementation that has no transaction at all. That is why boundary decision 7 moves the
+assertion rather than strengthening it.
