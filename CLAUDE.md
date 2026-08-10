@@ -500,7 +500,9 @@ Window A writes the failing tests as behaviour (the `test` skill), Window B impl
 without editing them (the `implement` skill), and an **orchestrator** opens the task, sizes the slice, closes
 the boundary decisions with the owner before dispatching, writes each brief **only after reviewing what the
 previous window returned**, and reviews by **running** the gates rather than by reading a report (the
-`orchestrate` and `code-review` skills). The orchestrator does not implement and does not touch code: the
+`orchestrate` and `code-review` skills). **The orchestrator dispatches each window itself on the owner's go**
+and `orchestrate-manual` is the mode for while the task is still being understood (ADR-0008 section 4,
+addition of 2026-08-10). The orchestrator does not implement and does not touch code: the
 moment it edits what a window produced, it stops being the independent check the protocol exists to buy.
 Section 1.1 is the contract every window brief satisfies and 1.2 is why sizing the slice is a step rather
 than an afterthought.

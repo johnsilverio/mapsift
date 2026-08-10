@@ -128,7 +128,10 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     stack, the Angular component file layout with its bounded inline exception, the countable folder-split
     threshold, naming from the installed schematic, and the three-level split between the ADR (the decision),
     the path-scoped `.claude/rules/*.md` (the enforcement), and a per-stack `CLAUDE.md` (operational residue,
-    after the scaffold).
+    after the scaffold). **Section 5 gained a fourth mechanism on 2026-08-10**, `.claude/hooks/`, which
+    refuses a tool call and therefore outranks the three that are only read, with the three rules that keep
+    one alive: a committed suite that trips it, a pattern no wider than its rule, and a stated guarantee
+    rather than the one the author wishes it gave.
   - **`adr/0003-angular-project-conventions.md`** — the Angular decisions that are Mapsift's own rather than the
     official style guide restated: every feature route lazy loaded, signal-based data access as the default with
     `HttpClient` as the exception, one forms API per surface with an interim no-mixing rule, and library imports
@@ -162,6 +165,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     orchestrator with sequential dispatch (the method itself stays in `specs/testing.md` section 1), the rule
     that a skill injects the spec it depends on, the one-pull-request rule for crossing changes, the refusal
     of autonomous issue-to-pull-request automation with its reopening gate, and worktrees for parallel work.
+    **Section 4 gained the two dispatch modes on 2026-08-10** and section 7 was scoped rather than reversed
+    in the same pass: it refuses an issue reaching a pull request unattended, and never a window running in a
+    context of its own.
   - **`adr/0009-type-generation-toolchain.md`** — the envelope contract's generation toolchain, decided after
     a verification round refuted two survey assumptions: Rust is the single source; schemars pinned to JSON
     Schema 2020-12 emits the schema; datamodel-code-generator generates the Pydantic v2 model with its native
