@@ -161,8 +161,33 @@ and the rule follows, never the reverse (ADR-0002 section 5). The Angular rule i
 ADR-0003; the Python and Rust rules are not ratified by an ADR yet and remain candidates for one when they
 stop restating the canon and start deciding.
 
+## `hooks/`, the enforcement layer
+
+Three scripts at `.claude/hooks/`, wired in `.claude/settings.json`, added 2026-08-10 under **MAP-40**.
+Until then this section said the layer did not exist and called that "a known gap rather than a decision",
+which was true for as long as a human sat between every instruction and every file.
+
+| Hook | Fires | Refuses |
+| --- | --- | --- |
+| `check-prose.sh` | `PostToolUse` on `Write`, `Edit` | an em dash, en dash or double hyphen in prose in any `.md` |
+| `block-main-push.sh` | `PreToolUse` on `Bash` | a push touching `main` (`dev-workflow` section 5) |
+| `block-production-secrets.sh` | `PreToolUse` on `Bash`, `Write`, `Edit` | a credential written or staged, and `git add -A` (C6, I7) |
+
+**Three properties, measured 2026-08-10 rather than assumed, and the first two are what make unattended
+dispatch safe at all.** A subagent **inherits the root `CLAUDE.md`** before it reads anything, so tier 0
+survives isolation. A **path-scoped rule arrives on demand inside a subagent**, delivered with the result of
+the `Read` that matches its glob, and only the matching one, so tier 1 survives too but lazily. And **the
+hooks fire without a session restart**: the first version of the secrets hook blocked its own test command
+minutes after the file was written.
+
+**Two rules for anybody adding or changing one.** **Trip it deliberately or it does not exist**: all three
+here have a case per branch, and the suite is what caught a false positive that would have made one of them
+unusable. And **a guard wider than its rule gets switched off, which is worse than not having it**, so a
+pattern matches at a command position rather than anywhere in a string, and prose exemptions the canon has
+already written (the two catalog files, fenced blocks, inline spans) are honoured rather than rediscovered.
+
 ## What this folder does not have, and why
 
-**No `hooks/`.** The one layer that is a guarantee rather than a request does not exist here yet. The prose
-rule (no em dash, no double hyphen) is therefore checked on the Craft axis of `code-review` rather than
-enforced at write time, and that is a known gap rather than a decision.
+**No `agents/`.** A subagent is dispatched with a prompt rather than defined as a type, which is what the
+three `code-review` axes do. A definition earns its place when the same role is dispatched often enough that
+its prompt is a file rather than a paragraph.
