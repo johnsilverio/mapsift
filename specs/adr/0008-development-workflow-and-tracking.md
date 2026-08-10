@@ -62,6 +62,36 @@ Progress, an opened pull request to In Review, a merge to Done.
 > letter above is corrected to: an opened pull request moves In Review, a merge moves Done, and nothing
 > moves an issue into In Progress automatically. The GitHub automation stays deliberately narrow.
 
+> **Added (2026-08-10, MAP-41): a window may be opened by the orchestrator or by the owner, and the protocol
+> does not change either way.** The method has always specified the three roles, the sequence and the review,
+> and never **who opens the window**. Both modes are named now because leaving it unwritten meant the manual
+> one was the method rather than a mode of it.
+>
+> **Automatic is the default.** The orchestrator asks, and on the owner's go dispatches the window as an
+> isolated subagent carrying **the identical prompt the manual mode would have produced, from the same
+> source**. It reviews what comes back **by running**, and Window B is not dispatched until that review has
+> happened. What isolation buys is exactly what `specs/testing.md` section 1 wants and cannot get from an
+> intention: a context that returns a result rather than its reasoning.
+>
+> **Manual stays a named mode and is not a legacy path**, in the `orchestrate-manual` skill. What the
+> automatic mode gives up is not isolation, which it gains, but **the chance to interrupt**: to watch a
+> window take a wrong turn in its second minute and stop it. That is worth little once the contract is
+> written and the boundaries are closed, and a great deal while the task is still being understood, which is
+> the condition rather than the preference that selects it.
+>
+> **Three conditions, each a fact on disk rather than a judgement of the day.** A **task spec exists** with
+> its boundary decisions registered, which is what makes a prompt a pointer instead of a briefing. The
+> **gate runs from the orchestrator**, never from the window, which was already true and is now load-bearing.
+> And the **enforcement layer exists** (MAP-40), because unattended dispatch is the first mode with no human
+> between an instruction and a file, and until 2026-08-10 this repository had none.
+>
+> **Two harness facts a dispatch must carry, measured rather than assumed.** A subagent's injected
+> `gitStatus` block was **stale**, reporting a commit one task behind the live tree, so a prompt tells the
+> window to measure the tree rather than trust its own context block. And **path-scoped rules arrive on
+> demand**, delivered with the `Read` that matches their glob rather than at launch, so a window that owes a
+> stack rule meets it only after it opens a file in that stack. The root `CLAUDE.md` **is** inherited, so
+> tier 0 survives isolation and a prompt saying it loads on its own is telling the truth.
+
 ### 5. Skills inject their dependencies
 
 A skill that depends on a spec's content to function **loads it from disk at dispatch** with a `!` command
@@ -83,6 +113,15 @@ Drift between the sides is prevented by generation plus the freshness gate, not 
 collapses the two windows into one pass, which is the failure the protocol exists to prevent. The gate for
 reconsidering: a mechanical, fully specified backlog whose tests already exist, and a quality gate with a
 track record. Until both hold, agents read issues, comment and move state through the MCP, and nothing else.
+
+> **Scoped (2026-08-10, MAP-41), because the closing sentence was read as forbidding something this refusal
+> never argued against.** What is refused is the **bridge**: an assignment becoming a run that opens a pull
+> request with nobody in the loop, and the stated reason is that it **collapses the two windows into one
+> pass**. **Orchestrated dispatch does not collapse them, it isolates them**, which is the property the
+> protocol exists to buy, and the orchestrator's review still sits between Window A and Window B. So the
+> refusal stands exactly as written for the bridge, and section 4's addition of the same date covers
+> dispatch. The distinction to hold: this section refuses **an issue reaching a pull request unattended**;
+> it does not refuse **a window running in a context of its own**.
 
 ### 8. Parallel work
 
