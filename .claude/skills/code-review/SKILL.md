@@ -69,9 +69,11 @@ stack the diff never touched is reporting that it does not know what it is looki
 **If a machine gate is red the review stops here and reports that.** A judgement review over a red build
 is a report about code that does not run.
 
-**Prose hygiene is a judgement item here rather than a machine gate**, because this project has no
-write-time hook enforcing it. The em dash and double hyphen rule is real and it is checked on the Craft
-axis, not in stage 1.
+**Prose hygiene is enforced at write time since 2026-08-10** by `.claude/hooks/check-prose.sh`, so a
+violation is refused as it is written rather than found here. What is left on the Craft axis is what a
+line-based guard cannot see: a document that reads badly, not one that carries the wrong punctuation.
+**A file written before that hook existed carries no such guarantee**, so the axis still reads prose in a
+diff that touches one.
 
 **Run them yourself.** Do not read the window's claim that they passed. Coding-agent benchmarks record
 models that build a reasonable thing and then hallucinate their own inspection, and this project's own

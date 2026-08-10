@@ -75,5 +75,7 @@ explanation of what the code does is a naming failure.
 
 ## Prose
 
-No em dash and no double hyphen in prose, in any document in this tree. There is no write-time hook
-enforcing it here, so it is read on the Craft axis rather than assumed.
+No em dash and no double hyphen in prose, in any document in this tree. **Enforced at write time since
+2026-08-10** by `.claude/hooks/check-prose.sh`, which exempts fenced blocks, inline spans, and
+`specs/index.md` and `specs/log.md` whole, those two by the exception the session-handoff header writes.
+A document older than that hook carries no such guarantee, so a diff touching one is still read.
