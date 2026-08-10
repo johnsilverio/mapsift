@@ -68,6 +68,17 @@ def a_batch_claiming(*tenant_ids: UUID) -> JsonObject:
     return {"operations": [a_feature_create_claiming(tenant_id) for tenant_id in tenant_ids]}
 
 
+def a_batch_of_one_tenant_claiming(tenant_id: UUID, *project_ids: UUID) -> JsonObject:
+    """One tenant's batch, addressing whichever projects it is given, so the second axis of
+    decision 6 can be varied while the first is held still."""
+    return {
+        "operations": [
+            a_feature_create_claiming(tenant_id, project_id=project_id)
+            for project_id in project_ids
+        ]
+    }
+
+
 def _the_tenant_parameter_now() -> str | None:
     """What the connection answers for the tenant parameter, outside any binding of ours."""
     with connection.cursor() as cursor:
@@ -337,6 +348,47 @@ def test_a_batch_with_no_operations_is_refused_rather_than_bound_to_anything(
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert bindings.tenants == []
+
+
+def test_a_batch_disagreeing_on_its_project_binds_nothing_rather_than_the_tenant_they_share(
+    alice: Party,
+) -> None:
+    """ADR-0010 decision 6's addition of 2026-08-10, ADR-0004's Consequences. The tenant is held
+    still on purpose: a batch that disagrees on both axes is refused by whichever rule runs first
+    and proves nothing about this one, while a batch that agrees on a tenant the principal does
+    hold is otherwise a perfectly acceptable flush, so the project is the only thing wrong with
+    it. What "before anything is bound" buys is what the wall is configured from: past this
+    boundary the request would bind a real tenant, take one project's version row, and order a
+    second project's operations under it. The 422 is the addition's ratified status and stands as
+    the positive control, since an empty binding list is what a 401 produces too."""
+    browser = a_browser(authenticated_as=alice.user_id)
+    two_projects = a_batch_of_one_tenant_claiming(alice.tenant_id, uuid4(), uuid4())
+
+    with bindings_opened() as bindings:
+        response = browser.post(OPERATIONS_PATH, two_projects, JSON)
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert bindings.tenants == []
+
+
+def test_the_project_refusal_is_distinguishable_from_the_two_refusals_it_stands_beside(
+    alice: Party,
+) -> None:
+    """ADR-0010 decision 6's addition of 2026-08-10, which puts the third refusal under every
+    clause of the addition before it: the three share a status and are told apart by their bodies.
+    Asserted in the client's terms because that is where the addition states the cost, and the
+    cost here is specific rather than general: a client told only "malformed" regroups its queue
+    by the wrong key and flushes the same broken batch again. Only the new refusal is compared
+    against the other two; the pair beside it has its own case."""
+    browser = a_browser(authenticated_as=alice.user_id)
+    two_projects = a_batch_of_one_tenant_claiming(alice.tenant_id, uuid4(), uuid4())
+
+    on_two_projects = browser.post(OPERATIONS_PATH, two_projects, JSON)
+    on_two_tenants = browser.post(OPERATIONS_PATH, a_batch_claiming(alice.tenant_id, uuid4()), JSON)
+    empty = browser.post(OPERATIONS_PATH, a_batch_claiming(), JSON)
+
+    assert on_two_projects.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert on_two_projects.content not in {on_two_tenants.content, empty.content}
 
 
 def test_the_two_refusals_a_malformed_batch_can_earn_are_distinguishable_to_the_client(

@@ -5,6 +5,9 @@ WebSocket tier), M15 (a log entry is the M8 envelope as applied), M9 (an operati
 closed catalog is refused with a typed error), C4 with N2 and ADR-0005 sections 3 and 4 (the wall,
 and which of its two silences answered); C9, I2. The route, the request body and the client a write
 test may use are ADR-0010 decision 6 with its addition of 2026-08-07, and not this suite's to pick.
+Nor is what a batch may be composed of: the addition of 2026-08-10 makes one flush address exactly
+one project as well as one tenant, so a batch here names one of each or it is refused before it
+arrives, whatever the case around it was written to prove.
 
 What is deliberately not here, each with the issue that owns it: the per-project version that will
 order these rows (MAP-11), so what lands is asserted as a set and never as a sequence; the assertion
@@ -42,9 +45,10 @@ def test_a_flush_lands_every_operation_of_its_batch_in_the_log(alice: Party) -> 
     """T2.2, C9: the flush is the API call that puts a client's queue into the database, which is
     the only place the order those operations are read back in can come from. Every operation of
     the batch lands and none is lost; the sequence they land in is the per-project version's and
-    MAP-11 is what claims it. The two operations come from one client and carry consecutive
-    mutation numbers, because that is what a flush is (M4, C12) and a batch spelled any other way
-    asserts something about batches that this slice has no business deciding."""
+    MAP-11 is what claims it. The two operations come from one client, carry consecutive mutation
+    numbers and name one project, because that is what a flush is (M4, C12, and the project by the
+    addition of 2026-08-10) and a batch spelled any other way asserts something about batches that
+    this slice has no business deciding."""
     first, second, one_client = uuid4(), uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
 
@@ -53,10 +57,18 @@ def test_a_flush_lands_every_operation_of_its_batch_in_the_log(alice: Party) -> 
         {
             "operations": [
                 a_feature_create_claiming(
-                    alice.tenant_id, operation_id=first, client_id=one_client, mutation_number=1
+                    alice.tenant_id,
+                    operation_id=first,
+                    client_id=one_client,
+                    mutation_number=1,
+                    project_id=alice.project_id,
                 ),
                 a_feature_create_claiming(
-                    alice.tenant_id, operation_id=second, client_id=one_client, mutation_number=2
+                    alice.tenant_id,
+                    operation_id=second,
+                    client_id=one_client,
+                    mutation_number=2,
+                    project_id=alice.project_id,
                 ),
             ]
         },

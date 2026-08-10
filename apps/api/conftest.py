@@ -270,12 +270,15 @@ def a_feature_create_claiming(
     operation_id: UUID | None = None,
     client_id: UUID | None = None,
     mutation_number: int = 1,
+    project_id: UUID | None = None,
 ) -> JsonObject:
     """One catalog operation as the client authored it, addressed at a tenant (M8, M9).
 
     The three client-minted fields are settable because a flush is one client's queue and the
     suites that post more than one operation have to say so (M4, C12); each defaults to what a
-    caller that does not care about them would have written anyway.
+    caller that does not care about them would have written anyway. The project joins them for
+    the same reason on the other axis: a flush addresses exactly one project too (ADR-0010
+    decision 6's addition of 2026-08-10), so a suite about that axis has to be able to say which.
     """
     return {
         "operation_id": str(operation_id or uuid4()),
@@ -287,7 +290,7 @@ def a_feature_create_claiming(
         "target": {
             "kind": "feature",
             "tenant_id": str(tenant_id),
-            "project_id": str(uuid4()),
+            "project_id": str(project_id or uuid4()),
             "layer_id": str(uuid4()),
             "feature_id": str(uuid4()),
         },
@@ -298,12 +301,12 @@ def a_feature_create_claiming(
     }
 
 
-def a_geometry_set_claiming(tenant_id: UUID) -> JsonObject:
+def a_geometry_set_claiming(tenant_id: UUID, *, project_id: UUID | None = None) -> JsonObject:
     """The catalog's other member, whose target is a property rather than a feature (M9).
 
     The variant matters to this suite rather than being decoration: the two members carry
     structurally different target types, so a rule that reads the tenant off one of them is green
-    against a batch of the other.
+    against a batch of the other, and the same holds of a rule that reads the project.
     """
     return {
         "operation_id": str(uuid4()),
@@ -315,7 +318,7 @@ def a_geometry_set_claiming(tenant_id: UUID) -> JsonObject:
         "target": {
             "kind": "property",
             "tenant_id": str(tenant_id),
-            "project_id": str(uuid4()),
+            "project_id": str(project_id or uuid4()),
             "layer_id": str(uuid4()),
             "feature_id": str(uuid4()),
             "property": "geometry",
