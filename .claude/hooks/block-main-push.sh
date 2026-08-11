@@ -11,6 +11,11 @@
 # though the push would not have touched main. That one is left standing rather than solved: the fix
 # would mean predicting the command's effect on the branch, and a guard that predicts is the next
 # false positive. Split the switch from the push, which is a better shape anyway.
+#
+# The same shape once more: it cannot tell command text from PROSE PASSED AS AN ARGUMENT, so writing
+# about this rule inside a long `--body` trips it. Pass a long body through `--body-file`, which is
+# the better shape too. Four false positives so far, all met while documenting the guard, and each
+# mitigation turned out to be the thing that should have been done anyway.
 set -euo pipefail
 
 command -v jq >/dev/null || { echo "block-main-push.sh requires jq" >&2; exit 2; }
@@ -20,7 +25,23 @@ tool=$(jq -r '.tool_name // empty' <<<"$payload")
 [[ "$tool" == "Bash" ]] || exit 0
 
 cmd=$(jq -r '.tool_input.command // empty' <<<"$payload")
-grep -qE '\bgit\b.*\bpush\b' <<<"$cmd" || exit 0
+
+# `is_a_push` is the single definition of what this hook acts on, and both the segment loop and the
+# branch check below consult it. They disagreed once: the loop was narrowed and the branch check was
+# not, so `git add block-main-push.sh` on the default branch was refused by a check that never asked
+# whether the command was a push at all.
+is_a_push() {
+  # Begins with the command, because a line merely quoting a push is data and this hook's own test
+  # suite is a file full of exactly that.
+  grep -qE '^[[:space:]]*(then|do|\{|\()?[[:space:]]*git([[:space:]]|$)' <<<"$1" || return 1
+  # And `push` is a WHOLE TOKEN, because \bpush\b matches inside `block-main-push.sh`, which made
+  # this very file unstageable.
+  grep -qE '(^|[[:space:]])push([[:space:]]|$)' <<<"$1"
+}
+
+pushes=0
+while IFS= read -r seg; do is_a_push "$seg" && pushes=1; done < <(tr '|&;' '\n' <<<"$cmd")
+[[ "$pushes" == 1 ]] || exit 0
 
 deny() {
   cat >&2 <<EOF
@@ -40,10 +61,7 @@ EOF
 # request. A guard that blocks the ordinary rebase day gets switched off, which is worse than not
 # having it.
 while IFS= read -r seg; do
-  # The segment must BEGIN with the command, after optional whitespace and a shell keyword. A line
-  # that merely contains `git push origin main` inside quotes is data, and this suite is itself a
-  # file full of exactly that, which is how the narrowing was found for the third time.
-  grep -qE '^[[:space:]]*(then|do|\{|\()?[[:space:]]*git[[:space:]].*\bpush\b' <<<"$seg" || continue
+  is_a_push "$seg" || continue
   # \bmain\b also matches a branch such as feature/main-page. That false positive is accepted
   # because it is rare and loud, unlike the one above.
   if grep -qE '\bmain\b' <<<"$seg"; then
