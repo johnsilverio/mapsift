@@ -16,9 +16,14 @@ export CLAUDE_PROJECT_DIR="$PWD"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 pass=0; fail=0
 
-# A repository whose checked-out branch is main, for the cases that depend on it.
+# Two repositories with a known checked-out branch, because the branch is an INPUT to
+# block-main-push.sh. Never use $PWD for these: the suite then passes or fails depending on which
+# branch the reader happens to have checked out, which is how a suite starts lying. Found by running
+# it from main after it had been written from a feature branch.
 ON_MAIN="$T/on-main"
 git init -q -b main "$ON_MAIN" && git -C "$ON_MAIN" commit -q --allow-empty -m x
+ON_BRANCH="$T/on-branch"
+git init -q -b js/x "$ON_BRANCH" && git -C "$ON_BRANCH" commit -q --allow-empty -m x
 
 check() { # hook payload-json expected label
   printf '%s' "$2" > "$T/payload"
@@ -57,13 +62,14 @@ if [[ "$reported" == "9:" ]]; then pass=$((pass+1)); printf '  ok   %s\n' "REGRE
 else fail=$((fail+1)); printf '  FAIL %s (the violation is on line 9)\n' "REGRESSION: the reported line number survives a fence"; fi
 
 echo "block-main-push.sh"
-check block-main-push.sh "$(bash_at "$PWD" 'git push origin main')" 2 "a push naming main"
-check block-main-push.sh "$(bash_at "$PWD" 'git push origin HEAD:refs/heads/main')" 2 "a push naming main through a full ref"
+check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git push origin main')" 2 "a push naming main"
+check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git push origin HEAD:refs/heads/main')" 2 "a push naming main through a full ref"
 check block-main-push.sh "$(bash_at "$ON_MAIN" 'git push')" 2 "a bare push while main is checked out"
 check block-main-push.sh "$(bash_at "$ON_MAIN" 'git push origin js/foo')" 2 "any push while main is checked out"
-check block-main-push.sh "$(bash_at "$PWD" 'git rebase origin/main && git push --force-with-lease origin js/x')" 0 "REGRESSION: the recovery dev-workflow section 5 prescribes"
-check block-main-push.sh "$(bash_at "$PWD" 'git push -u origin js/foo && gh pr create --base main --title x')" 0 "REGRESSION: a push beside a command naming main"
-check block-main-push.sh "$(bash_at "$PWD" 'git status')" 0 "not a push at all"
+check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git rebase origin/main && git push --force-with-lease origin js/x')" 0 "REGRESSION: the recovery dev-workflow section 5 prescribes"
+check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git push -u origin js/foo && gh pr create --base main --title x')" 0 "REGRESSION: a push beside a command naming main"
+check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git status')" 0 "not a push at all"
+check block-main-push.sh "$(bash_at "$ON_BRANCH" "sed -i s/x/y/ f  # a file quoting 'git push origin main' as data")" 0 "REGRESSION: a command carrying the string as data"
 check block-main-push.sh "$(bash_at "$T/gone" 'git push origin js/foo')" 2 "an unreadable branch fails closed"
 
 echo "block-production-secrets.sh"

@@ -4,9 +4,13 @@
 #
 # PreToolUse on Bash. Exit 2 blocks the call before it runs.
 #
-# Honest limits, both of them. It covers sessions running this toolkit and not a bare terminal. And
-# it reads the command text literally, so `git $P` with `P=push` defeats it: this is a guardrail
-# against a mistake, never a wall against intent.
+# Honest limits, three of them. It covers sessions running this toolkit and not a bare terminal. It
+# reads the command text literally, so `git $P` with `P=push` defeats it: this is a guardrail
+# against a mistake, never a wall against intent. And it reads the branch at PreToolUse, BEFORE the
+# command runs, so `git switch -c js/x && ... && git push` is refused while main is checked out even
+# though the push would not have touched main. That one is left standing rather than solved: the fix
+# would mean predicting the command's effect on the branch, and a guard that predicts is the next
+# false positive. Split the switch from the push, which is a better shape anyway.
 set -euo pipefail
 
 command -v jq >/dev/null || { echo "block-main-push.sh requires jq" >&2; exit 2; }
@@ -36,7 +40,10 @@ EOF
 # request. A guard that blocks the ordinary rebase day gets switched off, which is worse than not
 # having it.
 while IFS= read -r seg; do
-  grep -qE '\bgit\b.*\bpush\b' <<<"$seg" || continue
+  # The segment must BEGIN with the command, after optional whitespace and a shell keyword. A line
+  # that merely contains `git push origin main` inside quotes is data, and this suite is itself a
+  # file full of exactly that, which is how the narrowing was found for the third time.
+  grep -qE '^[[:space:]]*(then|do|\{|\()?[[:space:]]*git[[:space:]].*\bpush\b' <<<"$seg" || continue
   # \bmain\b also matches a branch such as feature/main-page. That false positive is accepted
   # because it is rare and loud, unlike the one above.
   if grep -qE '\bmain\b' <<<"$seg"; then
