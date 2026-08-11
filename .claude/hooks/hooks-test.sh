@@ -70,6 +70,8 @@ check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git rebase origin/main && git 
 check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git push -u origin js/foo && gh pr create --base main --title x')" 0 "REGRESSION: a push beside a command naming main"
 check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git status')" 0 "not a push at all"
 check block-main-push.sh "$(bash_at "$ON_BRANCH" "sed -i s/x/y/ f  # a file quoting 'git push origin main' as data")" 0 "REGRESSION: a command carrying the string as data"
+check block-main-push.sh "$(bash_at "$ON_MAIN" 'git add .claude/hooks/block-main-push.sh')" 0 "REGRESSION: staging a file whose NAME carries both words"
+check block-main-push.sh "$(bash_at "$ON_BRANCH" 'git -C /tmp/r push origin main')" 2 "a push behind a global option still names main"
 check block-main-push.sh "$(bash_at "$T/gone" 'git push origin js/foo')" 2 "an unreadable branch fails closed"
 
 echo "block-production-secrets.sh"
