@@ -1,6 +1,6 @@
 # Mapsift Foundation
 
-> **Status:** living document, foundation v0.17.1 (2026-08-05). Supersedes v0.17; revisions in section 15.
+> **Status:** living document, foundation v0.18 (2026-08-11). Supersedes v0.17.1; revisions in section 15.
 > **Authority:** this is the single source of truth for Mapsift. Every other document
 > (PRD, ADRs, per-task specs, CLAUDE.md constraints, Linear issues) derives from this
 > file and must not contradict it. When a derived document and this file disagree, this
@@ -485,6 +485,27 @@ swears not to commit.
 > dedup between two devices of the same user.
 >
 > **What this costs:** the server keeps one cursor per clientID, which grows with the number of instances.
+> **[Superseded on both counts by the sharpening immediately below, v0.18. The sentence is kept because a
+> closed Decision block is history, and marked because a grep that returns it must not return it alone.]**
+>
+> **Sharpened (2026-08-11, v0.18), and the two sentences above are superseded on their cardinality rather
+> than on their substance.** The cursor is keyed by **clientID, tenant and project together**, because the
+> guarantee it carries is only meaningful inside one **flush domain**, and a flush addresses exactly one
+> tenant and one project. A hole in a mutation-number stream means an operation was **lost** only while that
+> stream has one destination; with several, the server cannot tell an operation that went elsewhere from one
+> that never arrived, and it has no evidence available on its side that would distinguish them. So a single
+> installation working in two projects holds two cursors and two streams, exactly as two devices do.
+>
+> **What this changes above:** two devices of one user are still two clients with two cursors, which stays
+> true and stops being the whole of it; and the cost is **not** one row per clientID growing with the number
+> of instances, it is one row per clientID, tenant and project, growing with instances **times** the projects
+> each one touches. That is the figure the expiry and collection policy in the note below has to be sized
+> against, and stating it wrongly is what this sharpening exists to stop.
+>
+> **The scar:** this was found at the MAP-12 review, three documents deep, after the same correction had been
+> made in the PRD and in two ADRs and had **not** been carried up here. The fan-out searched for the wording
+> the correction had just introduced and never for the wording that already said the old rule differently,
+> which is the second grep the governance rule prescribes and the one that gets skipped.
 >
 > **Note for the PRD:** a per-clientID cursor grows without bound if a client disappears, so it needs a
 > clientID expiry and garbage-collection policy, a problem Replicache already solves. It does not block the
@@ -2296,6 +2317,48 @@ state, so the two never diverge. The procedure lives in the project's tracking s
     constitution, where it still read as a costed consequence of a closed decision. It now carries its own
     warning: no source, no date, illustration only, and Hort is the real evidence while not measuring the
     cross-runtime boundary at all.
+- **2026-08-11, foundation v0.18 (the per-client cursor is keyed by the flush domain, so its cardinality and
+  its cost both move).** A one-change round, logged as a round rather than a patch because a stated cost is
+  **false** rather than merely incomplete, and the only open question about this cursor is sized against it.
+  No spine decision was reopened: I9 keeps its substance, and what moves is the granularity the v0.8 Decision
+  block stated as a consequence.
+  - **The cursor is keyed by clientID, tenant and project (section 4, the v0.8 Decision block).** The
+    guarantee a mutation-number stream carries is only meaningful inside one **flush domain**, and a flush
+    addresses exactly one tenant and one project (ADR-0010 decision 6, with its additions of 2026-08-10 and
+    2026-08-11). A hole in the stream means an operation was **lost** only while that stream has one
+    destination; with several, nothing available on the server distinguishes an operation that went elsewhere
+    from one that never arrived. So one installation working in two projects holds two cursors, exactly as two
+    devices do. The concrete failure the old key admitted: an installation with a cursor at 5 in one project
+    opens a second, flushes from zero, and every one of those operations is deduplicated away and echoed back
+    as applied, which under I9's own echo rule makes the client advance past work the server never took.
+  - **The cost sentence is corrected rather than annotated.** It read that the server keeps one cursor per
+    clientID, growing with the number of instances. It grows with instances **times** the projects each one
+    touches, and that is the figure the expiry and collection policy the same block calls for must be sized
+    against. Recording a cost wrongly in the constitution is how a later decision is taken against a number
+    nobody re-derived.
+  - **The scar, which is about this document's own process rather than about the product.** The correction was
+    made in the PRD (M4, M10, N10), in ADR-0004 and in ADR-0010 **before** it was made here, and the fan-out
+    that carried it searched for the wording the correction had just introduced instead of the wording that
+    already stated the old rule differently. The governance rule prescribes both greps and names the second as
+    the one that gets skipped; it was skipped in the session that quoted it. Found by an adversarial review
+    axis reading the authority chain upward, three documents deep.
+  - **Fan-out, reached:** the current-version pointers in `CLAUDE.md` (project status, the constraints
+    header, the authority chain) and in `session-handoff.md`; PRD M4's Requirement, whose lookup predicate
+    still keyed the missing-cursor branch on the clientID alone one line above its own corrected Shape; PRD
+    M4's Shape, M10, N10 and T2.3; `.claude/rules/rust-core.md`; ADR-0004 decision 2 and ADR-0010 decision 6;
+    `specs/log.md`.
+  - **Fan-out, deliberately not reached, and named because the first form of this entry claimed one of them
+    and was corrected at the same task's fourth review.** Three currency pointers stay where they are: the
+    **PRD's authority line** and the `Authority:` lines of **ADR-0009** and **ADR-0010**. Each asserts that
+    the document has been **read** against the version it names, and moving one without doing the reading
+    converts an obvious gap into a false assurance, which the fan-out rule prohibits in those words. Nobody
+    re-read the PRD end to end this round. **The PRD's line reads v0.17 and has been stale since v0.17.1
+    shipped on 2026-08-05**, which this round surfaced rather than caused.
+  - **The defect this entry itself carried, kept because it is the same one the scar above describes.** Its
+    first form listed the PRD authority line among the targets reached, while `specs/log.md`'s record of the
+    same round did not list it at all. Two records of one round disagreeing is the contradiction the canon
+    rule classes as a defect, and it appeared in the paragraph that got the identical question right about
+    the two ADRs two clauses later.
 - **2026-08-05, foundation v0.17.1 (patch: the wall's single deliberate exception is named in I4).** Annotation
   only, on the v0.5.1, v0.8.1 and v0.11.1 precedent: no decision, invariant intent, or open question moved.
   I4's letter said cross-tenant read or write is impossible, while M1 has required since v0.11 that a user

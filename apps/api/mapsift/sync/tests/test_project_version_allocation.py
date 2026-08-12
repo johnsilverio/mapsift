@@ -37,7 +37,13 @@ from uuid import UUID, uuid4
 import pytest
 from django.db import connection
 
-from conftest import JsonObject, Party, a_browser, a_feature_create_claiming
+from conftest import (
+    JsonObject,
+    Party,
+    a_browser,
+    a_feature_create_claiming,
+    statements_reaching,
+)
 from mapsift.common.binding import tenant_scope
 from mapsift.sync.models import OperationLogEntry, ProjectVersionCounter
 
@@ -48,7 +54,8 @@ JSON = "application/json"
 
 # Django's execute-wrapper contract, spelled the way `conftest` spells it: `object` rather than
 # `Any`, so the lint rule that carries C5 stays on. Restated here rather than imported, because
-# the two are private to their own instruments and a shared alias would tie them together.
+# `the_append_refused` below is private to this suite and a shared alias would tie it to whatever
+# else came to need one.
 _Params = Sequence[object] | None
 _Execute = Callable[[str, _Params, bool, dict[str, object]], object]
 
@@ -72,22 +79,6 @@ class TheFlushAsTheDatabaseSawIt:
 
     allocated: bool = False
     allocated_before_the_append: bool = False
-
-
-@contextmanager
-def statements_reaching(table: str) -> Iterator[list[str]]:
-    """Every statement whose text names a table, in the order the connection ran them."""
-    seen: list[str] = []
-
-    def record(
-        execute: _Execute, sql: str, params: _Params, many: bool, context: dict[str, object]
-    ) -> object:
-        if table in sql:
-            seen.append(sql)
-        return execute(sql, params, many, context)
-
-    with connection.execute_wrapper(record):
-        yield seen
 
 
 @contextmanager
@@ -124,7 +115,14 @@ def the_append_refused() -> Iterator[TheFlushAsTheDatabaseSawIt]:
 
 
 def _a_flush_of(*operation_ids: UUID, by: Party) -> JsonObject:
-    """One client's queue, in one project of one tenant, in contiguous mutation order (M4, C12)."""
+    """One client's queue, in one project of one tenant, in contiguous mutation order (M4, C12).
+
+    **From zero, which is where a client's first queue starts** (M10's Shape, settled 2026-08-11).
+    It read 1 until then, which minted a stream beginning one above its own start: MAP-13's
+    contiguity rule refuses that as a gap from an absent cursor, and this module has no interest in
+    the axis at all, so it would have met that refusal for a reason none of its cases are about.
+    A fresh installation per call is what keeps the flushes here independent of MAP-12's dedup.
+    """
     one_client = uuid4()
     return {
         "operations": [
@@ -135,7 +133,7 @@ def _a_flush_of(*operation_ids: UUID, by: Party) -> JsonObject:
                 mutation_number=number,
                 project_id=by.project_id,
             )
-            for number, operation_id in enumerate(operation_ids, start=1)
+            for number, operation_id in enumerate(operation_ids, start=0)
         ]
     }
 
