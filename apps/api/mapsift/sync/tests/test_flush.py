@@ -48,7 +48,9 @@ def test_a_flush_lands_every_operation_of_its_batch_in_the_log(alice: Party) -> 
     MAP-11 is what claims it. The two operations come from one client, carry consecutive mutation
     numbers and name one project, because that is what a flush is (M4, C12, and the project by the
     addition of 2026-08-10) and a batch spelled any other way asserts something about batches that
-    this slice has no business deciding."""
+    this slice has no business deciding. **The pair counts from zero**, which is where a client's
+    first queue starts (M10's Shape, settled 2026-08-11); it read 1 and 2 until then, one above its
+    own start, which is the gap MAP-13's contiguity rule refuses."""
     first, second, one_client = uuid4(), uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
 
@@ -60,14 +62,14 @@ def test_a_flush_lands_every_operation_of_its_batch_in_the_log(alice: Party) -> 
                     alice.tenant_id,
                     operation_id=first,
                     client_id=one_client,
-                    mutation_number=1,
+                    mutation_number=0,
                     project_id=alice.project_id,
                 ),
                 a_feature_create_claiming(
                     alice.tenant_id,
                     operation_id=second,
                     client_id=one_client,
-                    mutation_number=2,
+                    mutation_number=1,
                     project_id=alice.project_id,
                 ),
             ]

@@ -87,7 +87,14 @@ Transcribed rather than cited, because it exists nowhere else yet.
   that made the clause untestable in MAP-10 and testable here.
 - **The append-only grant does not reach the owner profile**, and migrations, tests and CI all connect as
   the owner (ADR-0005 section 2, correction of 2026-08-07). Anything asserting a privilege on the new table
-  inherits that limit, and a grant assertion written against the owner proves nothing.
+  inherits that limit, and ~~a grant assertion written against the owner proves nothing~~. **Struck
+  2026-08-11 at MAP-12's Window B review, because the inference is false and this spec is where it was first
+  written.** The premise holds: a connection as the owner proves nothing about **its own** privileges. It is
+  exactly what can ask about **another role's**, through `has_table_privilege(<role>, <table>, <privilege>)`
+  with the role passed as a parameter, which `test_append_only_log.py` has done since MAP-10. **What the
+  wrong form cost is measured rather than argued:** `sync_projectversioncounter` shipped from this task with
+  a correct grant and no guard, and with `UPDATE` revoked from it the whole flush suite stays green. MAP-12
+  wrote the guard for this table as well as its own.
 - **What was not measured, said plainly so nobody treats it as handed over:** how to make one of the two
   statements fail while the other has already run. No probe was taken. Choosing the instrument is Window A's,
   and a mock of an internal that bypasses the route would fail the trap above rather than satisfy it.

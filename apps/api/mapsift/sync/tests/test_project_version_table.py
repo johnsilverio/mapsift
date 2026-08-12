@@ -20,16 +20,21 @@ against.** Everything the wall's own suite does to this table it does because th
 A table without that column does not fail those cases, it disappears from them. So the hook is
 pinned here, and the cases themselves stay where they are.
 
-**What this module still does not cover, so nothing here reads as the whole story.** The grant this
-table takes (`SELECT, INSERT, UPDATE`, ADR-0005 section 2's addition of 2026-08-10) has no case
-anywhere and cannot have one from here: the suite connects as the owner, which holds every
-privilege, so a grant assertion written against it would prove nothing (ADR-0005 section 2,
-correction of 2026-08-07).
+**The grant this table takes is asserted here now, and the paragraph that said it could not be is
+struck rather than deleted.** That paragraph read that a grant assertion written from this suite
+would prove nothing, because the suite connects as the owner and the owner holds every privilege.
+The premise is true and the inference is false: the owner proves nothing about its **own**
+privileges and is exactly what can ask about another role's, which `test_append_only_log.py` has
+done since MAP-10 (ADR-0005 section 2, correction of 2026-08-07; specs/log.md, 2026-08-11). What
+it cost is recorded rather than tidied away: this table and the cursor beside it shipped with
+correct grants and nothing watching them, so an `UPDATE` dropped from either breaks the flush in
+production with the whole suite green.
 """
 
 import pytest
 from django.db import connection
 
+from conftest import the_runtime_grant_on
 from mapsift.sync.models import ProjectVersionCounter
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -40,6 +45,22 @@ pytestmark = pytest.mark.django_db(transaction=True)
 # table, because reading `accounts.models` from here is the import ADR-0007 section 4's protected
 # contract exists to refuse, and a test is not exempt from it.
 THE_WIDTH_A_NARROW_TABLE_ADMITS = 3
+
+# ADR-0005 section 2's addition of 2026-08-10, which settles the grant per table by what that table
+# guarantees. This row's normal operation IS an in-place increment, so anything narrower than these
+# three stops a flush running at all, and the two absences are what stop a counter that only counts
+# upward from being emptied under a role that owns nothing.
+#
+# Stated here rather than shared with the cursor's identical set on purpose: the same addition makes
+# a new table state its own, and one constant covering two of them recreates the inherited sentence
+# that correction exists against.
+THE_GRANT_AN_ALLOCATION_NEEDS = {
+    "SELECT": True,
+    "INSERT": True,
+    "UPDATE": True,
+    "DELETE": False,
+    "TRUNCATE": False,
+}
 
 
 def _columns_of(table: str) -> frozenset[str]:
@@ -96,6 +117,23 @@ def test_the_version_row_lives_in_a_table_of_its_own_carrying_nothing_but_what_i
 
     assert counter
     assert len(counter) <= THE_WIDTH_A_NARROW_TABLE_ADMITS
+
+
+def test_the_runtime_role_may_increment_the_counter_and_do_nothing_else_to_it() -> None:
+    """ADR-0005 section 2's addition of 2026-08-10. The whole grant is asserted rather than the one
+    privilege that has to be present, so a widening fails here as well as a narrowing, and TRUNCATE
+    is named for the reason the log's own case names it: it is a separate privilege the wall does
+    not reach, and it empties every tenant's counters in one statement.
+
+    **Green from the line it was written on, and that is what it is for.** The grant on disk is
+    already right, which makes this a regression guard rather than a driver. What has no other
+    witness anywhere is a later migration narrowing it: the whole suite connects as the owner, so
+    every flush case in this package stays green while production cannot allocate a version at all
+    (specs/log.md, 2026-08-11). A behaviour case cannot buy this one, because behaviour here is
+    only observable under a role no test in this module connects as."""
+    grant = the_runtime_grant_on(ProjectVersionCounter._meta.db_table)
+
+    assert grant == THE_GRANT_AN_ALLOCATION_NEEDS
 
 
 def test_the_version_table_carries_autovacuum_settings_of_its_own() -> None:

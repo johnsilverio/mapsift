@@ -128,6 +128,42 @@ def tenant_owned_tables(transactional_db: None) -> frozenset[str]:
         return frozenset(row[0] for row in cursor.fetchall())
 
 
+# ADR-0005 section 2: the role the Django runtime connects as, and the one whose per-table grant is
+# where each table's own guarantee lives.
+RUNTIME_ROLE = "mapsift_app"
+
+# Every privilege a table carries. TRUNCATE is in the list because it is a privilege of its own that
+# row-level security does not reach, so an enumeration of four that calls itself the whole grant
+# misses exactly the one that empties the table (ADR-0005 section 2, addition of 2026-08-07).
+EVERY_TABLE_PRIVILEGE = ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE")
+
+
+def the_runtime_grant_on(table: str) -> dict[str, bool]:
+    """What `mapsift_app` may do to a table, read from the catalogue rather than from a migration.
+
+    Here rather than in the suites that read it, for the reason `statements_reaching` is here: the
+    grant is settled per table by what that table guarantees (ADR-0005 section 2, addition of
+    2026-08-10), three tables in this schema now state their own, and an instrument copied per
+    module is three instruments that drift.
+
+    **Asking from the owner connection this suite runs on is correct, and the opposite was believed
+    for a day.** The owner can prove nothing about its OWN privileges, holding every one of them
+    implicitly, and it is exactly what can ask about another role's, because the role travels as a
+    parameter (ADR-0005 section 2, correction of 2026-08-07; specs/log.md, 2026-08-11). The cost of
+    the inference that ran the other way is on the record: two tables shipped with correct grants
+    and no guard over them at all.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT privilege, has_table_privilege(%s, %s, privilege)
+            FROM unnest(%s::text[]) AS privilege
+            """,
+            [RUNTIME_ROLE, table, list(EVERY_TABLE_PRIVILEGE)],
+        )
+        return dict(cursor.fetchall())
+
+
 # The request-level harness (ADR-0010). Everything below serves the seam MAP-34 opens.
 
 # ADR-0005 sections 3 and 8: the two parameters a request binds, and the only two statements the
@@ -236,6 +272,28 @@ def _the_value_and_the_scope_of(sql: str) -> tuple[str, str]:
     return arguments[1], arguments[2]
 
 
+@contextmanager
+def statements_reaching(table: str) -> Iterator[list[str]]:
+    """Every statement whose text names a table, in the order the connection ran them.
+
+    Here rather than in the suites that read it, for the reason `bindings_opened` is here: two of
+    them consume it and a connection instrument copied per module is two instruments that drift.
+    It names a table and nothing else, so what an implementation spells as the verb, the creation
+    on first use or the range arithmetic stays entirely its own.
+    """
+    seen: list[str] = []
+
+    def record(
+        execute: _Execute, sql: str, params: _Params, many: bool, context: dict[str, object]
+    ) -> object:
+        if table in sql:
+            seen.append(sql)
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(record):
+        yield seen
+
+
 def a_browser(
     *, authenticated_as: UUID | None = None, carrying_its_csrf_token: bool = True
 ) -> Client:
@@ -269,7 +327,7 @@ def a_feature_create_claiming(
     *,
     operation_id: UUID | None = None,
     client_id: UUID | None = None,
-    mutation_number: int = 1,
+    mutation_number: int = 0,
     project_id: UUID | None = None,
 ) -> JsonObject:
     """One catalog operation as the client authored it, addressed at a tenant (M8, M9).
@@ -279,6 +337,12 @@ def a_feature_create_claiming(
     caller that does not care about them would have written anyway. The project joins them for
     the same reason on the other axis: a flush addresses exactly one project too (ADR-0010
     decision 6's addition of 2026-08-10), so a suite about that axis has to be able to say which.
+
+    **The mutation number defaults to zero because zero is the first one** (M10's Shape, settled
+    2026-08-11). It read 1 until then, which every caller that does not care about the axis
+    inherited, so the whole suite minted streams beginning one above their own start; MAP-13's
+    contiguity rule would refuse those as a gap from an absent cursor, and the modules meeting
+    that refusal would be the ones with no interest in the axis at all.
     """
     return {
         "operation_id": str(operation_id or uuid4()),
@@ -307,11 +371,16 @@ def a_geometry_set_claiming(tenant_id: UUID, *, project_id: UUID | None = None) 
     The variant matters to this suite rather than being decoration: the two members carry
     structurally different target types, so a rule that reads the tenant off one of them is green
     against a batch of the other, and the same holds of a rule that reads the project.
+
+    **The mutation number is zero here for the reason it defaults to zero above** (M10's Shape,
+    settled 2026-08-11). It read 2, minted before the first value of the axis was decided and
+    surviving the correction of its sibling because it is a literal rather than a default, which is
+    how a stale value outlives the round that retired it.
     """
     return {
         "operation_id": str(uuid4()),
         "client_id": str(uuid4()),
-        "mutation_number": 2,
+        "mutation_number": 0,
         "operation_type": "feature.geometry.set",
         "operation_schema_version": 1,
         "conflict_rule_version": 1,

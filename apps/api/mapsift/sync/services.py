@@ -1,16 +1,21 @@
-"""Writes on the operation log, which is the only place an operation reaches it (M15)."""
+"""Writes on the sync package's tables: the log an operation only reaches here (M15), the version
+row it is ordered by (ADR-0004), and the cursor that says how far a client got (M4)."""
 
 from uuid import UUID
 
 from django.db import connection
 
 from mapsift.sync.envelope import ClientHalf
-from mapsift.sync.models import OperationLogEntry, ProjectVersionCounter
+from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 from mapsift.sync.rules import (
     the_address_of,
+    the_client_every_operation_claims,
+    the_last_applied_this_flush_leaves,
+    the_operations_this_cursor_has_not_seen,
     the_project_every_operation_claims,
     the_tenant_every_operation_claims,
 )
+from mapsift.sync.selectors import the_cursor_of
 
 # ADR-0004 decision 2's RANGE rule as one statement: it creates the row on first use, adds the
 # whole width of the batch to it otherwise, and answers with the top of the range either way.
@@ -22,9 +27,49 @@ TAKE_THE_PROJECTS_VERSION_ROW = f"""
     RETURNING version
 """
 
+# GREATEST reads as redundant beside a caller that has already taken a maximum, and collapsing it
+# to EXCLUDED is the defect: a flush that lost a race would lower a cursor another flush raised
+# (ADR-0004 decision 2, extension of 2026-08-11). No case in this suite can see it.
+ADVANCE_THIS_INSTALLATIONS_CURSOR = f"""
+    INSERT INTO {ClientCursor._meta.db_table} AS held
+        (tenant_id, client_id, project_id, last_applied_mutation_number)
+    VALUES (%s, %s, %s, %s)
+    ON CONFLICT (tenant_id, client_id, project_id)
+    DO UPDATE SET last_applied_mutation_number = GREATEST(
+        held.last_applied_mutation_number, EXCLUDED.last_applied_mutation_number
+    )
+"""
 
-def append_to_the_operation_log(operations: list[ClientHalf]) -> None:
-    """Append a batch to the log, each entry carrying its place in its project's order (M10)."""
+
+def apply_the_flush(operations: list[ClientHalf]) -> int:
+    """Apply what this installation has not had applied here, and answer with its last-applied
+    mutation number, which is the only thing a client advances its cursor from (T2.3, C12)."""
+    tenant_id = the_tenant_every_operation_claims(operations)
+    project_id = the_project_every_operation_claims(operations)
+    client_id = the_client_every_operation_claims(operations)
+
+    already_applied = the_cursor_of(client_id, project_id)
+    fresh = the_operations_this_cursor_has_not_seen(operations, already_applied)
+    last_applied = the_last_applied_this_flush_leaves(operations, already_applied)
+    if not fresh:
+        return last_applied
+
+    # Before the append and not after, though "beside the allocation" reads the other way: the
+    # order is a contention trade ADR-0004 decision 2 settles in its extension of 2026-08-11.
+    # No case in this suite catches the swap.
+    _advance_the_cursor_of(tenant_id, client_id, project_id, last_applied)
+    append_to_the_operation_log(fresh, tolerating_a_resend=True)
+    return last_applied
+
+
+def append_to_the_operation_log(
+    operations: list[ClientHalf], *, tolerating_a_resend: bool = False
+) -> None:
+    """Append a batch to the log, each entry carrying its place in its project's order (M10).
+
+    An operation the log already holds is refused by its identity constraint unless the caller is
+    tolerating a resend, which is the flush path's contract under T2.3 and never the log's own.
+    """
     # A list and never a generator inside bulk_create: the allocation below takes the project's
     # row and holds it to the commit, and a generator serialises every operation inside that
     # window (ADR-0004 decision 2, sharpened 2026-08-10).
@@ -38,7 +83,17 @@ def append_to_the_operation_log(operations: list[ClientHalf]) -> None:
     for project_version, entry in enumerate(entries, start=top - len(entries) + 1):
         entry.project_version = project_version
 
-    OperationLogEntry.objects.bulk_create(entries)
+    OperationLogEntry.objects.bulk_create(entries, ignore_conflicts=tolerating_a_resend)
+
+
+def _advance_the_cursor_of(
+    tenant_id: UUID, client_id: UUID, project_id: UUID, last_applied: int
+) -> None:
+    """Raise this installation's cursor to what this flush applied, never lowering it (M4)."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            ADVANCE_THIS_INSTALLATIONS_CURSOR, [tenant_id, client_id, project_id, last_applied]
+        )
 
 
 def _allocate_the_range_this_flush_needs(tenant_id: UUID, project_id: UUID, width: int) -> int:

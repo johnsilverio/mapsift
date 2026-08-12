@@ -69,8 +69,12 @@ from memory; `cargo add` writes what the registry actually resolves.
   instant to anything that can read it, including every log line N9 puts an operation identifier in.
 - The same generator produces the **clientID** (M4, T1.3), which identifies an installation and is never an
   author identity.
-- Every operation carries a per-client monotonic and **contiguous** mutation number. The cursor advances only
-  from the server's echoed last-applied, never by assumption.
+- Every operation carries a per-client monotonic mutation number, whose first value is **zero**, and the
+  stream is **contiguous per clientID within one flush domain, which is one tenant and one project**
+  (M10, both settled 2026-08-11). **The queue is keyed by that domain: DON'T mint one stream across projects
+  or tenants.** A flush addresses exactly one of each, so a hole left by an operation that went elsewhere is
+  indistinguishable on the server from one that was lost. The cursor advances only from the
+  server's echoed last-applied, never by assumption.
 - The queue is append-only and persistent; the sync engine is pure functions over the operation log, with the
   store behind one narrow storage interface. One sync engine, never two sync surfaces.
 

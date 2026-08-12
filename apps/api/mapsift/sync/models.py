@@ -64,3 +64,25 @@ class ProjectVersionCounter(models.Model):
     version = models.BigIntegerField()
 
     objects = TenantOwnedManager["ProjectVersionCounter"]()
+
+
+class ClientCursor(models.Model):
+    """How far one installation's stream has been applied inside one flush domain (M4).
+
+    The absence of the row is the only representation of an absent cursor, because zero is the
+    first mutation number and therefore a legitimate applied value (M4's Shape, M10's Shape).
+    """
+
+    pk = models.CompositePrimaryKey("tenant", "client_id", "project_id")
+    tenant = models.ForeignKey(
+        "accounts.Tenant",
+        on_delete=models.CASCADE,
+        related_name="client_cursors",
+        db_index=False,
+    )
+    client_id = models.UUIDField()
+    # Not a foreign key, for the reason the counter's project_id is not one above.
+    project_id = models.UUIDField()
+    last_applied_mutation_number = models.BigIntegerField()
+
+    objects = TenantOwnedManager["ClientCursor"]()

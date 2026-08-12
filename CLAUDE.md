@@ -11,7 +11,7 @@ internal by nature.
 
 Mapsift is **early**: a scaffold exists and runs (four ecosystems building, type checking and testing green,
 containerised, with the task runner and the CI gates in place) and **no product capability is built yet**.
-`specs/mapsift-foundation.md` is at **v0.17.1** and is the **live source of truth** (the
+`specs/mapsift-foundation.md` is at **v0.18** and is the **live source of truth** (the
 constitution: the what and the why). `specs/PRD.md` is a living document at **v0.16**, and its **prose is complete**
 (Layer 1 the native capability floor with the anti-requirements and the extension catalog, Layer 2 the transversal
 system behaviors T1 to T9, Layer 3 the data model and contracts M1 to M16, Layer 4 the surfaces and platform
@@ -159,7 +159,7 @@ This is the architectural core. Get it wrong and nothing else makes sense.
 
 ## Non-negotiable constraints
 
-Derived from the foundation (v0.17.1). Each is load-bearing and pairs with a pass/fail acceptance test (the
+Derived from the foundation (v0.18). Each is load-bearing and pairs with a pass/fail acceptance test (the
 Hort C-equivalents). Breaking one is a regression, not a tradeoff. CI and review enforce them.
 
 - **C1, offline write path (foundation I1).** An element edit commits locally (op queue, IndexedDB/OPFS)
@@ -482,7 +482,7 @@ foundation with nobody noticing.
 
 ## Process & tracking
 
-Authority chain: `specs/mapsift-foundation.md` (constitution, v0.17.1, the what and the why) → `specs/PRD.md`
+Authority chain: `specs/mapsift-foundation.md` (constitution, v0.18, the what and the why) → `specs/PRD.md`
 (the how, one layer above code) and this file (the constraints-and-behaviors digest), both derived from the
 foundation → ADRs (code-shape) → spec-per-task in git (what the agent reads to implement, shaped by
 `specs/tasks/README.md`). **The loop from a decision in the canon to a merged pull request is ratified in

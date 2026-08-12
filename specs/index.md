@@ -81,6 +81,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     instrument for making the allocation fail after the append is named as Window A's to choose, precisely so
     it is not mistaken for handed-over knowledge. Its acceptance carries the correction MAP-10 earned, naming
     T2.2's *requirement sentence* rather than T2.2's acceptance list as the upstream of the atomicity clause.
+  - **`tasks/MAP-12-dedup-and-echoed-cursor.md`** — the server's memory of how far each installation got,
+    and the first response body this API carries. Its out-of-scope block is where two halves of M4 left for
+    named issues rather than being built at half strength, and its acceptance carries the rule that a clause
+    with no runtime for half of it is **split and said so**, not quietly shortened. **Its boundary block is
+    the worked example of the opposite lesson**, earned at its own review: two of the pickup's decisions were
+    defective, one recorded only in the tracker and one that contradicted M10 in the same pass that edited
+    it, and both were found by a reader who had not written them.
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
   - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim
