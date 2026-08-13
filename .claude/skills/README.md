@@ -180,8 +180,11 @@ decision that rests on it. The hooks also fire **without a session restart**, le
 hook blocked its own test command minutes after being written.
 
 **The suite is `.claude/hooks/hooks-test.sh` and it is the rule** (ADR-0002 section 5): a hook is proven by
-tripping it, never by prose. Thirty cases, and the ones marked REGRESSION are the five defects the first
-three hooks shipped with, each of which **passed** before the fix.
+tripping it, never by prose. The cases marked REGRESSION are the five defects the first three hooks shipped
+with, each of which **passed** before the fix. **The case count is deliberately not restated here**
+(corrected 2026-08-13, where this line said thirty and the suite held thirty-three): a count in prose goes
+wrong the moment the set grows somewhere else, so it decays with nobody editing it and still reads as
+verified.
 
 **A guard wider than its rule gets switched off, which is worse than not having it.** That is not a maxim
 here, it is what happened: one version refused the rebase recovery `dev-workflow` section 5 prescribes, and
