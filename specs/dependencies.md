@@ -258,6 +258,22 @@ refusal, never to write it. The load-bearing caution is the one this survey has 
 a different costume: that guarantee is the *generated* union's, so it holds exactly while the catalog member
 is generated rather than hand-added, which is ADR-0009 section 4 again from the other side.
 
+### Returning a status with a body: the tuple form is deprecated and `ninja.Status` is the supported one
+
+*Read 2026-08-13 at the MAP-13 implementation, against the pinned django-ninja **1.6.2**, from
+`operation.py` and `responses.py` in the api image rather than from documentation or memory.*
+
+A route that answers with more than one status returns the pair. **The `(status, body)` tuple form emits a
+`DeprecationWarning`**, and the supported spelling is `ninja.Status(status_code, value)`. This never came up
+before because **MAP-13 is the first route in this repository with a second response shape**: everything
+prior answered one status, so the question of how the pair travels had no occasion to be asked.
+
+The companion half is the one that makes it worth writing down rather than fixing once. Declaring
+`response={HTTPStatus.OK: ..., HTTPStatus.CONFLICT: ...}` is what puts the second shape **into the OpenAPI
+schema**, which is the source of the Python-to-TypeScript contract (PRD M12), so a route that returns a bare
+`HttpResponse` to sidestep the pair answers correctly and **generates nothing**, and the drift is invisible
+until a consumer exists. MAP-35 is that consumer.
+
 ### Django writes migrations through black when black is importable, and black arrived here as somebody else's transitive dependency
 
 *Observed at the MAP-10 implementation review, 2026-08-10, and verified rather than accepted: `black`

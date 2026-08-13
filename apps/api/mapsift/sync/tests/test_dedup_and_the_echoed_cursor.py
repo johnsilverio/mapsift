@@ -41,8 +41,9 @@ leaves most of the assertions below true and the module goes vacuous rather than
 whose response is not the subject of an assertion therefore goes through `_the_server_took`.
 
 What is deliberately not here, each with the issue that owns it: the contiguity check, the typed
-resend on a gap and M4's missing-cursor reconciliation (MAP-13), so a batch with a gap above the
-cursor is applied here; the cursor's expiry and the last-seen time (MAP-42); the per-project version
+resend on a gap and M4's missing-cursor reconciliation (MAP-13), which no queue below meets, since
+each of them either opens at the first mutation number or continues from the cursor it flushes
+against; the cursor's expiry and the last-seen time (MAP-42); the per-project version
 in the response (MAP-22); the check that a batch's project belongs to the verified tenant (MAP-39);
 and every client half of this axis (MAP-15, MAP-17, MAP-19). **One omission has no owner at all, and
 that is written out rather than left to read as closed:** the guard that stops a cursor moving

@@ -88,6 +88,12 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     the worked example of the opposite lesson**, earned at its own review: two of the pickup's decisions were
     defective, one recorded only in the tracker and one that contradicted M10 in the same pass that edited
     it, and both were found by a reader who had not written them.
+  - **`tasks/MAP-13-contiguity-and-the-typed-resend.md`** — the rule that closes the last silent-loss shape on
+    the flush path: a stream is applied only in contiguous order, and a hole is asked for back rather than
+    skipped. Its boundary block is where a decision the issue itself had collapsed was taken apart again, the
+    gap and the absent cursor being one comparison and two remedies, and its evidence block is the worked
+    example of handing over a **fact** about the suite while refusing to hand over the conclusion, which is
+    the correction MAP-12's review earned.
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
   - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim
