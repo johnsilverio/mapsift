@@ -51,8 +51,10 @@ from conftest import (
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.rules import (
     BatchClaimsNoTenant,
+    OperationsDisagreeOnTheirClient,
     OperationsDisagreeOnTheirProject,
     OperationsDisagreeOnTheirTenant,
+    the_client_every_operation_claims,
 )
 
 OPERATIONS_PATH = "/api/operations"
@@ -119,13 +121,6 @@ def test_a_batch_whose_operations_all_come_from_one_installation_answers_with_it
     it is read there and not inferred from the session, which is a different thing entirely (M4).
     The positive control the refusal below depends on, since a rule that refuses every batch
     satisfies that one on its own."""
-    # Inside the test rather than at the top of the module: a module-level import of a name Window
-    # B has not written yet interrupts collection for the WHOLE session, so nobody can run any test
-    # at all (measured 2026-08-11 and again this round). It moves up once the name exists, and the
-    # pass that may move it is a later round of this task, never Window B, which does not edit
-    # tests; if none does, a function-local import costs nothing.
-    from mapsift.sync.rules import the_client_every_operation_claims
-
     tenant, project, installation = uuid4(), uuid4(), uuid4()
 
     batch = _as_authored(
@@ -145,11 +140,6 @@ def test_two_installations_in_one_batch_are_refused_rather_than_read_first_wins(
     server never applied for it, which is the silent client-side loss C12 exists against. The
     second assertion is the addition's "told apart", stated on the value the act raised, against
     all three of the refusals it stands beside rather than one."""
-    from mapsift.sync.rules import (
-        OperationsDisagreeOnTheirClient,
-        the_client_every_operation_claims,
-    )
-
     tenant, project = uuid4(), uuid4()
 
     batch = _as_authored(
