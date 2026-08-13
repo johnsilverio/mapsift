@@ -8,9 +8,11 @@ from django.db import connection
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 from mapsift.sync.rules import (
+    OneUnbrokenStream,
+    refuse_a_stream_this_cursor_cannot_continue,
     the_address_of,
-    the_client_every_operation_claims,
     the_last_applied_this_flush_leaves,
+    the_one_unbroken_stream_this_batch_carries,
     the_operations_this_cursor_has_not_seen,
     the_project_every_operation_claims,
     the_tenant_every_operation_claims,
@@ -43,12 +45,16 @@ ADVANCE_THIS_INSTALLATIONS_CURSOR = f"""
 
 def apply_the_flush(operations: list[ClientHalf]) -> int:
     """Apply what this installation has not had applied here, and answer with its last-applied
-    mutation number, which is the only thing a client advances its cursor from (T2.3, C12)."""
-    tenant_id = the_tenant_every_operation_claims(operations)
-    project_id = the_project_every_operation_claims(operations)
-    client_id = the_client_every_operation_claims(operations)
+    mutation number, which is the only thing a client advances its cursor from (T2.3, C12).
 
-    already_applied = the_cursor_of(client_id, project_id)
+    Refuses the whole batch with `ThisStreamCannotBeContinued` and applies nothing at all where
+    its stream does not carry on from the cursor this installation left behind (M10, M4).
+    """
+    stream = the_one_unbroken_stream_this_batch_carries(operations)
+
+    already_applied = the_cursor_of(stream.client_id, stream.project_id)
+    refuse_a_stream_this_cursor_cannot_continue(stream.starts_at_mutation_number, already_applied)
+
     fresh = the_operations_this_cursor_has_not_seen(operations, already_applied)
     last_applied = the_last_applied_this_flush_leaves(operations, already_applied)
     if not fresh:
@@ -57,7 +63,7 @@ def apply_the_flush(operations: list[ClientHalf]) -> int:
     # Before the append and not after, though "beside the allocation" reads the other way: the
     # order is a contention trade ADR-0004 decision 2 settles in its extension of 2026-08-11.
     # No case in this suite catches the swap.
-    _advance_the_cursor_of(tenant_id, client_id, project_id, last_applied)
+    _advance_the_cursor_of(stream, last_applied)
     append_to_the_operation_log(fresh, tolerating_a_resend=True)
     return last_applied
 
@@ -86,13 +92,12 @@ def append_to_the_operation_log(
     OperationLogEntry.objects.bulk_create(entries, ignore_conflicts=tolerating_a_resend)
 
 
-def _advance_the_cursor_of(
-    tenant_id: UUID, client_id: UUID, project_id: UUID, last_applied: int
-) -> None:
+def _advance_the_cursor_of(stream: OneUnbrokenStream, last_applied: int) -> None:
     """Raise this installation's cursor to what this flush applied, never lowering it (M4)."""
     with connection.cursor() as cursor:
         cursor.execute(
-            ADVANCE_THIS_INSTALLATIONS_CURSOR, [tenant_id, client_id, project_id, last_applied]
+            ADVANCE_THIS_INSTALLATIONS_CURSOR,
+            [stream.tenant_id, stream.client_id, stream.project_id, last_applied],
         )
 
 
