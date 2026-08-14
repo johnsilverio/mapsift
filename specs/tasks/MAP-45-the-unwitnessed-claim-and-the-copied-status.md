@@ -18,13 +18,13 @@ Both Linear issues carry the full trace and the acceptance, pasted from the requ
 ## What this task owns
 
 `test_a_flush_starting_above_the_cursor_applies_nothing_at_all` claims only what it can witness, the
-guarantee it was written to protect is under a test that can fail or its untestability is recorded with the
-reason, and `mapsift/sync/rules.py` names no HTTP status.
+guarantee PRD M10 states is witnessed on purpose rather than through a side effect, and
+`mapsift/sync/rules.py` names no HTTP status.
 
-**Three outcomes are all acceptable for the first half and the choice belongs to whoever does the work:** a
-case that can fail against a violating implementation, a corrected docstring over a case kept for a narrower
-reason, or the case retired with the guarantee moved somewhere that can hold it. What is not acceptable is a
-docstring that keeps a claim the seam makes unobservable.
+**The shape was open at pickup and the probe of 2026-08-14 closed it**, so what follows is the owner's call
+rather than the window's: the case is **repointed**, not retired and not left as corrected prose. Retiring it
+would be the wrong correction, because it is not a case without a requirement, it is a case without a
+witness, and those are different things.
 
 ## Out of scope
 
@@ -49,23 +49,55 @@ record and this is the pointer.**
 3. A wrong `specs/log.md` entry is corrected in place with a dated note, never deleted and never appended
    over. Registered in that file's own header the same day.
 
+Three more closed **2026-08-14, after the probe reported**, which is what retired the manual mode this task
+was opened in.
+
+4. The case is **repointed** at what M10's clause is actually about, rather than retired or left as prose.
+   The reason is in the section above.
+5. **One window and no Window B.** No production behaviour changes in this pass, so there is nothing for an
+   implementing window to make green, and the separation the two windows buy has nothing to protect here.
+   That the repointed case discriminates is proven by a run **the orchestrator** performs against a violating
+   implementation, never by a case committed to CI, which is the shape `specs/testing.md` section 4 gives a
+   measurement.
+6. The round earns a `finding` entry in `specs/log.md`, written 2026-08-14 before this dispatch.
+
 ## Evidence handed over
 
-Two facts. **The conclusion they suggest is deliberately not handed over**, which is the correction MAP-13's
-own spec earned at its review.
+**Rewritten 2026-08-14 after the probe, and the rewrite is the point.** What this block first handed over was
+a reading, labelled as one so it could be refuted, and it was refuted: it named the right facts and attributed
+them to the wrong layer. What follows is what was measured.
 
 **From MAP-13's post-merge review, 2026-08-13.** An axis built an implementation that answers the refusal
 correctly and appends the batch anyway, and `test_a_flush_starting_above_the_cursor_applies_nothing_at_all`
 stayed **green**.
 
-**Read from disk by the orchestrator, 2026-08-14, and it is a reading rather than a run.** `tenant_scope`
-opens `transaction.atomic()` itself at `mapsift/common/binding.py:51`, nested inside the one `user_scope`
-opens at line 84, and `flush_operations` catches `ThisStreamCannotBeContinued` outside the tenant binding.
-Whether that fully accounts for the observation above is precisely what this task settles, and the source is
-named so it can be refuted rather than believed.
+**Reproduced by the probe, 2026-08-14, against a `services.py` that appends the batch and then re-raises the
+refusal untouched.** The case stays green, and so do its four state-reading siblings. The single case that
+goes red is `test_a_refused_flush_takes_no_per_project_version`, whose statement recorder sees the allocation
+the append needed even though nothing survived, which is itself the proof that the append ran and was undone.
 
-**What is not handed over, each because it is a conclusion this task exists to reach:** that the case is
-worthless, that it should be deleted, or that `specs/log.md`'s entry of 2026-08-13 is wrong.
+**The account is one level simpler than the reading this block first carried.** It is not the tenant and user
+bindings nesting: the append sits inside an `atomic()` block that the refusal exits by exception, with the
+catch outside that block, so the write is discarded whatever the nesting does. Isolated by moving only the
+catch inside the binding, which turns one failure into four against the same violating service, while the
+identical move against the committed service changes nothing at all.
+
+**No implementation below the route alone can make the case fail.** The one that does is a pair, a route
+catching inside the binding plus a writer appending before it refuses, and each half is invisible on its own.
+That pair is what the comment at `mapsift/sync/api.py:81` exists to prevent.
+
+**The surviving witness is one by accident.** `OperationLogEntry.project_version` is a plain non-null integer
+field, so the counter case catches the append only through the version allocation the append happened to
+need, and an implementation sourcing that number elsewhere walks past it.
+
+**What the canon already said, and what it means for this task.** PRD **M10's Shape** records that the
+contrast the narrowing draws has no witness and that the clause must not be read as pinned by a case telling
+the two forms apart, and `specs/log.md`'s entry of 2026-08-13 says the same in different words. **So the canon
+is consistent and only the test docstring is wrong**, which is the opposite of what this task was opened
+suspecting. Verified independently by the orchestrator against both documents on 2026-08-14.
+
+**What is still open and belongs to the window:** where exactly the repointed assertion reads, and what it
+costs the module to assert over statement text rather than over rows.
 
 ## Acceptance
 
@@ -77,8 +109,10 @@ Pasted from the two issues, which pasted from the requirements. No clause here i
   the seam makes unobservable
 * the guarantee behind M10's "applies nothing at all" is pinned by a test that fails against an
   implementation violating it, or its untestability is recorded with the reason
-* `specs/log.md`'s 2026-08-13 entry agrees with what the suite actually does, since it is the record a later
-  reader will cite
+* ~~`specs/log.md`'s 2026-08-13 entry agrees with what the suite actually does, since it is the record a
+  later reader will cite~~ **Struck 2026-08-14: it does agree.** Verified at the probe and independently by
+  the orchestrator against PRD M10's Shape and that entry. Nothing in the canon needed correcting, and the
+  round earned a new `finding` entry instead.
 
 **MAP-44.**
 
