@@ -94,6 +94,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     gap and the absent cursor being one comparison and two remedies, and its evidence block is the worked
     example of handing over a **fact** about the suite while refusing to hand over the conclusion, which is
     the correction MAP-12's review earned.
+  - **`tasks/MAP-14-correlation-keys-on-the-flush-path.md`** — the log path created rather than extended, and
+    the flush's decisions put on it so one operation identifier from a report reaches what the server decided.
+    Its boundary block is the shortest in this folder because **ADR-0011 was written first**, which is the
+    fan-out rule working as intended rather than an omission. Two things it does deliberately: it **splits the
+    acceptance** where N9's per-background-task half has no runtime, Celery being uninstalled, rather than
+    shortening the clause; and its evidence block hands over the MAP-45 rollback measurement **while refusing
+    to hand over the conclusion**, because whether a record survives a rolled-back transaction is a property
+    of the path this task builds and nobody has measured it.
   - **`tasks/MAP-45-the-unwitnessed-claim-and-the-copied-status.md`** — the two corrections MAP-13's
     post-merge review left, run as one pass over one package. The first file here to cover **two** issues,
     under the batching allowance of `specs/testing.md` section 1.2, and its evidence block is the worked
