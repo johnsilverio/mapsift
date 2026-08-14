@@ -153,6 +153,8 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
 - DON'T add a field to what a record emits without adding it to the **allowlist** deliberately. The gate is a
   closed set on the root handler and it **drops** what is not named rather than trimming it, which is what
   makes it hold for Django's own records too, `django.db.backends` and its SQL parameters included.
+- DON'T invent a field name or an event name. The wire vocabulary is a **closed set in ADR-0011 section 4**,
+  read there, and a new decision adds its name to that section before it emits it.
 - DON'T put an identifier inside a message string and call it traceable. A key is a field; an interpolated
   identifier is not a join.
 - DO emit one record per **decision**, carrying the operations it covers as a structured list, and one per
