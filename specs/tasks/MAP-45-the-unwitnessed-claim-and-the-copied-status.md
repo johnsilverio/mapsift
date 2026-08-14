@@ -61,6 +61,16 @@ was opened in.
    measurement.
 6. The round earns a `finding` entry in `specs/log.md`, written 2026-08-14 before this dispatch.
 
+One more closed **2026-08-14, at the three-axis review**, which is the explicit and registered authorization
+`specs/testing.md` section 1 requires before a test correction goes back to a window.
+
+7. **The pass takes the two sibling docstrings the review measured, and strikes rather than repoints the
+   heavier one.** The review found the same unwitnessed claim alive in two more cases of the edited module,
+   both measured green against the implementation each says it catches. Striking a false claim is never the
+   wrong move and costs a line; putting the property back under test is **MAP-46**, opened the same day,
+   because that case already carries three assertions and adding a fourth is a decision about what it is for
+   rather than a correction.
+
 ## Evidence handed over
 
 **Rewritten 2026-08-14 after the probe, and the rewrite is the point.** What this block first handed over was
