@@ -6,10 +6,19 @@
 > version or a decision can be found without reading a full changelog. If this file and the foundation disagree,
 > the foundation wins and this file is the one to fix.
 >
-> **Format.** One line per entry: `## [YYYY-MM-DD] <type> | <one-line description>`, where `<type>` is
-> `version` (a foundation version bump, mirrored from section 15) or `decision` (a decision closed in a derived
-> document that did not bump the foundation). Grep `version` for the release history, `decision` for closed
-> calls that are not in the changelog.
+> **Format.** One line per entry: `## [YYYY-MM-DD] <type> | <one-line description>`. The types in use are
+> `version` (a foundation version bump, mirrored from section 15), `decision` (a decision closed in a derived
+> document that did not bump the foundation), `finding` (something a review, a window or a probe discovered
+> that generalizes past the round it was found in), and `trap` (a tool or an environment behaving in a way
+> that looks right and is not, recorded so the diagnosis is paid once). **The file is the authority for that
+> set and this paragraph is not**, so grep the whole file when you do not know which type a thing was filed
+> under. *Corrected 2026-08-14, where this paragraph named two types over a file already using four, so a
+> reader following it reached two thirds of the entries with nothing telling them the rest existed.*
+>
+> **A wrong entry is corrected in place with a dated note of what changed, never deleted and never appended
+> over** (settled 2026-08-14). A later entry contradicting an earlier one leaves two lines that one grep
+> returns together without saying which won, which is the worst outcome available in the one file whose whole
+> purpose is to be grepped.
 
 ## [2026-06-23] version | v0.1 — initial foundation: server-authoritative-with-offline thesis, elements/layers frontier, the sync mechanism, offline domain limits, Lightning for large data, analysis as a served layer, MapLibre rendering, tenant isolation; opened OQ-1 to OQ-7; CRDT demoted to a gated candidate.
 ## [2026-06-23] version | v0.2 — adversarial review: conflict by granularity with preserve-not-discard, legal-weight classification, de-gated Lightning, fixed the sync-tier role, one client persistence layer, the MapLibre editing restriction, fixed I4 and I6; opened OQ-8 to OQ-13.

@@ -130,8 +130,11 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   outside the foundation and PRD: the method, the empirical base, the settled objections, the governance
   discipline, the Linear workflow, and the .claude inheritance discipline. Section 0 is the live state, updated
   each window.
-- **`log.md`** — a grep-able derived index of the foundation's section 15 changelog plus the closed decisions
-  that did not bump the foundation. Not a source of truth; the foundation's changelog is.
+- **`log.md`** — a grep-able derived index of what the canon has closed and learned, one line per entry, in
+  the entry types and the format **its own header states** rather than any list kept here. Not a source of
+  truth; the foundation's changelog is. *Reworded 2026-08-14, where this line enumerated the changelog plus
+  the closed decisions and therefore described two of the four types in use, the same staleness the file's
+  header carried; a pointer is what stops it recurring.*
 - **`market-reserarch.md`** — the internal market-research document that defines the MC-xx codes the specs use
   in place of competitor names. Internal by nature and kept out of version control (the on-disk filename
   carries the historical misspelling `reserarch`, referenced as-is by the foundation and CLAUDE.md).
