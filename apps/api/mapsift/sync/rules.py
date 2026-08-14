@@ -55,7 +55,7 @@ class ThisStreamCannotBeContinued(Exception):
 
     Not a `MalformedBatch`: the batch satisfies the contract the boundary declares, and the cursor
     it is measured against needs the tenant bound, so this refusal is taken after the binding and
-    answers `409` rather than `422` (ADR-0010 decision 6's addition of 2026-08-13).
+    the route answers it differently from those (ADR-0010 decision 6's addition of 2026-08-13).
     """
 
     def __init__(
