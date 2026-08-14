@@ -47,6 +47,10 @@ skill restates it and never decides**; where the two disagree, the ADR wins.
   collision" is an issue; "work on sync" is a project; "add a column" is a step, and steps do not get issues.
 - **Trace and acceptance are copied from the requirement, never invented.** Acceptance written at
   issue-creation time is the tell that the requirement is soft: sharpen it in `PRD.md` first.
+  **The issue and the task spec diverge here, and only here** (ADR-0008 section 9, 2026-08-14): an **issue**
+  keeps the copy, because it is read standalone in a tracker by a human with no canon open. A **task spec**
+  carries the **delta** instead, because it is read beside the canon and a copy there is the fourth of seven
+  recorded orchestrator defects waiting to happen.
 - **Sub-issues are for a genuine parent and child.** Phases are milestones.
 - **No estimates and no story points.** Priority orders the work and never promises a date: **Urgent**
   blocks other issues or is a decision a later artifact is expensive to take back, **High** is on the

@@ -502,9 +502,13 @@ gate, commit format, the PR flow) is the **`dev-workflow` skill**, and the two d
 **The two-window protocol has a third window over it, and the protocol is `specs/testing.md` section 1.**
 Window A writes the failing tests as behaviour (the `test` skill), Window B implements the minimum to green
 without editing them (the `implement` skill), and an **orchestrator** opens the task, sizes the slice, closes
-the boundary decisions with the owner before dispatching, writes each brief **only after reviewing what the
-previous window returned**, and reviews by **running** the gates rather than by reading a report (the
-`orchestrate` and `code-review` skills). **The orchestrator dispatches each window itself on the owner's go**
+the boundary decisions with the owner before dispatching, writes the task spec and **has it read against its
+requirement before Window A rather than after** (ADR-0008 section 9), writes each brief **only after
+reviewing what the previous window returned**, and reviews by **running** the gates rather than by reading a
+report (the `orchestrate` and `code-review` skills). That extra read exists because **the orchestrator is
+the only role in the loop whose artifacts no gate checks**, and every round since MAP-10 produced a blocking
+finding in a document it owned; a task spec's Acceptance block is therefore the **delta** and never a copy of
+the requirement. **The orchestrator dispatches each window itself on the owner's go**
 and `orchestrate-manual` is the mode for while the task is still being understood (ADR-0008 section 4,
 addition of 2026-08-10). The orchestrator does not implement and does not touch code: the
 moment it edits what a window produced, it stops being the independent check the protocol exists to buy.
