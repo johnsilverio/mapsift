@@ -81,18 +81,25 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
 
 ## Acceptance
 
-Copied from PRD N9.
+**The criteria are PRD N9's and are read there.** This block carries only what this task does differently.
 
-- given an operation identifier from a user report, **the flush decision path is reconstructible end to end**
-- **no log line carries coordinates or personal data**, asserted by a test over the logging path rather than
-  by review
-- **every user-visible refusal has a matching record and the reverse**
-- a failure with no user-visible signal and no record fails review
-- **a log line on the sync path that carries no correlation key fails review**
-- the keys are bound **once per request and per background task** rather than passed by hand. **Split, and
-  said so:** the per-request half is in scope and testable here; the per-background-task half has **no
-  runtime in this repository** because Celery is not installed, so it is not proven by this task and is not
-  claimed by it.
+> **Rewritten 2026-08-14, and this file is the worked example of why the rule changed.** It previously
+> announced itself as "Copied from PRD N9" and carried five of that requirement's six clauses plus one
+> promoted from its mechanism half. The Spec axis caught it **after** Window A had already run against it.
+> The Acceptance block is now the delta rather than the copy (ADR-0008 section 9), which is what makes the
+> omission that produced this note impossible rather than merely discouraged.
+
+- **Split, and said so.** N9's mechanism half binds the keys "once per request and per background task". The
+  **per-request** half is in scope. The **per-background-task** half has **no runtime in this repository**,
+  Celery being deliberately not installed, so it is declared and not built, and the issue that installs
+  Celery inherits it.
+- **Deferred, with its owner.** N9's clause that the emitted telemetry is readable by a second backend
+  without changing application code cannot be asserted without a second backend. It stays with the
+  observability ADR whose trigger is the first real users, beside the client telemetry SDK.
+- **Nothing else is narrowed**, and one clause is named here only because narrowing it would have been the
+  easy move: *a failure with no user-visible signal and no record fails review* is in scope **as written**.
+  It is the moral line of the whole requirement, and the seam it needs exists, django-ninja registering a
+  default handler for `Exception` (verified 2026-08-14 in the installed source at the pinned 1.6.2).
 
 From N12, because this path can break it: the liveness probe keeps passing while a dependency is down, and
 nothing this task adds makes a probe touch one.

@@ -149,6 +149,21 @@ the one place both shapes pass through.
 **If that seam turns out not to exist at the pinned django-ninja 1.6.2, the acceptance is split and said
 so**, the way MAP-12's was, and never quietly shortened to what the code happened to reach.
 
+> **Resolved (2026-08-14, the same day, at MAP-14's Window A review). The conditional does not fire and the
+> acceptance needs no split.** Measured in the installed source rather than read from a report:
+> `ninja.errors.set_default_exc_handlers`, called from `ninja/main.py` at `NinjaAPI` construction, registers
+> **four** handlers by default, `Exception`, `Http404`, `HttpError` and **`ValidationError`**, and both
+> pre-handler refusals surface as the last of those. So the seam exists, and the `Http404` entry is what the
+> membership refusal travels through. **Two consequences that are not the same sentence.** Registering a
+> handler for `ValidationError` **replaces** django-ninja's default one, and ADR-0010 decision 6 makes the
+> malformed refusals "told apart by their bodies", with cases in `test_authenticated_request.py` and the
+> batch-agreement suite asserting exactly those bodies, so a seam that logs without re-emitting the identical
+> body breaks a wire contract that is law. And the `Exception` entry is the seam N9's *failure with no
+> user-visible signal* clause needs, which is why that clause is in scope as written rather than split.
+>
+> *Recorded here because it was found living only in a test docstring, which is the one place no grep looks
+> and no fan-out reaches. A version-pinned measurement belongs to the pin.*
+
 ### 8. What this decision does not take
 
 The telemetry **backend**, the sampling policy, the dashboards and the alerting stay deferred with the
