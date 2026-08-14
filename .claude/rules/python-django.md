@@ -145,6 +145,19 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
 - Ordering is the database's, through the transactional flush. Channels carries transport and presence only;
   authoritative state never lives there (C9).
 
+## Logging (the mechanism is **ADR-0011**; this section restates it and decides nothing)
+
+- DON'T pass a correlation key as a function argument. The four keys of N9 (operation identifier, clientID,
+  tenant, request or task) are bound **once per context** and reach the record from there. A signature that
+  takes one is the design the requirement replaced.
+- DON'T add a field to what a record emits without adding it to the **allowlist** deliberately. The gate is a
+  closed set on the root handler and it **drops** what is not named rather than trimming it, which is what
+  makes it hold for Django's own records too, `django.db.backends` and its SQL parameters included.
+- DON'T put an identifier inside a message string and call it traceable. A key is a field; an interpolated
+  identifier is not a join.
+- DO emit one record per **decision**, carrying the operations it covers as a structured list, and one per
+  operation only where the decision is genuinely per operation.
+
 ## Celery
 
 - DO make every task idempotent, pass primary keys and never model instances, and validate that the

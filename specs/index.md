@@ -204,3 +204,10 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     first non-browser client, and the tenant read from the envelope and **verified** against the principal
     rather than trusted or duplicated. Its measurements are the reason it exists: a suite using Django's
     default test client goes green while the real browser POST is refused.
+  - **`adr/0011-the-logging-path.md`** — the log path as one decision, taken at the first code that logs
+    rather than at the deferred observability backend, because it is the half of N9 that cannot be
+    retrofitted: the standard library with a JSON formatter, the correlation keys bound once per context and
+    never passed by a caller, redaction as a **closed allowlist on the root handler** so it holds for Django's
+    own records, one record per decision rather than per operation, and the probe paths exempt. It reverses
+    the dependency survey's own leaning and carries the reason: `django-structlog` requires `django-ipware`
+    and binds the client address by default, which is the data the requirement exists to keep out.
