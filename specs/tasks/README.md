@@ -30,6 +30,20 @@ citation, and it is the copy that will go stale.
 **It is written at pickup, never at backlog creation.** Twenty task specs written at once go stale before
 anybody reads them. The evidence is in this repository: the specs on disk are the ones that were worked.
 
+**And the first rule has no exceptions, which is a correction of 2026-08-14 rather than an emphasis.** This
+file used to state "it cites and never restates" and then designate **two** blocks as exceptions to it,
+Acceptance as a copy of the requirement and Evidence as a transcription. Counted at MAP-14, **four of the
+seven blocking findings this project has recorded against an orchestrator-owned document sat in those two
+blocks**, which is the only part of the file where such a defect is possible. Acceptance is now the delta
+and no longer a copy (ADR-0008 section 9).
+
+**Evidence stays a transcription, and that is deliberate rather than an oversight.** It carries what exists
+nowhere else yet, so there is nothing to cite; the exposure is real and is met a different way. **Label a
+reading as a reading and a measurement as a measurement**, and where a measurement supports a conclusion
+that was not itself measured, hand over the measurement and **refuse the conclusion in writing**. Both
+halves were earned: MAP-12 handed a window a wrong inference dressed as a measurement, and MAP-45 handed
+over a reading that the window it went to then refuted, which is what the label is for.
+
 ## The shape
 
 ```markdown
@@ -56,8 +70,11 @@ is transcribed rather than cited, because it exists nowhere else yet. Anything h
 general belongs in `specs/log.md` instead.
 
 ## Acceptance
-Copied from the requirement, never invented. If you are writing new criteria here, the requirement is
-soft, and the fix is to sharpen it in `specs/PRD.md` first.
+**The delta, never the copy** (ADR-0008 section 9). Cite the requirement by identifier and list only
+what this task does **differently**: a clause split with its reason, a clause with no runtime here, a
+clause deferred to a named owner. The window reads the criteria themselves from the PRD, where they
+are law. If you are writing a new criterion here, the requirement is soft, and the fix is to sharpen
+it in `specs/PRD.md` first.
 ```
 
 ## What a review fails this file for

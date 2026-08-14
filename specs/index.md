@@ -45,7 +45,10 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   must hold at once are spread across several documents. On disk:
   - **`tasks/README.md`** — the shape of one of these files and the two rules that make it worth having: it
     cites and never restates, and it is written at pickup rather than at backlog creation, because task specs
-    written twenty at a time go stale before anybody reads them.
+    written twenty at a time go stale before anybody reads them. **The first rule stopped having exceptions on
+    2026-08-14** (ADR-0008 section 9): the Acceptance block is the **delta** rather than a copy of the
+    requirement, because four of the seven blocking findings recorded against an orchestrator-owned document
+    sat in the two blocks this file had exempted from its own first rule.
   - **`tasks/MAP-3-account-tree.md`** — the first product code in the repository: the five entities of M1, the
     tenant identifier, and the ADR-0005 wall in the same migration, with the split between what window A tests
     and what window B implements written out.
@@ -126,8 +129,10 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   implementation, the decision-versus-effect split that makes it possible, the kinds of test in this project
   (including the shared cross-runtime golden corpus and why measurements are not CI gates), where tests live,
   and the traceability rule from a requirement ID to a test. **Section 1.1 is the contract every window brief
-  satisfies** and **1.2 is why sizing the slice is a first-class step** rather than something discovered
-  afterwards. Read before writing any test or any code.
+  satisfies**, and since 2026-08-14 also the rule that the task spec is read against its requirement **before**
+  Window A rather than after, because a window is told not to question handed-over evidence and a spec defect
+  therefore rides through by construction. **1.2 is why sizing the slice is a first-class step** rather than
+  something discovered afterwards. Read before writing any test or any code.
 - **`dependencies.md`** — the dependency survey: the canonical home for external-dependency versions and for the
   particularity of each one that bites, serving the external-dependency rule. Distinguishes a **ratified choice**
   from a **pinned version** (only a lockfile pins), carries a verification date on every claim, and ends with the

@@ -128,6 +128,60 @@ track record. Until both hold, agents read issues, comment and move state throug
 Independent issues run in independent git worktrees, so two lines of work never share a checkout or a
 branch. The `worktree-commit-merge` skill is the exit path; `main` is never merged locally.
 
+### 9. The orchestrator's artifacts have no gate, so three things replace the missing one
+
+**Added 2026-08-14, at MAP-14, from a count rather than from an impression.** Every round since MAP-10 has
+produced at least one **blocking** review finding in a document the orchestrator owned, and two rounds
+produced nothing else: `specs/log.md` records "every blocking finding of that task's four review rounds was
+the orchestrator's" at MAP-12 and "both in documents the orchestrator owned" at MAP-13. Seven instances in
+seven rounds is a process defect and not a run of bad luck.
+
+**The diagnosis, and it is structural.** Sorted by artifact rather than by lesson, the seven collapse into
+two surfaces. **Four sit in the two blocks of a task spec that transcribe instead of pointing**, its
+Acceptance (a copy of the requirement) and its Evidence (a transcription of a measurement); `tasks/README.md`
+opens with "it cites and never restates" and then designates exactly those two as exceptions, so the defects
+live in the only part of the file where they are possible. **Three sit in a fan-out**, where the artifact is
+a claim that a sweep covered its targets.
+
+**Why this role and not the windows.** Every artifact a window produces is falsifiable by a machine: `ruff`,
+`mypy --strict`, `pytest`, `lint-imports`, the freshness gates and the three hooks all read code. **Nothing
+reads a task spec, an ADR or a fan-out sweep**, so the orchestrator is the only role in the loop operating
+with no red-or-green signal, and it is the role producing the findings. The role is also the only one that
+**compresses**: a window produces, an orchestrator reduces five documents to one, and every lossy operation
+is a claim about what it dropped that nothing in the loop compares against the source.
+
+**Why no further prose rule was written, which is the load-bearing half.** "A sentence about a set has to be
+re-read against the set" was already written down after MAP-12 and was violated again at MAP-14 by the
+orchestrator that had read it. The `fan-out` skill already prescribes both greps and already names the
+second as the one people skip, and it was skipped three times in the session that quoted it. **The prose
+layer is saturated on both surfaces**, and `.claude/skills/README.md` already carries the law that decides
+this: a prompt instruction is a request, a hook or a gate is enforcement.
+
+So, three changes, each removing a surface or moving a discovery rather than asking for more care.
+
+1. **A task spec's Acceptance block is a delta, never a copy.** It cites the requirement by identifier and
+   lists **only what this task does differently**: what is split, what has no runtime here, what is deferred,
+   each with its reason. The window reads the criteria from the PRD, where they are law. Under a copy the
+   orchestrator must reproduce N clauses and any omission is invisible; under a delta **there is nothing to
+   omit**, because the full set is never transcribed. It is also shorter, and it restores that file's own
+   first rule. **This does not change the Linear issue**, whose acceptance stays copied from the requirement
+   (section 2): an issue is read standalone in a tracker by a human, a task spec is read beside the canon.
+2. **The task spec is adversarially reviewed before Window A, not after.** The Spec axis already reads it,
+   but only once a window has consumed it, and `specs/testing.md` section 1.1 tells that window handed-over
+   evidence is not its to question, so **a spec defect rides through by construction** and surfaces a full
+   window later. That late discovery is the correction round this section exists to stop. One pass over the
+   spec alone, with the requirement open, before the dispatch.
+3. **A fan-out reports the commands it ran, never that it swept.** This project's oldest rule is that a
+   state claim is written with the command that verified it, and it had never been applied to the fan-out's
+   own completeness claim. The sweep pastes its greps and their hit counts.
+
+**What this costs:** one subagent pass per task before Window A, and a fan-out report that is longer than a
+sentence. **What it does not buy:** anything on the two surfaces a machine could have checked instead, and
+the residual is named rather than hidden. A gate comparing an Acceptance block against the PRD was
+considered and refused: the PRD's acceptance lines are semicolon-separated prose rather than structure, so
+the parser would be brittle, and a brittle gate is one people switch off (section 5's rule about a guard
+wider than its rule, in `.claude/skills/README.md`).
+
 ## Consequences
 
 The `linear-workflow` and `dev-workflow` skills are the enforceable restatements of this decision and inject

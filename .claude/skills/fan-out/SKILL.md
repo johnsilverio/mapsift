@@ -93,5 +93,15 @@ Report: which kind of change it was, every file touched and what each got, every
 with the reason, and anything you found stale while grepping that this decision did not cause. That last
 one is where the real defects surface.
 
+**Paste the greps you ran and what each returned. Never report that you swept** (added 2026-08-14, ADR-0008
+section 9). This project's oldest rule is that a state claim is written with the command that verified it,
+and it had never been applied to this skill's own completeness claim, which is the one claim here that
+nothing else checks. Three of the seven blocking findings recorded against an orchestrator-owned document
+were a sweep that reported itself complete and was not, and in the sharpest of them **this file already
+prescribed both greps and already named the second as the one people skip**, and it was skipped three times
+in the session that quoted it. A pasted command with a hit count is a fact a reader can re-run; "propagated
+to every target" is a memory. **The reverse grep of step 2 is the one whose output has to appear**, because
+the forward grep can only find the wording you just wrote.
+
 **If a target contradicts the decision rather than merely lagging it, stop and report.** Two documents
 disagreeing is not a propagation problem; it is a decision somebody needs to take.

@@ -103,7 +103,16 @@ the check at pickup, and it can still send a task back to be split.
 
 **Writing the task spec** at `specs/tasks/MAP-<n>-<slug>.md`, **before dispatching anything**. It is the
 assembled contract the windows read, it cites and never restates, and it exists so the assembly survives the
-session. `specs/tasks/README.md` is the shape.
+session. `specs/tasks/README.md` is the shape, and its Acceptance block is the **delta** and never a copy of
+the requirement (ADR-0008 section 9).
+
+**Having that spec read against its requirement, before Window A rather than after it** (ADR-0008 section 9;
+`specs/testing.md` section 1.1). One subagent, the spec and the requirement it cites, nothing else. **This is
+the step that exists because you are the role with no gate**: `ruff`, `mypy`, `pytest` and `lint-imports`
+read what the windows produce and nothing reads what you produce, so seven rounds produced seven blocking
+findings in documents you owned, four of them in this file. **You are not exempt from your own review just
+because you commissioned it.** A finding here costs a rewrite; the same finding after Window A costs a
+correction round.
 
 **Writing the window prompts, one at a time**, in English, in the XML shape of `specs/testing.md` section
 1.1. **The standing discipline lives in the `test` and `implement` skills**, so the prompt names the skill
