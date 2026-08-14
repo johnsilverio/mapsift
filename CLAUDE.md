@@ -343,8 +343,12 @@ rules) is deferred to the PRD and is NOT pre-decided here.
   hiccup into an outage), readiness checking what it needs. Telemetry is emitted vendor-neutral so the backend
   stays swappable; the backend itself, the sampling, the dashboards and the alerting are an ADR whose trigger
   is the first real users, and the **OpenTelemetry Python logs SDK was still in development as of May 2026**,
-  so the log path runs through the standard library with trace identifiers injected. Do NOT pick a telemetry
-  vendor in application code, and do NOT let a capability fail without both a user-visible signal and a record.
+  so the log path runs through the standard library with trace identifiers injected. **The shape of that path
+  is ADR-0011** (decided 2026-08-14 at the first code that logs, ahead of the deferred backend): the standard
+  library with a JSON formatter, the keys bound once per context and never passed by a caller, and redaction
+  as a **closed allowlist** on the root handler, which is what makes it hold for Django's own records too. Do
+  NOT pick a telemetry vendor in application code, do NOT hand a correlation key to a function as an argument,
+  and do NOT let a capability fail without both a user-visible signal and a record.
 - **Type-safe end to end.** mypy `--strict` with django-stubs on the backend; TypeScript strict on the
   frontend; Pydantic at every boundary (API input, WebSocket messages, config). No function without a
   complete signature. No `Any` without a justifying comment. CI blocks a PR if mypy or ruff fail.
