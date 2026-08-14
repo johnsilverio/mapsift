@@ -97,8 +97,10 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   - **`tasks/MAP-45-the-unwitnessed-claim-and-the-copied-status.md`** — the two corrections MAP-13's
     post-merge review left, run as one pass over one package. The first file here to cover **two** issues,
     under the batching allowance of `specs/testing.md` section 1.2, and its evidence block is the worked
-    example of handing over an observation together with the reading that might explain it while **refusing
-    to hand over the conclusion**, which is the correction MAP-13's own spec earned.
+    example of a handed-over reading **labelled as a reading and then refuted by the window it was handed
+    to**, which is the whole purpose of the label. *Reworded 2026-08-14, in the round that produced the
+    refutation, where this line still advertised the lesson the rewrite had retired; found by a review axis
+    and not by the fan-out that rewrote the block.*
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
   - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim
