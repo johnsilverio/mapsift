@@ -174,35 +174,40 @@ def test_a_flush_starting_above_the_cursor_is_answered_with_the_number_the_serve
 
 
 def test_a_flush_starting_above_the_cursor_applies_nothing_at_all(alice: Party) -> None:
-    """M10's acceptance as narrowed 2026-08-13. The wider form it replaced permitted a flush that
-    both applies and refuses, whose answer would then have to carry a moved cursor and a restart
-    point at once, while C12 has the client advance from one echo and nothing else. So the whole
-    batch stays out of the log, and the two operations already applied are still the only ones in
-    it.
+    """M10's acceptance as narrowed 2026-08-13, whose teeth are against an implementation that
+    answers the refusal correctly and appends the batch anyway. It does not tell the narrowed form
+    from the wider one, because M10's Shape records that no case can while the composition rule
+    stands.
 
-    Not a duplicate of the case above: an implementation that answers the refusal correctly and
-    appends the batch anyway satisfies every assertion there, and the log it leaves is
-    indistinguishable afterwards from one that was always right, which is the shape M15 makes
-    permanent. The status assertion is the positive control, because a batch refused earlier for a
-    reason this case is not about also appends nothing."""
-    applied = [uuid4(), uuid4()]
+    **The append is witnessed as it runs and never as the rows it left**, measured at the MAP-45
+    probe of 2026-08-14: it sits inside a transaction the refusal exits by exception, so nothing
+    survives for a later read to find and a case reading the log afterwards stays green against a
+    writer that appended. What that instrument sees, and what it leaves to the implementation, is
+    `statements_reaching`'s own docstring.
+
+    **The refusal is arranged through the helper that pins its reason, and the status alone would
+    not do.** This route answers one status for two reasons and the other one reaches this table
+    zero times as well: measured 2026-08-14, a server that never advances a cursor refuses this
+    batch with `no_cursor_in_this_domain`, and a case reading the status would have called that a
+    gap and stayed green."""
     installation = uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
 
     _the_server_took(
         browser,
-        _a_contiguous_queue_of(*applied, by=alice, from_installation=installation, starting_at=0),
-    )
-    refused = browser.post(
-        OPERATIONS_PATH,
         _a_contiguous_queue_of(
-            uuid4(), uuid4(), by=alice, from_installation=installation, starting_at=3
+            uuid4(), uuid4(), by=alice, from_installation=installation, starting_at=0
         ),
-        JSON,
     )
+    with statements_reaching(OperationLogEntry._meta.db_table) as the_append:
+        _the_server_refused_the_gap(
+            browser,
+            _a_contiguous_queue_of(
+                uuid4(), uuid4(), by=alice, from_installation=installation, starting_at=3
+            ),
+        )
 
-    assert refused.status_code == HTTPStatus.CONFLICT
-    assert _the_operations_in_the_log(alice) == applied
+    assert the_append == []
 
 
 def test_a_flush_above_the_first_mutation_number_from_an_installation_with_no_cursor_says_so(
@@ -239,25 +244,33 @@ def test_a_flush_from_an_installation_with_no_cursor_is_never_applied_optimistic
     alice: Party,
 ) -> None:
     """M4's Requirement, whose whole reason for refusing rather than applying is that applying it
-    blindly would risk re-applying operations the server already holds. Nothing reaches the log,
-    and the case above is satisfied by an implementation that answers the reconciliation and appends
-    the batch behind it.
+    blindly would risk re-applying operations the server already holds.
 
-    The log is asserted empty rather than unchanged, which is what an installation the server has
-    never met is entitled to: this tenant has flushed nothing at all, so anything in there was put
-    there by the refusal. The status is the positive control, since the empty log is also what a
-    401, a 404 or any of the five malformed-batch refusals produces."""
+    **The append is witnessed as it runs and never as the rows it left**, the same instrument and
+    the same measurement of 2026-08-14 as
+    `test_a_flush_starting_above_the_cursor_applies_nothing_at_all`: the refusal exits the
+    transaction the append sat in, so nothing survives for a later read to find and a case reading
+    the log afterwards stays green against a writer that appended. The log is read as well and
+    asserted empty rather than unchanged, which is what an installation the server has never met is
+    entitled to: this tenant has flushed nothing at all.
+
+    The status rules out the 401, the 404 and the five malformed-batch refusals, each of which
+    reaches this table zero times too. It does not tell the two reasons this one status carries
+    apart, and here it does not have to: the answer to this arrangement is the closed object the
+    case above pins."""
     browser = a_browser(authenticated_as=alice.user_id)
 
-    refused = browser.post(
-        OPERATIONS_PATH,
-        _a_contiguous_queue_of(
-            uuid4(), uuid4(), by=alice, from_installation=uuid4(), starting_at=2
-        ),
-        JSON,
-    )
+    with statements_reaching(OperationLogEntry._meta.db_table) as the_append:
+        refused = browser.post(
+            OPERATIONS_PATH,
+            _a_contiguous_queue_of(
+                uuid4(), uuid4(), by=alice, from_installation=uuid4(), starting_at=2
+            ),
+            JSON,
+        )
 
     assert refused.status_code == HTTPStatus.CONFLICT
+    assert the_append == []
     assert _the_operations_in_the_log(alice) == []
 
 
@@ -265,15 +278,18 @@ def test_the_resend_a_refusal_asked_for_lands_whole_rather_than_being_deduplicat
     alice: Party,
 ) -> None:
     """M10's Requirement and C12 together: the answer asks the client to resend from a point, so
-    the server has to still be at that point when the resend arrives. The residue this catches is
-    invisible to every other case in this module and is the worst of them: an implementation that
-    advances the cursor and then refuses appends nothing, answers correctly, and leaves the cursor
-    at the top of a batch it never applied, so the resend it asked for is deduplicated away in its
-    entirety and the operations are lost in silence with an acknowledgement on top.
+    the server has to still be at that point when the resend arrives. What is witnessed is the
+    resend landing whole and in the order the log puts it, rather than being deduplicated away in
+    part or entirely.
 
-    The log is what says so rather than the echo, and the reason is that the echo agrees with both
-    implementations: a cursor wrongly advanced to four answers a resend through four with four, and
-    so does a correct one that applied it."""
+    The log is what says so rather than the echo, because the echo names a number while what a
+    resend has to leave behind is the rows under it: a server answering four having applied none of
+    them satisfies the echo on its own.
+
+    **The residue this case was written against is struck rather than claimed**, 2026-08-14 and
+    measured: an implementation that advances the cursor and then refuses leaves this case green,
+    and every other in this module with it, because the advance sits inside the transaction the
+    refusal exits, exactly as the append does. Putting that property back under test is MAP-46."""
     applied = [uuid4(), uuid4()]
     the_missing_one = uuid4()
     # Shared with the refused batch on purpose: this is the resend that refusal asked for, not a
