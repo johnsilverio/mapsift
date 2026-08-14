@@ -42,7 +42,7 @@ are `specs/PRD.md`.
 | **M15** the append-only log | a log entry updated in place; a correction written as a mutation rather than as a new operation |
 | **M7, M16** regulatory content | a regulatory value as a literal in a function; legal weight raised or lowered by an external registry's status; protection removed retroactively |
 | **S5** capture provenance | a vertex with no capture method and precision estimate; geometry from device positioning presented as meeting the certification-grade accuracy the norm requires |
-| **N9** observability | a log line on the sync path with no correlation key; geometry or personal data reaching a log; a failure with no user-visible signal and no record |
+| **N9** observability (the path is **ADR-0011**) | a log line on the sync path carrying **none** of the four correlation keys, which is the clause and is not "missing one"; geometry or personal data reaching a log, including through a record this codebase did not author; a failure with no user-visible signal and no record; a correlation key passed to a function as an argument instead of read from the bound context; a record field or event name outside ADR-0011 section 4's closed set; `operation_ids` emitted as a delimited string rather than a list; an identifier interpolated into a message and called traceable |
 | **U1, U2, U10** the design system | a raw colour, radius, size or spacing literal in a component; a translucent surface declaring its own blur, tint or saturation; a bespoke re-implementation of a primitive `@mapsift/ui` already provides; a relative import into the library's source |
 
 ## Code shape

@@ -34,6 +34,12 @@ a person.
   force-upgrade rejections. Owners: **MAP-38** and the conflict slice, **MAP-37**, and the versioning
   mechanism (OQ-15). This task builds the path and puts on it **only the decisions the flush takes today**,
   which is why it runs before those three rather than after.
+- **The credential refusals on this route, the `401` and the CSRF `403`.** Owner: **ADR-0010**'s seam, which
+  takes them before the route is reached. Declared here rather than left silent (added 2026-08-14, at the
+  Window A review, where the Spec axis found them neither covered nor named): they are user-visible refusals
+  on the same path, so N9's every-refusal clause does reach them eventually, and the ground for deferring is
+  that **neither is lost work**. A rejected credential leaves the client's queue intact and retryable. The
+  `404` of a claim the principal cannot back is the one that is not, which is why it has a case here.
 - **The Rust and TypeScript sides.** Nothing in `libs/core` or `apps/web` changes.
 
 ## Boundary decisions the owner closed

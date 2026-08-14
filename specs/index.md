@@ -221,6 +221,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     rather than at the deferred observability backend, because it is the half of N9 that cannot be
     retrofitted: the standard library with a JSON formatter, the correlation keys bound once per context and
     never passed by a caller, redaction as a **closed allowlist on the root handler** so it holds for Django's
-    own records, one record per decision rather than per operation, and the probe paths exempt. It reverses
+    own records, one record per decision rather than per operation, and the probe paths exempt. **Section 4
+    also carries the wire vocabulary as a closed set** (added 2026-08-14, after a review found the field and
+    event names fixed by a test suite and by no document, which is a contract MAP-37, MAP-38 and MAP-39 read
+    to add their own decisions). It reverses
     the dependency survey's own leaning and carries the reason: `django-structlog` requires `django-ipware`
     and binds the client address by default, which is the data the requirement exists to keep out.

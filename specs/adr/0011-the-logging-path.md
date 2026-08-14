@@ -113,6 +113,24 @@ today, the conflict verdict later.
 **The rule that keeps this honest: an identifier interpolated into a message string is not a join key.** A
 key is a field.
 
+> **Added 2026-08-14, at MAP-14's Window A review, because the names were being fixed by a test suite and by
+> no document.** A record's field names and its event names are a **contract**, not a suite convention:
+> MAP-37, MAP-38 and MAP-39 each add a decision to this path and will read these names to do it, and a
+> vocabulary that lives only in `conftest.py` is one the next window reinvents. The closed set is
+> **`operation_ids`** (a list on **every** record, so the join has one name whether the decision covers one
+> operation or fifty), **`client_id`**, **`tenant_id`**, **`request_id`**, **`event`**, **`status`** and
+> **`reason`**. The events this path names today are **`flush.applied`**, **`flush.deduplicated`** and
+> **`request.refused`**; a new decision adds a name here first and emits it second.
+>
+> **`operation_ids` is a list and never a delimited string**, which reads as pedantry and is not: `in`
+> answers the same for `["a", "b"]` and for `"a,b"`, so the distinction is invisible to the obvious reader
+> and the shape stops being enforced the moment one is written.
+>
+> **What "carries no correlation key" means, since the two readings differ where it matters:** a record fails
+> the N9 clause when it carries **none of the four**, not when it is missing one. A refusal taken before a
+> batch is parsed has a request and no tenant, no clientID and no operation, and demanding all four would
+> fail precisely the records this requirement exists to guarantee.
+
 ### 5. Where each piece lives, under ADR-0007
 
 The context carrier and the redaction filter live in **`mapsift/common/`**, because they are platform rather
