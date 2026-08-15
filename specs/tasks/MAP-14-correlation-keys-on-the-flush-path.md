@@ -40,8 +40,13 @@ a person.
   which is why it runs before those three rather than after.
 - **The credential refusals on this route, the `401` and the CSRF `403`.** Owner: **MAP-48**. *(It named
   "ADR-0010's seam" until 2026-08-14, which is where they are taken and not something that can be closed, so
-  nothing tracked them ever reaching N9's clause. Every other deferral in this block names an issue; this one
-  now does too.)* Declared here rather than left silent (added 2026-08-14, at the
+  nothing tracked them ever reaching N9's clause.)* **Counted rather than asserted, 2026-08-14:** this block
+  holds six deferrals and **two** now name an issue, this one and the deferred decision categories. The
+  other three that need an owner name a trigger instead, the observability ADR twice and "the issue that
+  installs Celery" with no identifier, which is a weaker form and is left as it is deliberately rather than
+  overlooked. *(This sentence read "every other deferral in this block names an issue" until it was counted,
+  which made it the fourth set-claim of the day that its own set did not support, written inside the fix for
+  the third.)* Declared here rather than left silent (added 2026-08-14, at the
   Window A review, where the Spec axis found them neither covered nor named): they are user-visible refusals
   on the same path, so N9's every-refusal clause does reach them eventually, and the ground for deferring is
   that **neither is lost work**. A rejected credential leaves the client's queue intact and retryable. The
@@ -131,8 +136,9 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
   are exactly narrowings; each half was defensible alone and the conjunction was false, which is the shape
   MAP-45 recorded and the `fan-out` skill still has no step for). N9's clause *every user-visible refusal has
   a matching record and the reverse* **is narrowed twice**: the `401` and the CSRF `403` are deferred to
-  ADR-0010's seam, and the conflict, authorship and force-upgrade decisions are deferred to the issues that
-  create them. **Out of scope is authoritative for both**, so read it as part of this block rather than after
+  **MAP-48**, and the conflict, authorship and force-upgrade decisions are deferred to the issues that
+  create them. *(This line said "ADR-0010's seam" until 2026-08-14, hours after the Out of scope block below
+  had already been corrected to name the issue; one block was swept and its twin was not.)* **Out of scope is authoritative for both**, so read it as part of this block rather than after
   it.
 - **Not narrowed, and named because narrowing it would have been the easy move:** *a failure with no
   user-visible signal and no record fails review* is in scope **as written**. It is the moral line of the
