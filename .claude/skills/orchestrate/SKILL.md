@@ -114,7 +114,7 @@ composed**, for the reason the review axes learned on their own first run. It ru
 read against its source. **This is
 the step that exists because you are the role with no gate**: `ruff`, `mypy`, `pytest` and `lint-imports`
 read what the windows produce and nothing reads what you produce, so seven rounds produced seven blocking
-findings in documents you owned, four of them in this file. **You are not exempt from your own review just
+findings in documents you owned, **four of them in the task spec's two transcribing blocks**. **You are not exempt from your own review just
 because you commissioned it.** A finding here costs a rewrite; the same finding after Window A costs a
 correction round.
 

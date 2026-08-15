@@ -141,6 +141,21 @@ key is a field.
 > hex form or a nested object. This is a value contract rather than a field contract, and it is here because
 > a join across two records is a string comparison in whatever backend eventually reads them; a producer that
 > spells the same identifier two ways has broken the join without breaking any test that checks one producer.
+> **`status` emits as the integer**, for the mirror reason: `"422"` and `422` do not compare equal and a
+> dashboard filtering on one silently loses the other.
+>
+> **What "closed" does and does not close, added 2026-08-14 because the first reading of it was a trap.** The
+> set above closes **the names this path chooses**. It does **not** close a record's envelope: a timestamp
+> and a severity are what makes a structured record a record at all, they are the formatter's rather than a
+> decision's, and section 3's allowlist is not to be read as forbidding them. A reviewer applying the closed
+> set to a timestamp would refuse the only shape a log can have, which is what happens when a rule written
+> about one layer is enforced against another.
+>
+> **Reason *values* are deliberately open and this is the sentence that says so.** The names are closed;
+> what a `reason` may contain is not. The `409`'s values come from `WhyAStreamCannotBeContinued`, a closed
+> set that already exists in `mapsift/sync/rules.py` and is owned there; the `404`'s has no upstream and is
+> the implementing window's to choose, because inventing one here would be this ADR deciding a wire value it
+> has no requirement for. What is **not** open is that the field be present on a `request.refused` record.
 >
 > **`operation_ids` is a list and never a delimited string**, which reads as pedantry and is not: `in`
 > answers the same for `["a", "b"]` and for `"a,b"`, so the distinction is invisible to the obvious reader
