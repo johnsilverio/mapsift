@@ -133,5 +133,8 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
   whole requirement, and the seam it needs exists, django-ninja registering a default handler for `Exception`
   (verified 2026-08-14 in the installed source at the pinned 1.6.2).
 
-From N12, because this path can break it: the liveness probe keeps passing while a dependency is down, and
-nothing this task adds makes a probe touch one.
+From **ADR-0011 section 6**, which is this task's own and is what the suite pins: an availability probe
+manufactures no record whose correlation keys are empty. **N12's own clause, that the liveness probe keeps
+passing while a dependency is down, is already carried by `tests/test_probes.py` and is not this task's to
+re-prove** (corrected 2026-08-14, where this line named the N12 clause over a suite that asserts the section
+6 one; each sentence was true and they were not about the same thing).
