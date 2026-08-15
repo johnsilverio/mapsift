@@ -274,6 +274,37 @@ schema**, which is the source of the Python-to-TypeScript contract (PRD M12), so
 `HttpResponse` to sidestep the pair answers correctly and **generates nothing**, and the drift is invisible
 until a consumer exists. MAP-35 is that consumer.
 
+### django-ninja's four default exception handlers: one of them is a pass-through, and registering your own replaces the default rather than adding to it
+
+*Read 2026-08-14 in the installed `ninja/errors.py` and `ninja/main.py` at the pinned **1.6.2**, twice by
+different readers, feeding ADR-0011 section 7. Recorded here because the external-dependency rule makes this
+file the home of a version-pinned particularity, and this one was measured for a whole round before anybody
+noticed it had not reached the survey; `specs/dependencies.md` was also absent from the `fan-out` skill's
+target table until the same day, which is why.*
+
+`set_default_exc_handlers`, called from `main.py` at `NinjaAPI` construction, registers **four**:
+`Exception`, `Http404`, `HttpError` and `ValidationError`. Three consequences, and they are separate claims.
+
+**Both pre-handler refusals on the flush route arrive as `ValidationError`**, the composition rules from a
+Pydantic `model_validator` and an unknown operation type from the generated discriminated union, so a single
+handler reaches both. **But `add_exception_handler` replaces the entry for a type rather than chaining
+onto it**, so registering a `ValidationError` handler silently takes over django-ninja's default response
+shape. ADR-0010 decision 6 makes the two malformed refusals tell each other apart **by their bodies**, and
+`test_authenticated_request.py` and the batch-agreement suite already assert those bodies, so a handler that
+does not re-emit them identically breaks a wire contract that is law and turns those suites red.
+
+**`_default_exception` is not a logging seam at `DEBUG` false.** Its body is
+`if not settings.DEBUG: raise exc  # let django deal with it`, logging only when DEBUG is on. The failure
+travels on, Django's `core/handlers/exception.py` calls `log_response`, and **that record crosses the root
+handler like any other**, so under ADR-0011 it acquires the bound keys and the allowlist by construction. So
+a record for an unplanned failure exists either way; what a registered handler buys is control over its
+shape, not its existence.
+
+**The test-client consequence, which bites before any of the above.** Because the exception is re-raised,
+Django's test client re-raises it again rather than answering with the 500 the user actually received, so a
+case about that path needs `raise_request_exception=False`. This is the fourth distinct shape in this survey
+of a check that reports success about something it never exercised.
+
 ### Django writes migrations through black when black is importable, and black arrived here as somebody else's transitive dependency
 
 *Observed at the MAP-10 implementation review, 2026-08-10, and verified rather than accepted: `black`

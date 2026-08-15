@@ -67,6 +67,7 @@ foundation or an ADR first, stop and put it there before touching anything below
 | `CLAUDE.md` | **only if the constraint is true for every task.** Otherwise it belongs one tier down (ADR-0002 section 5) | almost always: the file is the digest, not the archive |
 | `.claude/rules/` | the enforceable per-path restatement (`angular.md`, `design-system.md`, `python-django.md`, `rust-core.md`), because that is what fires while a file is being edited | there is no path-scoped consequence, which is most of the time |
 | `.claude/skills/` | the procedure, if the decision changes how work is done | it changes what is true rather than how work runs |
+| `specs/dependencies.md` | **any measurement pinned to a version**: what the installed source does, a particularity that bites, a probe against the lockfile. A dated subsection, naming the version read and the ADR it fed | the decision touched no external dependency. **Added 2026-08-14, after this file had no row for it at all** and two django-ninja 1.6.2 measurements were made in one round, cited in an ADR, and never reached the survey the external-dependency rule calls their home. The next window opens this file first, by its path rule, and finds nothing |
 | `specs/session-handoff.md` **section 0** | the live state, and section 6 if a settled objection was reversed | never. Section 0 always moves |
 | `specs/log.md` | **one grep-able line**, oldest first, in the format the file's header states | never |
 
@@ -76,6 +77,15 @@ foundation or an ADR first, stop and put it there before touching anything below
 must not be reopened. When one is genuinely reversed, it stays in the list with its reversal recorded and
 the reason, because a settled objection that vanishes without a record is how a team stops trusting its
 own log.
+
+**Work in flight is a target, and the committed tree is not the whole tree** (added 2026-08-14). A decision
+closed in the middle of a task invalidates artifacts that already exist against the version it replaced, and
+those artifacts are often **uncommitted**: a window's tests in the working tree, a prompt already dispatched,
+a spec a window has read. Run `git status` as part of the sweep and read what is uncommitted, because the
+grep over `specs/` will not see it. The worked case is the one that produced this paragraph: an ADR gained a
+name at midday, a test module written that morning carried a docstring saying that name did not exist, and
+each was correct when written. **The failure is invisible to step 5**, which stops you when a target
+contradicts the decision, because the invalidated artifact was never in the target list at all.
 
 **Provenance citations do not move.** "Closed in v0.3" is history. Only pointers that claim currency move,
 and an ADR's `Authority` line is a claim that it has been **read** against that version and does not
