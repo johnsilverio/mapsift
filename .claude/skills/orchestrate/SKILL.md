@@ -107,7 +107,11 @@ session. `specs/tasks/README.md` is the shape, and its Acceptance block is the *
 the requirement (ADR-0008 section 9).
 
 **Having that spec read against its requirement, before Window A rather than after it** (ADR-0008 section 9;
-`specs/testing.md` section 1.1). One subagent, the spec and the requirement it cites, nothing else. **This is
+`specs/testing.md` section 1.1). One subagent, the spec and the requirement it cites, nothing else. **The
+prompt is in [`references/spec-read-prompt.md`](references/spec-read-prompt.md), copied verbatim rather than
+composed**, for the reason the review axes learned on their own first run. It runs again before a
+**re-dispatch** that follows a correction round, because a spec edited between windows is a spec nobody has
+read against its source. **This is
 the step that exists because you are the role with no gate**: `ruff`, `mypy`, `pytest` and `lint-imports`
 read what the windows produce and nothing reads what you produce, so seven rounds produced seven blocking
 findings in documents you owned, four of them in this file. **You are not exempt from your own review just
