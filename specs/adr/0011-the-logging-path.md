@@ -155,10 +155,19 @@ the two reasons are different.
 
 ### 7. The refusals that never reach a handler
 
-**Measured (`specs/dependencies.md`, probed 2026-08-07):** the five batch composition rules run inside a
-Pydantic `model_validator` on `OperationBatch`, and an operation type outside the catalog is refused by the
-generated discriminated union itself. Both answer 422 **before any handler is entered**, so there is no frame
-of ours to log from.
+Two refusals answer 422 **before any handler is entered**, so there is no frame of ours to log from. The
+five batch composition rules run inside a Pydantic `model_validator` on `OperationBatch`, and an operation
+type outside the catalog is refused by the generated discriminated union itself.
+
+> **Provenance corrected 2026-08-14, hours after this section was written, by the pre-dispatch read of
+> MAP-14's spec.** The sentence above carried one label, "measured, `specs/dependencies.md`, probed
+> 2026-08-07", over **two** facts of different origin, and only one of them is that probe's. The
+> **discriminated union** half is: it is the MAP-10 pickup entry in `dependencies.md` section 1. The
+> **composition rules** are ADR-0010 decision 6, and its **fifth** rule was decided **2026-08-13**, so it
+> could not have been probed six days earlier. Both are true of the code today, at
+> `mapsift/sync/api.py` and `mapsift/sync/rules.py`; it was the citation that was wrong, not the fact.
+> **The shape is this canon's most-recorded defect wearing a new costume:** one label stretched across a set
+> whose members do not share it, which is the same operation as a count taken from a different set.
 
 N9 accepts that every user-visible refusal has a matching record and that every record was presented, so
 those two must be reachable from the logging path. The seam is a **django-ninja exception handler**, which is
