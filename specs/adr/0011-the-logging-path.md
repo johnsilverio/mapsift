@@ -120,7 +120,14 @@ key is a field.
 > **`operation_ids`** (a list on **every** record, so the join has one name whether the decision covers one
 > operation or fifty), **`client_id`**, **`tenant_id`**, **`request_id`**, **`event`**, **`status`** and
 > **`reason`**. The events this path names today are **`flush.applied`**, **`flush.deduplicated`** and
-> **`request.refused`**; a new decision adds a name here first and emits it second.
+> **`request.refused`** and, added 2026-08-14, **`request.failed`**; a new decision adds a name here first and
+> emits it second.
+>
+> **`request.failed` is separate from `request.refused` rather than folded into it**, and the correction
+> round that asked for it was right to refuse to choose alone. A **refusal is a decision the server took**
+> and carries a reason from a closed set; a **failure is a decision nobody took**, and a 500 has no reason to
+> give. Stretching one name over both would make the trail answer the support desk's first question wrongly,
+> which is whether anything decided anything at all, and that question is the whole of N9's moral half.
 >
 > **`operation_ids` is a list and never a delimited string**, which reads as pedantry and is not: `in`
 > answers the same for `["a", "b"]` and for `"a,b"`, so the distinction is invisible to the obvious reader
@@ -185,8 +192,18 @@ so**, the way MAP-12's was, and never quietly shortened to what the code happene
 > handler for `ValidationError` **replaces** django-ninja's default one, and ADR-0010 decision 6 makes the
 > malformed refusals "told apart by their bodies", with cases in `test_authenticated_request.py` and the
 > batch-agreement suite asserting exactly those bodies, so a seam that logs without re-emitting the identical
-> body breaks a wire contract that is law. And the `Exception` entry is the seam N9's *failure with no
-> user-visible signal* clause needs, which is why that clause is in scope as written rather than split.
+> body breaks a wire contract that is law. And the `Exception` entry is what N9's *failure with no
+> user-visible signal* clause reaches, which is why that clause is in scope as written rather than split.
+>
+> **Sharpened 2026-08-14, later the same day, by MAP-14's correction round measuring what that entry
+> *does* rather than that it exists.** django-ninja's `_default_exception` reads `if not settings.DEBUG:
+> raise exc  # let django deal with it`, so **at DEBUG false it is a pass-through and not a logging seam**.
+> The clause is still reachable, and by two routes rather than none: Django's own
+> `core/handlers/exception.py` calls `log_response` on the re-raised failure, and **that record passes the
+> root handler like any other**, so it acquires the bound keys and the allowlist by construction. Registering
+> our own handler is therefore **a choice about the record's shape, not a necessity for its existence**.
+> Window B picks one and says which. *Recorded here because the first version of this note said the entry was
+> the seam, which was an inference from its registration rather than from its body.*
 >
 > *Recorded here because it was found living only in a test docstring, which is the one place no grep looks
 > and no fan-out reaches. A version-pinned measurement belongs to the pin.*
