@@ -6,8 +6,11 @@ PRD **N9** (the requirement, its mechanism half, and its acceptance), **N5** (wh
 **N12** (the probes this path must not drown). Foundation **section 10**, the observability decision closed in
 v0.16 with its dated OpenTelemetry caveat. **ADR-0011** is the code shape, in full: section 1 the library,
 2 the binding, 3 the redaction, **4 the record granularity and the closed wire vocabulary**, 5 the placement
-under **ADR-0007** sections 1, 2 and 4, 6 the probe exemption, 7 the refusals that never reach a handler with
-its resolution of 2026-08-14. **ADR-0010** decision 6 for the route and its
+under **ADR-0007** sections 1, 2 and 4, 6 the probe exemption, 7 the refusals that never reach a handler
+**with both of its dated notes, the resolution and the sharpening that followed it hours later**; the second
+supersedes the first on what the `Exception` entry does. **ADR-0005** is cited here for the tenant binding
+the flush runs inside, which is a **different** mechanism at a different scope from ADR-0011 section 2's
+per-context key binding and must not be read as nesting one in the other. **ADR-0010** decision 6 for the route and its
 refusal shapes; **ADR-0005** for what the binding runs inside.
 
 Invariants: **I9** and **I10**, whose decisions are what N9 requires recorded. Constraints: **C6** and the
@@ -35,8 +38,10 @@ a person.
   force-upgrade rejections. Owners: **MAP-38** and the conflict slice, **MAP-37**, and the versioning
   mechanism (OQ-15). This task builds the path and puts on it **only the decisions the flush takes today**,
   which is why it runs before those three rather than after.
-- **The credential refusals on this route, the `401` and the CSRF `403`.** Owner: **ADR-0010**'s seam, which
-  takes them before the route is reached. Declared here rather than left silent (added 2026-08-14, at the
+- **The credential refusals on this route, the `401` and the CSRF `403`.** Owner: **MAP-48**. *(It named
+  "ADR-0010's seam" until 2026-08-14, which is where they are taken and not something that can be closed, so
+  nothing tracked them ever reaching N9's clause. Every other deferral in this block names an issue; this one
+  now does too.)* Declared here rather than left silent (added 2026-08-14, at the
   Window A review, where the Spec axis found them neither covered nor named): they are user-visible refusals
   on the same path, so N9's every-refusal clause does reach them eventually, and the ground for deferring is
   that **neither is lost work**. A rejected credential leaves the client's queue intact and retryable. The
@@ -54,9 +59,10 @@ which is where to read them; this is the pointer.
 4. One record per decision rather than per operation. **Section 4.**
 5. Where each piece lives under ADR-0007. **Section 5.**
 6. The availability probes are exempt from the binding. **Section 6.**
-7. The seam for the refusals that answer before any handler is entered. **Section 7, and read its resolution
-   of 2026-08-14 with it: the conditional does not fire**, the seam exists at the pinned version, and the
-   split-and-say-so fallback that decision carried is therefore spent rather than available.
+7. The seam for the refusals that answer before any handler is entered. **Section 7 and both of its notes of
+   2026-08-14**: the conditional does not fire and the split-and-say-so fallback is spent, because
+   `ValidationError` is a real handler with a real body and both pre-handler refusals arrive there. **The
+   second note is the one that corrects the first**, and only about `Exception`, which is a pass-through.
 
 The fan-out that closed them: `specs/dependencies.md` (the row and agenda item 15), `specs/PRD.md` N9's
 Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry and one trap entry), and
@@ -130,8 +136,12 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
   it.
 - **Not narrowed, and named because narrowing it would have been the easy move:** *a failure with no
   user-visible signal and no record fails review* is in scope **as written**. It is the moral line of the
-  whole requirement, and the seam it needs exists, django-ninja registering a default handler for `Exception`
-  (verified 2026-08-14 in the installed source at the pinned 1.6.2).
+  whole requirement, and the record it needs is reachable. **By which route is Window B's to pick**, and the
+  measurement is in `specs/dependencies.md` under django-ninja's four default handlers: `_default_exception`
+  re-raises at `DEBUG` false, so Django's own `log_response` writes the record and it crosses the root
+  handler like any other. *(This bullet said "the seam it needs exists, django-ninja registering a default
+  handler for `Exception`" until 2026-08-14. Registration is not a body, the ADR had already retired that
+  reading in section 7's second note, and this sentence had not been swept with it.)*
 
 From **ADR-0011 section 6**, which is this task's own and is what the suite pins: an availability probe
 manufactures no record whose correlation keys are empty. **N12's own clause, that the liveness probe keeps
