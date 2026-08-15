@@ -129,6 +129,19 @@ key is a field.
 > give. Stretching one name over both would make the trail answer the support desk's first question wrongly,
 > which is whether anything decided anything at all, and that question is the whole of N9's moral half.
 >
+> **Which field rides on which event, added 2026-08-14 because closing the names left the mapping open and a
+> test suite was fixing it by assertion.** The four correlation keys ride on **every** record, as far as the
+> context holds them, which is the "none of the four" clause above and not "all four". `event` is on every
+> record. **`status` is on the two records that answered a client**, `request.refused` and `request.failed`.
+> **`reason` is on `request.refused` alone**, which is the same distinction one paragraph up read from the
+> other end: a failure has no reason to give, so emitting an empty one would be a field pretending a decision
+> happened.
+>
+> **The identifier keys emit as the canonical hyphenated lowercase string**, not as an integer, a compact
+> hex form or a nested object. This is a value contract rather than a field contract, and it is here because
+> a join across two records is a string comparison in whatever backend eventually reads them; a producer that
+> spells the same identifier two ways has broken the join without breaking any test that checks one producer.
+>
 > **`operation_ids` is a list and never a delimited string**, which reads as pedantry and is not: `in`
 > answers the same for `["a", "b"]` and for `"a,b"`, so the distinction is invisible to the obvious reader
 > and the shape stops being enforced the moment one is written.
