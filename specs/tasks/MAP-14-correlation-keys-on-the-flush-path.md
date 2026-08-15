@@ -5,8 +5,9 @@
 PRD **N9** (the requirement, its mechanism half, and its acceptance), **N5** (what personal data means here),
 **N12** (the probes this path must not drown). Foundation **section 10**, the observability decision closed in
 v0.16 with its dated OpenTelemetry caveat. **ADR-0011** is the code shape, in full: section 1 the library,
-2 the binding, 3 the redaction, 4 the record granularity, 5 the placement under **ADR-0007** sections 2 and 3,
-6 the probe exemption, 7 the refusals that never reach a handler. **ADR-0010** decision 6 for the route and its
+2 the binding, 3 the redaction, **4 the record granularity and the closed wire vocabulary**, 5 the placement
+under **ADR-0007** sections 1, 2 and 4, 6 the probe exemption, 7 the refusals that never reach a handler with
+its resolution of 2026-08-14. **ADR-0010** decision 6 for the route and its
 refusal shapes; **ADR-0005** for what the binding runs inside.
 
 Invariants: **I9** and **I10**, whose decisions are what N9 requires recorded. Constraints: **C6** and the
@@ -53,8 +54,9 @@ which is where to read them; this is the pointer.
 4. One record per decision rather than per operation. **Section 4.**
 5. Where each piece lives under ADR-0007. **Section 5.**
 6. The availability probes are exempt from the binding. **Section 6.**
-7. The seam for the refusals that answer before any handler is entered, **with the split-and-say-so fallback
-   if that seam does not exist at the pinned version**. **Section 7.**
+7. The seam for the refusals that answer before any handler is entered. **Section 7, and read its resolution
+   of 2026-08-14 with it: the conditional does not fire**, the seam exists at the pinned version, and the
+   split-and-say-so fallback that decision carried is therefore spent rather than available.
 
 The fan-out that closed them: `specs/dependencies.md` (the row and agenda item 15), `specs/PRD.md` N9's
 Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry and one trap entry), and
@@ -70,16 +72,32 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
   section 1 is **not** a compatibility refusal, and reopening it on compatibility grounds is reopening
   something already measured.
 - **`django.db.backends` logs SQL with its parameters, and the operation-log insert carries `client_half` as
-  JSON containing geometry.** This is the fact that forces the allowlist onto the root handler rather than
-  onto our own loggers, and it is why a test that only exercises our own call sites proves less than it looks.
-- **Two refusals answer 422 before any handler is entered.** *Probed 2026-08-07, recorded in
-  `dependencies.md`:* the five composition rules run in a Pydantic `model_validator` on `OperationBatch`, and
-  an operation type outside the catalog is refused by the generated discriminated union itself.
+  JSON containing geometry.** *Read from the code rather than measured, and labelled so on purpose:*
+  `OperationLogEntry.client_half` is a `JSONField` and the envelope's geometry payload reaches it. This is the
+  fact that forces the allowlist onto the root handler rather than onto our own loggers, and it is why a test
+  that only exercises our own call sites proves less than it looks. **A window that depends on it should
+  witness it rather than trust this bullet**, which is what the label is for.
+- **Two refusals answer 422 before any handler is entered**, and their provenance differs, which the first
+  version of this bullet flattened into one label (corrected 2026-08-14, see ADR-0011 section 7's note). The
+  **catalog** half is *probed 2026-08-07 and recorded in `dependencies.md`*: an operation type outside the
+  catalog is refused by the generated discriminated union itself. The **composition rules** are *decided, not
+  probed*: they run in a Pydantic `model_validator` on `OperationBatch` under ADR-0010 decision 6, whose fifth
+  rule is dated 2026-08-13. Both hold in the code today.
+- **The seam for both of them exists**, so ADR-0011 section 7's conditional does not fire and the acceptance
+  is not split on that ground. *Verified 2026-08-14 in the installed source at the pinned django-ninja
+  1.6.2:* `set_default_exc_handlers` registers `Exception`, `Http404`, `HttpError` and `ValidationError`.
+  **The trap that rides with it:** registering your own `ValidationError` handler **replaces** that default,
+  and ADR-0010 decision 6 makes the malformed refusals tell each other apart **by their bodies**, which
+  existing cases assert.
 - **A test that reads state after a refusal is blind to whatever that refusal's transaction unwound.**
   *Measured at MAP-45, 2026-08-14, in this same package.* The flush's catch sits outside the `atomic()` block
   `tenant_scope` opens, so a case asserting on rows after a refusal cannot see what the rollback took with it;
-  four docstrings in `test_the_typed_resend_on_a_gap.py` claimed a discriminating power that seam makes
-  impossible, three were corrected and one was struck. **Handed over because this task is a refusal path too**
+  **three** docstrings in `test_the_typed_resend_on_a_gap.py` claimed a discriminating power that seam makes
+  impossible, two were corrected and one was struck, becoming MAP-46. *(Counted from commit `5ffcb78`, which
+  is the only commit that ever touched that file for MAP-45 and whose hunks reach exactly three test
+  functions. This bullet said four until 2026-08-14, taking the number from a handoff sentence that had
+  borrowed it from a different set, the four state-reading siblings that stayed **green** under the mutant.
+  `specs/log.md` was right and the summary of it was not.)* **Handed over because this task is a refusal path too**
   and the same shape is available to it. **What is not handed over is the conclusion:** whether a record
   emitted inside a rolled-back transaction survives is a property of the logging path this task is about to
   build, and it has **not** been measured. Deciding it is the window's, and it is exactly the kind of claim
@@ -102,10 +120,18 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
 - **Deferred, with its owner.** N9's clause that the emitted telemetry is readable by a second backend
   without changing application code cannot be asserted without a second backend. It stays with the
   observability ADR whose trigger is the first real users, beside the client telemetry SDK.
-- **Nothing else is narrowed**, and one clause is named here only because narrowing it would have been the
-  easy move: *a failure with no user-visible signal and no record fails review* is in scope **as written**.
-  It is the moral line of the whole requirement, and the seam it needs exists, django-ninja registering a
-  default handler for `Exception` (verified 2026-08-14 in the installed source at the pinned 1.6.2).
+- **Narrowed by the Out of scope block, and here is where that block meets this one** (written 2026-08-14,
+  replacing a sentence that said "nothing else is narrowed" while the block below deferred two things that
+  are exactly narrowings; each half was defensible alone and the conjunction was false, which is the shape
+  MAP-45 recorded and the `fan-out` skill still has no step for). N9's clause *every user-visible refusal has
+  a matching record and the reverse* **is narrowed twice**: the `401` and the CSRF `403` are deferred to
+  ADR-0010's seam, and the conflict, authorship and force-upgrade decisions are deferred to the issues that
+  create them. **Out of scope is authoritative for both**, so read it as part of this block rather than after
+  it.
+- **Not narrowed, and named because narrowing it would have been the easy move:** *a failure with no
+  user-visible signal and no record fails review* is in scope **as written**. It is the moral line of the
+  whole requirement, and the seam it needs exists, django-ninja registering a default handler for `Exception`
+  (verified 2026-08-14 in the installed source at the pinned 1.6.2).
 
 From N12, because this path can break it: the liveness probe keeps passing while a dependency is down, and
 nothing this task adds makes a probe touch one.
