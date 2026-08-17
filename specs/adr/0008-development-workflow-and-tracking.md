@@ -128,7 +128,7 @@ track record. Until both hold, agents read issues, comment and move state throug
 Independent issues run in independent git worktrees, so two lines of work never share a checkout or a
 branch. The `worktree-commit-merge` skill is the exit path; `main` is never merged locally.
 
-### 9. The orchestrator's artifacts have no gate, so three things replace the missing one
+### 9. The orchestrator's artifacts have no gate, so four things replace the missing one
 
 **Added 2026-08-14, at MAP-14, from a count rather than from an impression.** Every round since MAP-10 has
 produced at least one **blocking** review finding in a document the orchestrator owned, and two rounds
@@ -157,7 +157,9 @@ second as the one people skip, and it was skipped three times in the session tha
 layer is saturated on both surfaces**, and `.claude/skills/README.md` already carries the law that decides
 this: a prompt instruction is a request, a hook or a gate is enforcement.
 
-So, three changes, each removing a surface or moving a discovery rather than asking for more care.
+So, four changes, each removing a surface or moving a discovery rather than asking for more care. The
+fourth was added on 2026-08-17 by the surface it names, which had not been counted when the first three
+were written.
 
 1. **A task spec's Acceptance block is a delta, never a copy.** It cites the requirement by identifier and
    lists **only what this task does differently**: what is split, what has no runtime here, what is deferred,
@@ -174,6 +176,17 @@ So, three changes, each removing a surface or moving a discovery rather than ask
 3. **A fan-out reports the commands it ran, never that it swept.** This project's oldest rule is that a
    state claim is written with the command that verified it, and it had never been applied to the fan-out's
    own completeness claim. The sweep pastes its greps and their hit counts.
+4. **Before writing into a target, grep that target for the content, never only for the anchor** (added
+   2026-08-17; the mechanical form is in the `fan-out` skill). **A third surface, found by the first three
+   catching it.** The pre-dispatch read of change 2 fired for the first time and its blocking findings were
+   caused by the orchestrator that had just written the step: two edits matched a unique, valid `Edit`
+   anchor and each inserted a block that already existed further down the same file **in a corrected form**,
+   so both were superseded content and both were reverted. **The false assurance is specific and worth
+   naming: `Edit` proves its `old_string` is unique and proves nothing about the text being added.** The
+   case it guards is **your own earlier work in the same session**, which no existing rule covered: the
+   canon rule forbids answering from memory about the canon, and the verification rule targets another
+   agent's report, while a long session makes the orchestrator's own output a source to re-read rather than
+   a memory to cite.
 
 **What this costs:** one subagent pass per task before Window A, and a fan-out report that is longer than a
 sentence. **What it does not buy:** anything on the two surfaces a machine could have checked instead, and

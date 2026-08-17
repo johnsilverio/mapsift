@@ -71,6 +71,42 @@ foundation or an ADR first, stop and put it there before touching anything below
 | `specs/session-handoff.md` **section 0** | the live state, and section 6 if a settled objection was reversed | never. Section 0 always moves |
 | `specs/log.md` | **one grep-able line**, oldest first, in the format the file's header states | never |
 
+### Before you write into a target, grep that target for what you are about to say
+
+**The anchor is not the check** (added 2026-08-17, from the measurement below). This is mechanical: one
+trigger, one command. It is deliberately not "read the file carefully".
+
+**It fires when you are adding text** to a document: a new bullet, a new paragraph, a new dated note, a new
+table row, a new section. **It does not fire when you are replacing text you have read in this window** and
+are editing in place.
+
+**What you run, against the target file alone, before the edit:**
+
+```bash
+grep -n "<a distinctive phrase from what you are adding>" <the target file>
+```
+
+The phrase comes from the **content you are adding**, never from the anchor you are editing next to: the
+identifier the note is about, the field name, the issue key, the decision's own wording.
+
+**A hit means the target already speaks to this, and what you are adding is a second copy until you have
+read the hit and decided otherwise.** Then do exactly one of two things: amend the place that already
+exists, or write your addition with a dated note saying how it differs from it. **A hit is never permission
+to skip the target.** It changes the shape of the edit from an insertion into an amendment, and nothing
+else.
+
+**Why the anchor cannot stand in for this.** `Edit` proves that its `old_string` occurs exactly once. It
+proves nothing about whether the text you are **adding** occurs at all. *Measured 2026-08-17 under MAP-14:*
+two edits each matched a unique, valid anchor and each inserted a block that already existed further down
+the same file in a **corrected** form, so both insertions were superseded content and both had to be
+reverted.
+
+**The case this exists for is your own earlier work in the same session.** This canon already forbids
+answering from memory about the canon, and already requires verifying against disk rather than against
+another agent's report. **Neither covers what you yourself wrote an hour ago**, which is where confidence is
+highest and the check feels most redundant. In a long session your own output is a source to re-read, not a
+memory to cite.
+
 ## 4. Two rules that decide the hard cases
 
 **A settled objection that changes is moved, never deleted.** `session-handoff.md` section 6 lists what
