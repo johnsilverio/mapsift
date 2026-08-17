@@ -163,7 +163,12 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
   reading in section 7's second note, and this sentence had not been swept with it.)*
 
 From **ADR-0011 section 6**, which is this task's own and is what the suite pins: an availability probe
-manufactures no record whose correlation keys are empty. From **ADR-0011 section 4's extension of
+takes no decision and so puts nothing on the trail, however often it is polled. *(This line read
+"manufactures no record whose correlation keys are empty" until 2026-08-17, which is the framing ADR-0011
+section 6 measured false that day and rewrote: the request identifier is bound before any principal is
+known, so a bound probe's records would carry one key rather than none. The correction reached the ADR and
+not this document, which is the third time in this task that a fan-out found the decision and missed the
+sentence the decision falsified. Found by the Spec axis.)* From **ADR-0011 section 4's extension of
 2026-08-17 with its correction of the same day**, which the suite also pins and which this block reached
 only on 2026-08-17: a record that asserts a decision took effect waits for the commit, while a refusal and
 a record of what the flush declined to write stay where they are taken. *(The 2026-08-17 sweep reached this
