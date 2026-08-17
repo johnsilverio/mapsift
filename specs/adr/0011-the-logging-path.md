@@ -100,6 +100,16 @@ one that carries geometry or personal data is a defect in the same class as a ra
 (PRD U1). And Django's own records pass through the same gate, which is what section 1 argued the whole
 choice on.
 
+> **Clarified 2026-08-17, at MAP-14's Window A review, where a review axis read the sentence above both
+> ways.** What the gate drops is a **field**, never the record. A record that carries no allowlisted field
+> beyond its keys is still emitted, carrying its keys and its event and nothing else. **Dropping the whole
+> record is the reading this ADR refuses**, and the reason is N9's own acceptance rather than taste: a
+> requirement that every user-visible refusal has a matching record cannot be satisfied by a gate that
+> silently deletes records it does not recognise, and a path that answers "no record" and a path that
+> answers "a record with nothing in it" are the difference between silence and evidence. It is also what
+> makes the sync-path clause testable, since a record that is never emitted cannot be a line with no
+> correlation key.
+
 ### 4. One record per decision, with the operations it covers as a structured list
 
 N9's reconstruction is a join from **one** operation identifier, and a flush carries a batch of operations
