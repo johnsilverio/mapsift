@@ -247,6 +247,17 @@ key is a field.
 > covers**, because reaching it needs a commit to fail. **A refusal record is unaffected and stays where it
 > is taken**, a refusal being true whether or not anything committed. This binds MAP-37, MAP-38 and MAP-39
 > as much as this task, each of them adding a decision that takes effect.
+>
+> **Corrected 2026-08-17, hours later, because the rule above named two categories over a set of three and a
+> window would have had to choose between two approved cases in the dark.** The third is **a record about
+> what a flush declined to write**, `flush.deduplicated` today, and it is emitted **where it is taken**,
+> like a refusal and unlike an application. A drop asserts that an earlier flush already applied the
+> operation, which is true whether or not this one commits, so deferring it to a commit that never comes
+> would lose the one record a resent-and-then-failed flush has to offer. **The test that sorts the three:
+> ask what the record would be false about if the transaction vanished.** An application would be false
+> about the write, so it waits; a refusal and a drop would still be true, so they stay. *(Found by the Craft
+> axis, which noticed that two cases approved in the same round pin opposite timings and that neither the
+> rule nor either docstring said why.)*
 
 ### 5. Where each piece lives, under ADR-0007
 
