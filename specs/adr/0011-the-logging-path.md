@@ -164,9 +164,16 @@ choice on.
 > **Extended 2026-08-17, same review, closing the hole the clarification above left open.** The guarantee
 > holds **even when an allowlisted field will not serialize**. An encoder that raises inside the formatter
 > loses the **whole record**, which is exactly the outcome the clarification refuses, arriving through the
-> encoder instead of through the gate. The encoder therefore degrades an unexpected value to its string form
-> rather than failing on it. **The shape worth naming: a guarantee stated about one mechanism is not a
-> guarantee about the path**, and the second way to lose a record is the one nobody writes a rule against.
+> encoder instead of through the gate. **The requirement is that the encoder cannot fail, whatever the
+> value**, and the property is stated that way rather than as a mechanism deliberately. **The shape worth
+> naming: a guarantee stated about one mechanism is not a guarantee about the path**, and the second way to
+> lose a record is the one nobody writes a rule against.
+>
+> *Sharpened 2026-08-17, hours later, by this note failing its own test. It first named the mechanism,
+> degrading an unexpected value to its string form, and a case written against the property then went red:
+> that mechanism is consulted for a value whose **type** is unknown and never for a value the encoder cannot
+> **walk**, so a self-referential container still takes the whole record. The rule now states the outcome and
+> leaves the means to the window, which is what the sentence above it was already telling everybody else.*
 
 > **Extended 2026-08-17, same review, and this one is about a record escaping the gate rather than being
 > lost inside it. The `LOGGING` configuration redefines `loggers`, so no handler survives outside the
