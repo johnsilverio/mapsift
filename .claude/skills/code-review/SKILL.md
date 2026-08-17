@@ -87,7 +87,10 @@ shared context lets one axis mask another, which is the whole reason they are se
 
 **One narrow exception: a correction round that touches no production file closes with the Spec axis alone**
 (ADR-0008 section 9, change 6, added 2026-08-17). **Decide it from the diff, never from the round's
-description:** if one file outside the test tree changed, all three run. The measurement is in the ADR and
+description:** if one file outside the test tree changed, all three run. **The comparison is against the
+tree as it stood when the round was dispatched, not against `HEAD`**, because an uncommitted implementation
+from an earlier round makes `git status` show production files this round never touched; measure the
+production paths before dispatching and compare the numbers after. The measurement is in the ADR and
 the short form is that Spec found both blocking defects of the task that produced this rule, while the other
 two axes on test-only rounds found docstring counts and a missing idempotent create.
 
