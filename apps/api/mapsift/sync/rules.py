@@ -193,18 +193,36 @@ def refuse_a_stream_this_cursor_cannot_continue(
         )
 
 
+def this_cursor_has_seen(operation: ClientHalf, already_applied: int | None) -> bool:
+    """Whether one operation is at or below a cursor, an absent cursor having seen nothing (T2.3).
+
+    The one boundary both partitions below read, so moving it cannot leave the flush writing an
+    operation the trail records as dropped. The absence is `None` rather than a number, because
+    zero is the first mutation number and so a legitimate applied value rather than an available
+    sentinel (M4's Shape, M10's Shape).
+    """
+    if already_applied is None:
+        return False
+    return the_mutation_number_of(operation) <= already_applied
+
+
 def the_operations_this_cursor_has_not_seen(
     operations: Sequence[ClientHalf], already_applied: int | None
 ) -> list[ClientHalf]:
-    """The operations of a batch above the cursor, an absent cursor having seen nothing (T2.3).
-
-    The absence is `None` rather than a number, because zero is the first mutation number and so
-    a legitimate applied value rather than an available sentinel (M4's Shape, M10's Shape).
-    """
-    if already_applied is None:
-        return list(operations)
+    """The operations of a batch above the cursor, which the flush writes (T2.3)."""
     return [
-        operation for operation in operations if the_mutation_number_of(operation) > already_applied
+        operation
+        for operation in operations
+        if not this_cursor_has_seen(operation, already_applied)
+    ]
+
+
+def the_operations_this_cursor_has_already_seen(
+    operations: Sequence[ClientHalf], already_applied: int | None
+) -> list[ClientHalf]:
+    """The operations of a batch at or below the cursor, which the dedup drops (T2.3)."""
+    return [
+        operation for operation in operations if this_cursor_has_seen(operation, already_applied)
     ]
 
 
@@ -219,6 +237,15 @@ def the_last_applied_this_flush_leaves(
     if already_applied is not None:
         reached.append(already_applied)
     return max(reached)
+
+
+def the_operation_identifiers_in(operations: Sequence[ClientHalf]) -> tuple[UUID, ...]:
+    """The identifier of every operation in a batch, in the order the client authored them.
+
+    The join key of PRD N9's decision trail, read in one place so a record and a log entry cannot
+    disagree about how an operation is named.
+    """
+    return tuple(operation.root.operation_id for operation in operations)
 
 
 def the_address_of(operation: ClientHalf) -> FeatureAddress | PropertyAddress:
