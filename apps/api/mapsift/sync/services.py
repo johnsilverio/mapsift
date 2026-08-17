@@ -1,10 +1,17 @@
 """Writes on the sync package's tables: the log an operation only reaches here (M15), the version
 row it is ordered by (ADR-0004), and the cursor that says how far a client got (M4)."""
 
+from collections.abc import Sequence
+from functools import partial
 from uuid import UUID
 
-from django.db import connection
+from django.db import connection, transaction
 
+from mapsift.common.decision_trail import (
+    TheDecisionARecordNames,
+    correlated_by,
+    record_the_decision,
+)
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 from mapsift.sync.rules import (
@@ -13,6 +20,8 @@ from mapsift.sync.rules import (
     the_address_of,
     the_last_applied_this_flush_leaves,
     the_one_unbroken_stream_this_batch_carries,
+    the_operation_identifiers_in,
+    the_operations_this_cursor_has_already_seen,
     the_operations_this_cursor_has_not_seen,
     the_project_every_operation_claims,
     the_tenant_every_operation_claims,
@@ -57,6 +66,8 @@ def apply_the_flush(operations: list[ClientHalf]) -> int:
 
     fresh = the_operations_this_cursor_has_not_seen(operations, already_applied)
     last_applied = the_last_applied_this_flush_leaves(operations, already_applied)
+
+    _record_what_this_cursor_had_already_seen(operations, already_applied)
     if not fresh:
         return last_applied
 
@@ -65,6 +76,10 @@ def apply_the_flush(operations: list[ClientHalf]) -> int:
     # No case in this suite catches the swap.
     _advance_the_cursor_of(stream, last_applied)
     append_to_the_operation_log(fresh, tolerating_a_resend=True)
+    # Not the direct call this looks like it should be: logging is not transactional, so a record
+    # written here outlives a rollback and the trail then reads *applied* over a database holding
+    # nothing (ADR-0011 section 4's extension of 2026-08-17).
+    transaction.on_commit(partial(_record_what_this_flush_applied, fresh))
     return last_applied
 
 
@@ -90,6 +105,28 @@ def append_to_the_operation_log(
         entry.project_version = project_version
 
     OperationLogEntry.objects.bulk_create(entries, ignore_conflicts=tolerating_a_resend)
+
+
+def _record_what_this_cursor_had_already_seen(
+    operations: Sequence[ClientHalf], already_applied: int | None
+) -> None:
+    """One record per dropped operation, the dedup being the decision that is genuinely per
+    operation rather than per flush (ADR-0011 section 4).
+
+    Emitted where it is taken and deliberately not deferred to the commit its sibling waits for,
+    on that section's correction of 2026-08-17.
+    """
+    for operation_id in the_operation_identifiers_in(
+        the_operations_this_cursor_has_already_seen(operations, already_applied)
+    ):
+        with correlated_by(operation_ids=(operation_id,)):
+            record_the_decision(TheDecisionARecordNames.FLUSH_DEDUPLICATED)
+
+
+def _record_what_this_flush_applied(fresh: Sequence[ClientHalf]) -> None:
+    """One record for the decision, naming the operations it covers (ADR-0011 section 4)."""
+    with correlated_by(operation_ids=the_operation_identifiers_in(fresh)):
+        record_the_decision(TheDecisionARecordNames.FLUSH_APPLIED)
 
 
 def _advance_the_cursor_of(stream: OneUnbrokenStream, last_applied: int) -> None:

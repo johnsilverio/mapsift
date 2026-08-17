@@ -10,6 +10,11 @@ from pydantic import PrivateAttr, model_validator
 
 from mapsift.accounts.selectors import the_session_user_holds_a_membership_in
 from mapsift.common.binding import tenant_scope, user_scope
+from mapsift.common.decision_trail import (
+    TheDecisionARecordNames,
+    correlated_by,
+    record_the_decision,
+)
 from mapsift.common.principal import AuthenticatedRequest
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.rules import (
@@ -18,10 +23,15 @@ from mapsift.sync.rules import (
     ThisStreamCannotBeContinued,
     WhyAStreamCannotBeContinued,
     the_one_unbroken_stream_this_batch_carries,
+    the_operation_identifiers_in,
 )
 from mapsift.sync.services import apply_the_flush
 
 router = Router(tags=["sync"])
+
+# Not a `WhyAStreamCannotBeContinued`: that set is the 409's wire contract and this value is a
+# record's alone, which ADR-0011 section 4 leaves open where a refusal has no upstream set.
+NO_MEMBERSHIP_IN_THE_TENANT_CLAIMED = "no_membership_in_the_tenant_claimed"
 
 
 class OperationBatch(Schema):
@@ -48,6 +58,11 @@ class OperationBatch(Schema):
     def tenant_claimed(self) -> UUID:
         """The one tenant every operation in this batch addresses, read where it was validated."""
         return self._stream_claimed.tenant_id
+
+    @property
+    def client_claimed(self) -> UUID:
+        """The one installation this batch comes from, read where it was validated."""
+        return self._stream_claimed.client_id
 
 
 class FlushAcknowledgement(Schema):
@@ -76,7 +91,14 @@ def flush_operations(
     """Append a batch to the operation log under a tenant claim the principal holds, and answer
     with the number this installation has now had applied, or with why its stream could not be
     continued here (M15, T2.3, M10, M4)."""
-    with user_scope(request.auth.id):
+    with (
+        correlated_by(
+            tenant_id=batch.tenant_claimed,
+            client_id=batch.client_claimed,
+            operation_ids=the_operation_identifiers_in(batch.operations),
+        ),
+        user_scope(request.auth.id),
+    ):
         _refuse_a_claim_this_principal_cannot_back(batch.tenant_claimed)
         # The catch sits outside the binding rather than inside it, so the refusal leaves the
         # transaction rolled back and M10's "applies nothing at all" survives a later writer
@@ -85,6 +107,11 @@ def flush_operations(
             with tenant_scope(batch.tenant_claimed):
                 applied = apply_the_flush(batch.operations)
         except ThisStreamCannotBeContinued as refusal:
+            record_the_decision(
+                TheDecisionARecordNames.REQUEST_REFUSED,
+                status=HTTPStatus.CONFLICT,
+                reason=refusal.reason,
+            )
             return Status(
                 HTTPStatus.CONFLICT,
                 FlushRefusal(
@@ -96,7 +123,14 @@ def flush_operations(
 
 
 def _refuse_a_claim_this_principal_cannot_back(tenant_id: UUID) -> None:
-    if not the_session_user_holds_a_membership_in(tenant_id):
-        # Bare: any message here tells this answer apart from the one a tenant that never existed
-        # earns, and that difference is the leak (T6.5).
-        raise Http404
+    if the_session_user_holds_a_membership_in(tenant_id):
+        return
+
+    record_the_decision(
+        TheDecisionARecordNames.REQUEST_REFUSED,
+        status=HTTPStatus.NOT_FOUND,
+        reason=NO_MEMBERSHIP_IN_THE_TENANT_CLAIMED,
+    )
+    # Bare: any message here tells this answer apart from the one a tenant that never existed
+    # earns, and that difference is the leak (T6.5).
+    raise Http404

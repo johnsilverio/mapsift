@@ -62,6 +62,9 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
+    # First, so every record made while serving a request carries that request's key (ADR-0011
+    # section 2).
+    "config.correlation.CorrelateEveryRequestButAProbe",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -72,6 +75,33 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+
+# One gate on the root handler, which is what puts Django's own records through it too
+# (ADR-0011 sections 1, 3 and 5).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "correlation_keys": {"()": "mapsift.common.decision_trail.TheCorrelationKeysInForce"},
+    },
+    "formatters": {
+        "allowed_fields_as_json": {"()": "mapsift.common.decision_trail.OnlyTheAllowedFields"},
+    },
+    "handlers": {
+        "the_logging_path": {
+            "class": "logging.StreamHandler",
+            "filters": ["correlation_keys"],
+            "formatter": "allowed_fields_as_json",
+        },
+    },
+    # An empty handler list beside a root that has one reads as a line worth deleting, and
+    # deleting it reopens the door Django's own `DEFAULT_LOGGING` left open (ADR-0011 section 3).
+    "loggers": {
+        "django": {"handlers": [], "level": "INFO", "propagate": True},
+        "django.server": {"handlers": [], "level": "INFO", "propagate": True},
+    },
+    "root": {"handlers": ["the_logging_path"], "level": "INFO"},
+}
 
 TEMPLATES = [
     {
