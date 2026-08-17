@@ -7,13 +7,13 @@ PRD **N9** (the requirement, its mechanism half, and its acceptance), **N5** (wh
 v0.16 with its dated OpenTelemetry caveat. **ADR-0011** is the code shape, in full: section 1 the library,
 2 the binding, 3 the redaction, **4 the record granularity and the closed wire vocabulary**, 5 the placement
 under **ADR-0007** sections 1, 2 and 4, 6 the probe exemption, 7 the refusals that never reach a handler
-**with all four of its dated notes: the provenance correction, the resolution, the sharpening that followed
-hours later, and the settlement of the `DEBUG` branch**; the third supersedes the second on what the
-`Exception` entry does, and at DEBUG false that entry is a pass-through rather than a logging seam. *(This
-sentence said "both of its dated notes" until 2026-08-17, over a section that already carried three, and
-then said "all three" for the hour between that correction and the fourth note being added to the same
-section by the same session. A count is re-read against its set every time the set is touched, which is the
-step the first correction skipped.)*
+**with every one of its dated notes, which are named rather than counted: the provenance correction, the
+resolution, the sharpening that followed hours later, the settlement of the `DEBUG` branch, and the
+departure from the vendor's `logger.exception`**; the third supersedes the second on what the `Exception`
+entry does, and at DEBUG false that entry is a pass-through rather than a logging seam. *(This sentence
+carried a number three times and the number was wrong three times, each correction outlived by the next note
+added to that section in the same session. **Naming is the repair rather than recounting**: an enumeration
+missing an item is visible to a reader, a wrong total is not.)*
 **ADR-0005** is cited for the tenant binding the flush runs inside, which is a **different** mechanism at a
 different scope from ADR-0011 section 2's per-context key binding and must not be read as nesting one in the
 other. **ADR-0010** decision 6 for the route and its refusal shapes.
@@ -69,8 +69,9 @@ which is where to read them; this is the pointer.
 4. One record per decision rather than per operation. **Section 4.**
 5. Where each piece lives under ADR-0007. **Section 5.**
 6. The availability probes are exempt from the binding. **Section 6.**
-7. The seam for the refusals that answer before any handler is entered. **Section 7 and all four of its
-   dated notes**: the conditional does not fire and the split-and-say-so fallback is spent, because
+7. The seam for the refusals that answer before any handler is entered. **Section 7 and every one of its
+   dated notes, named in the Trace above**: the conditional does not fire and the split-and-say-so
+   fallback is spent, because
    `ValidationError` is a real handler with a real body and both pre-handler refusals arrive there. **The
    third note corrects the second**, and only about `Exception`, which is a pass-through at DEBUG false, so
    the *failure with no user-visible signal* clause is reached through Django's own `log_response` and
