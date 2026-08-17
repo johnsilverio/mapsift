@@ -110,6 +110,28 @@ signature.
 > **What this covers is wider than the refusals this task set out to record:** every status Django answers on
 > this route, the ones no view of ours produces included.
 
+> **Sharpened 2026-08-17, at the second Window B review, on three points where the paragraph above was
+> narrower than what actually satisfies the requirement. The implementation was right and the wording was
+> not.**
+>
+> **The fill is per key, not "when the context is empty".** At the failure handler's frame the context still
+> holds the request identifier while the operations have already unwound, so a wholesale fallback would
+> refuse to fill the keys that are missing. Per key is the superset, and it is what lets one handler stay
+> the single recorder of a failure.
+>
+> **What the request remembers deliberately outlives the block that wrote it**, and that is load-bearing
+> rather than an oversight: the handler that records a failure runs **after** the view's context has already
+> reset, so a symmetric restore on exit would empty the carrier exactly where it is needed. Restoring it is
+> the obvious-looking fix and it breaks the case this mechanism exists for.
+>
+> **The merge is widest-first, never last-writer-wins**, and this is the one the first implementation got
+> wrong. A narrower binding opened inside a wider one, one per deduplicated operation, overwrote the whole
+> batch on the carrier, so a flush that deduplicated and then failed named **one** operation in its failure
+> record and left the operations that actually failed in no record at all. Measured at that review against
+> the ordinary partial resend C12 makes routine. The carrier therefore takes the keys it does not already
+> hold and keeps the ones it does, while the context still wins wherever it holds a key, so a per-operation
+> record stays narrow.
+
 ### 3. Redaction is an allowlist, never a denylist
 
 N9 requires that no geometry payload and no personal data reaches a log **regardless of what a caller
@@ -138,6 +160,17 @@ choice on.
 > encoder instead of through the gate. The encoder therefore degrades an unexpected value to its string form
 > rather than failing on it. **The shape worth naming: a guarantee stated about one mechanism is not a
 > guarantee about the path**, and the second way to lose a record is the one nobody writes a rule against.
+
+> **Extended 2026-08-17, same review, and this one is about a record escaping the gate rather than being
+> lost inside it. The `LOGGING` configuration redefines `loggers`, so no handler survives outside the
+> allowlist.** Django applies its `DEFAULT_LOGGING` before ours, and a configuration that adds a root
+> handler without redefining `loggers` leaves the `django` logger still carrying `console` and
+> `mail_admins`, **neither of which passes the gate**. Measured at this review: it leaks nothing today,
+> because `console` is `require_debug_true` at INFO while the SQL records section 1 argued the whole choice
+> on are DEBUG, and `mail_admins` is inert while `ADMINS` is unset. **That is exactly the shape this ADR
+> refused when it refused `django-structlog`**: a path that is safe because two settings happen to be right
+> is caller diligence wearing a configuration file, and the guarantee this section states is unconditional.
+> One day somebody sets `ADMINS` and redaction stops holding on that path with nothing turning red.
 
 ### 4. One record per decision, with the operations it covers as a structured list
 
@@ -291,6 +324,13 @@ so**, the way MAP-12's was, and never quietly shortened to what the code happene
 > what a developer sees for no gain. **A silent divergence in developer experience is a cost with no
 > benefit**, and it is the kind that is discovered months later by someone who assumes their tooling is
 > broken. Record the decision, then behave as the vendor does on both sides of the flag.
+>
+> **One deliberate departure from "as the vendor does", added the same day at the second Window B review:
+> the vendor's own `logger.exception` is not reproduced.** Its record would reach the allowlist carrying no
+> allowlisted field, so it would emit keys with no event and no content, and `request.failed` already
+> carries what that record was for. **The departure is recorded here because the code cannot say it:** a
+> reader diffing against the vendor sees a missing line, and a comment claiming both arms are the vendor's
+> invites restoring it.
 
 ### 8. What this decision does not take
 
