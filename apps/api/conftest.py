@@ -1,11 +1,20 @@
-"""What the wall needs to be tested on: two real tenants, and the catalogue's own view of it.
+"""The instruments more than one suite reads, in the three groups this file is written in.
 
-Trace: M1, N2; C4; ADR-0005. The request-level harness at the foot of this file serves the
-authenticated request of ADR-0010 and is here rather than beside its suite because the flush
-(MAP-10) consumes the same three pieces: a client that is refused what a browser is refused, a
-record of which bindings a request opened, and an operation as the client authored it.
+**The wall**, first and largest: two real tenants and the catalogue's own view of them, which is
+what M1, N2, C4 and ADR-0005 are tested on.
+
+**The request-level harness** in the middle serves the authenticated request of ADR-0010, and is
+here rather than beside its suite because the flush (MAP-10) consumes the same three pieces: a
+client that is refused what a browser is refused, a record of which bindings a request opened, and
+an operation as the client authored it.
+
+**The logging-path harness** at the foot serves ADR-0011 and PRD N9, for the same reason and one
+more: the path is `config` and `common` while the two suites that read it sit in different
+packages, so a capture copied into each of them is two captures that drift.
 """
 
+import json
+import logging
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -191,9 +200,12 @@ REVERTED_WITH_ITS_TRANSACTION = ""
 JsonObject = dict[str, Any]
 
 # Django's execute-wrapper contract (`wrapper(execute, sql, params, many, context)`), spelled in
-# `object` rather than `Any` so the lint rule that carries C5 stays on.
-_Params = Sequence[object] | None
-_Execute = Callable[[str, _Params, bool, dict[str, object]], object]
+# `object` rather than `Any` so the lint rule that carries C5 stays on. Public rather than private,
+# and shared rather than copied, on a narrower ground than the instruments below it: this is a
+# third-party signature, so a module holding its own copy owns a second spelling of somebody else's
+# contract and the version that moves it moves them separately.
+Params = Sequence[object] | None
+Execute = Callable[[str, Params, bool, dict[str, object]], object]
 
 
 @dataclass
@@ -233,9 +245,9 @@ def bindings_opened() -> Iterator[BindingsOpened]:
     opened = BindingsOpened()
 
     def record(
-        execute: _Execute,
+        execute: Execute,
         sql: str,
-        params: _Params,
+        params: Params,
         many: bool,
         context: dict[str, object],
     ) -> object:
@@ -246,7 +258,7 @@ def bindings_opened() -> Iterator[BindingsOpened]:
         yield opened
 
 
-def _record_binding(opened: BindingsOpened, sql: str, params: _Params) -> None:
+def _record_binding(opened: BindingsOpened, sql: str, params: Params) -> None:
     for parameter, recorded in ((TENANT_PARAMETER, opened.tenants), (USER_PARAMETER, opened.users)):
         if f"set_config('{parameter}'" not in sql:
             continue
@@ -284,7 +296,7 @@ def statements_reaching(table: str) -> Iterator[list[str]]:
     seen: list[str] = []
 
     def record(
-        execute: _Execute, sql: str, params: _Params, many: bool, context: dict[str, object]
+        execute: Execute, sql: str, params: Params, many: bool, context: dict[str, object]
     ) -> object:
         if table in sql:
             seen.append(sql)
@@ -295,16 +307,28 @@ def statements_reaching(table: str) -> Iterator[list[str]]:
 
 
 def a_browser(
-    *, authenticated_as: UUID | None = None, carrying_its_csrf_token: bool = True
+    *,
+    authenticated_as: UUID | None = None,
+    carrying_its_csrf_token: bool = True,
+    reading_a_failure_as_a_response: bool = False,
 ) -> Client:
     """A client that is refused what a browser is refused, which the default one is not.
 
     `Client()` carries `enforce_csrf_checks=False` while django-ninja's session auth runs the CSRF
     check itself, so a write test written with the default client reports success about a check it
     never ran (measured 2026-08-07, `specs/dependencies.md` section 1; ADR-0010 decision 1).
+
+    **`reading_a_failure_as_a_response` is what a case about N9's failure clause needs, and the
+    reason is measured rather than stylistic.** django-ninja's default `Exception` handler
+    **re-raises when DEBUG is false**, `if not settings.DEBUG: raise exc  # let django deal with
+    it` (read 2026-08-14 in the installed `ninja/errors.py` at the pinned 1.6.2), so the failure
+    travels on to Django, and Django's test client re-raises it again rather than answering with
+    the 500 the user actually received. A case asking what the user was shown has to turn that off.
     """
     secret, token = _a_csrf_pair()
-    browser = Client(enforce_csrf_checks=True)
+    browser = Client(
+        enforce_csrf_checks=True, raise_request_exception=not reading_a_failure_as_a_response
+    )
 
     if carrying_its_csrf_token:
         browser.defaults[settings.CSRF_HEADER_NAME] = token
@@ -397,3 +421,119 @@ def a_geometry_set_claiming(tenant_id: UUID, *, project_id: UUID | None = None) 
         "created_at": "2026-08-07T12:00:00Z",
         "mediation": None,
     }
+
+
+# The logging path (ADR-0011). Everything below serves the seam MAP-14 opens.
+
+# PRD N9's four correlation keys, as the emitted document names them. The operations are a list on
+# every record rather than a scalar on some of them, because ADR-0011 section 4 emits one record per
+# decision covering a batch: one name for the join key is what makes "find every record about this
+# operation" one question instead of two.
+OPERATION_IDS = "operation_ids"
+CLIENT_ID = "client_id"
+TENANT_ID = "tenant_id"
+REQUEST_ID = "request_id"
+CORRELATION_KEYS = (OPERATION_IDS, CLIENT_ID, TENANT_ID, REQUEST_ID)
+
+# What a record names as the decision it carries, and what a refusal record adds (ADR-0011 section
+# 4; PRD N9's clause that every user-visible refusal has a matching record).
+EVENT = "event"
+STATUS = "status"
+REASON = "reason"
+
+
+class _CaptureWhatIsEmitted(logging.Filter):
+    """Takes the line a handler was about to write, and stops it being written.
+
+    A filter rather than a patched method, because `Handler.handle` runs its filters **before**
+    `emit` and this one is added last, so whatever the path does to a record on the way out has
+    already happened by the time the line is taken (ADR-0011 sections 2 and 3, either shape).
+    """
+
+    def __init__(self, handler: logging.Handler, emitted: list[str]) -> None:
+        super().__init__()
+        self._handler = handler
+        self._emitted = emitted
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        self._emitted.append(self._handler.format(record))
+        return False
+
+
+def _the_handlers_the_application_configured() -> list[logging.Handler]:
+    """The root handlers this application declared, told apart from the ones pytest attaches.
+
+    Read from `settings.LOGGING` because that is where ADR-0011 section 5 puts the configuration
+    and `dictConfig` names each handler after its key there. **Measured 2026-08-14:** during a test
+    the root logger carries four handlers of pytest's own, all unnamed, so a capture that took
+    every root handler would report pytest's raw formatting as this path's output and a redaction
+    case would be red forever. Answering with nothing is the deliberate direction: today
+    `settings.LOGGING` is `{}` and every case below is red for the absence of the path itself.
+    """
+    declared = settings.LOGGING.get("handlers", {})
+    return [handler for handler in logging.getLogger().handlers if handler.name in declared]
+
+
+@contextmanager
+def the_lines_the_logging_path_emits() -> Iterator[list[str]]:
+    """Every line the application's own handlers were asked to write inside the block.
+
+    Not `caplog`, and the difference is the whole point: pytest's fixture reads the `LogRecord`
+    before any handler formats it, so a redaction case written with it is green against a path that
+    emits every field it was handed (ADR-0011 section 3 puts the gate on the handler).
+
+    The level is dropped to `NOTSET` for the duration, so what a case sees is what the path would
+    emit with nothing filtered out by severity. Redaction has to hold at every level or it holds at
+    whichever one production happens to be set to.
+    """
+    emitted: list[str] = []
+    handlers = _the_handlers_the_application_configured()
+    levels = [handler.level for handler in handlers]
+    captures = [_CaptureWhatIsEmitted(handler, emitted) for handler in handlers]
+
+    for handler, capture in zip(handlers, captures, strict=True):
+        handler.setLevel(logging.NOTSET)
+        handler.addFilter(capture)
+    try:
+        yield emitted
+    finally:
+        for handler, capture, level in zip(handlers, captures, levels, strict=True):
+            handler.removeFilter(capture)
+            handler.setLevel(level)
+
+
+def the_documents_of(lines: Sequence[str]) -> list[JsonObject]:
+    """The emitted lines read as the structured records ADR-0011 section 1 makes them.
+
+    Raises rather than skipping a line it cannot read, because a path emitting free text is the
+    failure this whole requirement exists against and a reader that shrugged at it would hide it.
+    """
+    return [json.loads(line) for line in lines]
+
+
+def the_records_with_no_correlation_key(documents: Sequence[JsonObject]) -> list[JsonObject]:
+    """Every record carrying none of N9's four keys, which is the clause N9 fails review on.
+
+    None rather than all four: a refusal taken before a batch is parsed has a request and no
+    tenant, clientID or operation, and N9's wording is a line that carries **no** correlation key.
+    """
+    return [
+        document for document in documents if not any(document.get(key) for key in CORRELATION_KEYS)
+    ]
+
+
+def the_request_keys_in(documents: Sequence[JsonObject]) -> set[str]:
+    """The distinct request identifiers a set of records carries, absent ones left out."""
+    return {str(document[REQUEST_ID]) for document in documents if document.get(REQUEST_ID)}
+
+
+def the_records_missing_the_request_key(documents: Sequence[JsonObject]) -> list[JsonObject]:
+    """Every record that does not carry the request identifier of the context it was made in.
+
+    The complement of `the_request_keys_in` rather than a variation on it, and the pair is what
+    tells a bound key from a passed one: that reader leaves an absent key out, so it can say the
+    identifiers present agree and can never say one is missing, which is exactly what a record
+    written by code nobody here handed anything to would show. ADR-0011 section 2 binds for the
+    context, so `django.db.backends` carries the key or the binding is a call-site convention.
+    """
+    return [document for document in documents if not document.get(REQUEST_ID)]
