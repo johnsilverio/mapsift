@@ -289,11 +289,25 @@ still reads badly at every call site.
 ### 6. The availability probes are exempt from the binding
 
 `config/probes.py` answers liveness and readiness, and ADR-0010 decision 6 already exempts both from
-authentication. A probe request carries no principal and no tenant, so binding on it emits records whose
-correlation keys are empty, at whatever frequency the orchestrator polls. N9's acceptance calls a sync-path
-record with no correlation key a review failure, and manufacturing a stream of them is the wrong way to
-satisfy a probe. The middleware skips those paths: the same exemption as ADR-0010's, recorded twice because
+authentication. The middleware skips those paths: the same exemption as ADR-0010's, recorded twice because
 the two reasons are different.
+
+> **The reason was rewritten 2026-08-17, at the closing Window B review, because the one first written here
+> described an outcome the finished path does not produce.** It said a probe carries no principal and no
+> tenant, so binding on it would emit records whose correlation keys are **empty**, and that manufacturing a
+> stream of those was the wrong way to satisfy a probe. **Measured against the binding as built, that is
+> false:** the request identifier is bound before any principal is known, so a bound probe's records would
+> carry one key and would never be keyless. The sentence was written at the pickup, before the binding
+> existed, and it aged into a claim about a mechanism that turned out to work differently.
+>
+> **The real reason, and the decision is unchanged by it:** a liveness probe is polled for the life of the
+> process, so binding it puts an unbounded stream of records about nothing onto the one path a person reads
+> to reconstruct a user's lost work. The trail is a record of decisions, and a probe takes none.
+>
+> **What this section still owes: nothing witnesses it.** *Measured 2026-08-17 with the exemption removed
+> from the middleware: the whole suite stays green.* The case that names this section cannot fail in either
+> direction, since a probe answers 200 and so emits no record whether bound or not. **The decision stands
+> and its guard does not exist**, which is worth more written down than a case that reads like one.
 
 ### 7. The refusals that never reach a handler
 
