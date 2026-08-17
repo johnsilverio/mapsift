@@ -113,24 +113,6 @@ today, the conflict verdict later.
 **The rule that keeps this honest: an identifier interpolated into a message string is not a join key.** A
 key is a field.
 
-> **Extended (2026-08-14, at MAP-14's Window A review). The wire vocabulary is fixed here, because it was
-> otherwise fixed by a test suite and by no document.** This section had named the granularity and section 2
-> the four keys as concepts, and neither named a string, so the first suite to read an emitted record took a
-> decision this ADR had left unstated. It is promoted rather than changed: these are the names the tests
-> already chose.
->
-> A record's fields are **`operation_ids`** (always a list, even for a decision covering one operation, so
-> the join has one name and one shape), **`client_id`**, **`tenant_id`**, **`request_id`**, **`event`**, and,
-> on a refusal, **`status`** and **`reason`**. The events this path emits today are **`flush.applied`**,
-> **`flush.deduplicated`** and **`request.refused`**; the three N9 names that have no runtime yet, the
-> conflict verdict, the authorship normalization and the force-upgrade rejection, take their names from the
-> issues that build them (MAP-38 and the conflict slice, MAP-37, OQ-15) and extend this list rather than
-> reshaping it.
->
-> **`operation_ids` being a list unconditionally is the load-bearing half**, and it is not a style
-> preference: a scalar on some records and a list on others makes "find every record about this operation"
-> two questions, and a reader that accepts either is a reader that stops testing the shape.
-
 > **Added 2026-08-14, at MAP-14's Window A review, because the names were being fixed by a test suite and by
 > no document.** A record's field names and its event names are a **contract**, not a suite convention:
 > MAP-37, MAP-38 and MAP-39 each add a decision to this path and will read these names to do it, and a
