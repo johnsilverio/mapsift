@@ -88,6 +88,28 @@ The injection mechanism, a log-record factory against a filter, is the implement
 property this ADR fixes is the one above: the keys reach the record from the context, never from the
 signature.
 
+> **Extended 2026-08-17, at MAP-14's Window B review, where the Canon and Spec axes measured the same defect
+> independently. A middleware alone does not satisfy the sentence above.** Django logs every 4xx and 5xx
+> itself, in `BaseHandler.get_response`, **after the whole middleware chain has returned**, so a context a
+> middleware opened has already closed and that record crosses the handler carrying **none** of the four
+> keys. Measured on this route: a 422, a 404 and a 409 each emit one correct record and one orphan, and a
+> **405 emits only the orphan**, no view of ours having run at all. The 500 is the contrast that proves the
+> diagnosis rather than an exception to it, since `response_for_exception` fires **inside** the chain and its
+> record does carry the key.
+>
+> **The mechanism, and it rests on a property of the emitter rather than on a trick:**
+> `django.utils.log.log_response` emits with `extra={"status_code": ..., "request": request}`, so the record
+> holds the request even where no context is in force. The binding writes its keys onto the request as well
+> as into the context, and the filter falls back to the request when the context is empty.
+>
+> **The alternative is refused with its reason.** A context opened at request start and never closed leaks
+> into whatever that thread or task serves next, which under ASGI is another request. A scope that never
+> exits is not a scope, and a correlation key bleeding across requests is worse than an absent one because
+> it joins a report to the wrong work.
+>
+> **What this covers is wider than the refusals this task set out to record:** every status Django answers on
+> this route, the ones no view of ours produces included.
+
 ### 3. Redaction is an allowlist, never a denylist
 
 N9 requires that no geometry payload and no personal data reaches a log **regardless of what a caller
@@ -109,6 +131,13 @@ choice on.
 > answers "a record with nothing in it" are the difference between silence and evidence. It is also what
 > makes the sync-path clause testable, since a record that is never emitted cannot be a line with no
 > correlation key.
+
+> **Extended 2026-08-17, same review, closing the hole the clarification above left open.** The guarantee
+> holds **even when an allowlisted field will not serialize**. An encoder that raises inside the formatter
+> loses the **whole record**, which is exactly the outcome the clarification refuses, arriving through the
+> encoder instead of through the gate. The encoder therefore degrades an unexpected value to its string form
+> rather than failing on it. **The shape worth naming: a guarantee stated about one mechanism is not a
+> guarantee about the path**, and the second way to lose a record is the one nobody writes a rule against.
 
 ### 4. One record per decision, with the operations it covers as a structured list
 
@@ -175,6 +204,16 @@ key is a field.
 > the N9 clause when it carries **none of the four**, not when it is missing one. A refusal taken before a
 > batch is parsed has a request and no tenant, no clientID and no operation, and demanding all four would
 > fail precisely the records this requirement exists to guarantee.
+
+> **Extended 2026-08-17, at MAP-14's Window B review, on when a record is emitted rather than on what it
+> carries. A record asserting that a decision took effect is emitted only once the transaction that effected
+> it has committed.** Logging is not transactional, measured at this task: a record written inside a
+> transaction survives that transaction's rollback. So a record written before the commit is a claim about a
+> state that may never exist, and the trail then reads *applied* over a database holding nothing, which is
+> the mirror of N9's requirement that every recorded refusal was presented. **It is the direction no case
+> covers**, because reaching it needs a commit to fail. **A refusal record is unaffected and stays where it
+> is taken**, a refusal being true whether or not anything committed. This binds MAP-37, MAP-38 and MAP-39
+> as much as this task, each of them adding a decision that takes effect.
 
 ### 5. Where each piece lives, under ADR-0007
 
@@ -245,6 +284,13 @@ so**, the way MAP-12's was, and never quietly shortened to what the code happene
 >
 > *Recorded here because it was found living only in a test docstring, which is the one place no grep looks
 > and no fan-out reaches. A version-pinned measurement belongs to the pin.*
+
+> **Settled 2026-08-17, at MAP-14's Window B review: a handler registered here keeps the vendor's `DEBUG`
+> branch.** Registering our own for `Exception` **replaces** django-ninja's, whose body returns a plain-text
+> traceback at DEBUG true and re-raises at DEBUG false. Re-raising unconditionally is simpler and changes
+> what a developer sees for no gain. **A silent divergence in developer experience is a cost with no
+> benefit**, and it is the kind that is discovered months later by someone who assumes their tooling is
+> broken. Record the decision, then behave as the vendor does on both sides of the flag.
 
 ### 8. What this decision does not take
 
