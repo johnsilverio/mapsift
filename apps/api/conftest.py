@@ -9,8 +9,8 @@ client that is refused what a browser is refused, a record of which bindings a r
 an operation as the client authored it.
 
 **The logging-path harness** at the foot serves ADR-0011 and PRD N9, for the same reason and one
-more: the path is `config` and `common` while the two suites that read it sit in different
-packages, so a capture copied into each of them is two captures that drift.
+more: the path is `config` and `common` while every suite that reads it sits in a different
+package, so a capture copied into each of them is as many captures as there are suites.
 """
 
 import json
@@ -18,7 +18,7 @@ import logging
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -62,12 +62,19 @@ def refused_with(sqlstate: str) -> Iterator[None]:
 
 @dataclass(frozen=True)
 class Party:
-    """One user in one tenant, holding one workspace and one project: what the wall reads on."""
+    """One user in one tenant, holding one workspace and one project: what the wall reads on.
+
+    The address is carried rather than left to a caller's literal because it is the one piece of
+    personal data this backend holds (PRD N5), so a case asserting it never reaches a log has to
+    look for the address this person actually signed in with. A module spelling it again is a case
+    that goes quietly green the day a fixture is renamed.
+    """
 
     user_id: UUID
     tenant_id: UUID
     workspace_id: UUID
     project_id: UUID
+    email: str
 
 
 def _party(email: str, name: str) -> Party:
@@ -88,6 +95,7 @@ def _party(email: str, name: str) -> Party:
         tenant_id=membership.tenant_id,
         workspace_id=workspace_id,
         project_id=project_id,
+        email=email,
     )
 
 
@@ -467,10 +475,14 @@ def _the_handlers_the_application_configured() -> list[logging.Handler]:
     and `dictConfig` names each handler after its key there. **Measured 2026-08-14:** during a test
     the root logger carries four handlers of pytest's own, all unnamed, so a capture that took
     every root handler would report pytest's raw formatting as this path's output and a redaction
-    case would be red forever. Answering with nothing is the deliberate direction: today
-    `settings.LOGGING` is `{}` and every case below is red for the absence of the path itself.
+    case would be red forever. Answering with nothing is the deliberate direction: a configuration
+    that declares no handler leaves every case below red for the absence of the path itself.
+
+    The read is cast because django-stubs types a settings mapping's values as `object`, which
+    nothing here can narrow honestly: what a `LOGGING` dictionary holds is `dictConfig`'s contract
+    rather than a type this repository owns.
     """
-    declared = settings.LOGGING.get("handlers", {})
+    declared = cast(dict[str, object], settings.LOGGING.get("handlers", {}))
     return [handler for handler in logging.getLogger().handlers if handler.name in declared]
 
 
@@ -500,6 +512,20 @@ def the_lines_the_logging_path_emits() -> Iterator[list[str]]:
         for handler, capture, level in zip(handlers, captures, levels, strict=True):
             handler.removeFilter(capture)
             handler.setLevel(level)
+
+
+def the_lines_the_logging_path_would_write(record: logging.LogRecord) -> list[str]:
+    """What each handler the application configured would write for one record, without emitting
+    it.
+
+    Handed a record rather than driving a request, because a request offers the path only what
+    this repository's own code put on a record, and the guarantees ADR-0011 section 3 states are
+    about **any** record that reaches a handler. Reaching the formatter through the handler it is
+    configured on rather than by its class name is the other half of that: what the section
+    guarantees is a property of the path, and a guarantee stated about one mechanism is not a
+    guarantee about the path.
+    """
+    return [handler.format(record) for handler in _the_handlers_the_application_configured()]
 
 
 def the_documents_of(lines: Sequence[str]) -> list[JsonObject]:

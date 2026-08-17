@@ -7,11 +7,16 @@ three acceptance clauses that follow, *given an operation identifier from a user
 decision path is reconstructible end to end*, *every user-visible refusal has a matching record and
 the reverse*, and *a failure with no user-visible signal and no record fails review*; ADR-0011
 section 4 for the record granularity and the closed wire vocabulary **as its addition of 2026-08-14
-closes it, four event names rather than three**, and section 7 with **both** of its notes of the
-same day for the refusals that answer before any handler of ours is entered, the second correcting
-the first about what the `Exception` entry does and being the one the failure case below reads;
-ADR-0010 decision 6 with its additions of 2026-08-07, 2026-08-11 and 2026-08-13 for the refusals
-themselves and the bodies they carry; T2.3 and M4 for the dedup; I9, I10; C12, C13.
+closes it, `request.failed` joining the three names that section carried before it**, section 2
+with its **sharpening of 2026-08-17**, whose third point is what the deduplicate-then-fail case
+below is about, and section 7 for the refusals that answer before any handler of ours is entered,
+**whose dated notes are the provenance correction, the resolution, the sharpening that followed it
+hours later, the settlement of the `DEBUG` branch and the departure from the vendor's
+`logger.exception`**, the one the failure cases read being the sharpening, which corrects the
+resolution before it about what the `Exception` entry does; ADR-0010 decision 6 with
+its additions of
+2026-08-07, 2026-08-11 and 2026-08-13 for the refusals themselves and the bodies they carry; T2.3
+and M4 for the dedup; I9, I10; C12, C13.
 
 **Only the decisions the flush takes today are here, and that is why this task runs before the three
 that add the rest.** N9 also names conflict verdicts, authorship normalizations and force-upgrade
@@ -38,18 +43,20 @@ modules already state: `tenant_scope` opens `transaction.atomic()` itself, so a 
 transaction is one it opened is green against an implementation that has none, and three of the
 refusals below have no seam but the route in any case.
 
-**A record emitted inside a transaction that later rolls back is not assumed either way here.**
-Three of these cases arrange an answer raised inside a binding and taken outside it (the gap, the
-unbacked claim, and the failure nobody planned for), which is the shape that cost MAP-45 three
-docstrings on 2026-08-14, two corrected and one struck; whether the record survives that rollback
-has not been measured, because the path does not exist yet. So no case reads a durable store
-afterwards: the capture takes each line **as the handler is asked to write it**, which is the same
-witness-it-as-it-runs instrument MAP-45 landed on, and it answers identically whichever way the
-question resolves.
+**A record emitted inside a transaction that later rolls back does survive it, measured 2026-08-17
+and now written into ADR-0011 section 4.** The cases arranging an answer raised inside a binding and
+taken outside it are the gap, the unbacked claim, the failure nobody planned for, the operation that
+failure is reached from, the flush that deduplicated before it failed, and the commit that never
+went through, which is the shape that cost MAP-45 three docstrings on 2026-08-14, two corrected and
+one struck. Every one of them but the last decides what the path emitted without reading a durable
+store at all: the capture takes each line **as the handler is asked to write it**, which is the same
+witness-it-as-it-runs instrument MAP-45 landed on. The commit that never went through does read the
+store, as a **control** rather than as a trail, because the whole of what it asserts is that a
+record claimed a state the store does not hold.
 """
 
 from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from http import HTTPStatus
 from uuid import UUID, uuid4
 
@@ -73,6 +80,7 @@ from conftest import (
     the_documents_of,
     the_lines_the_logging_path_emits,
 )
+from mapsift.common.binding import tenant_scope
 from mapsift.sync.models import OperationLogEntry
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -115,7 +123,7 @@ def _a_contiguous_queue_of(
     **Local rather than hoisted into `conftest.py`, which is the opposite of what that file argues
     for its connection instruments, and the difference is the count of spellings.** This package
     holds four queue arrangers under three names and three signatures, each documented as named
-    apart on purpose, and two of the modules holding one are outside this task's scope. A shared
+    apart on purpose, and every other module holding one is outside this task's scope. A shared
     home would therefore gain a fifth spelling rather than lose one, which is the failure the rule
     exists against; `conftest.py` holds the per-operation arrangers this builds on for the reason
     that does apply, which is that every module needs those and they have one shape.
@@ -163,6 +171,85 @@ def the_write_failing_when_it_reaches(table: str) -> Iterator[None]:
 
     with connection.execute_wrapper(fail):
         yield
+
+
+# The DROP reads as redundant beside CREATE OR REPLACE and is not: a constraint trigger has no
+# replacing form, so without it a run killed between here and the undo below leaves the next run
+# erroring in its arrangement rather than failing on its assertion.
+REFUSE_THE_COMMIT = f"""
+DROP TRIGGER IF EXISTS refuse_the_commit_of_this_flush ON {OperationLogEntry._meta.db_table};
+
+CREATE OR REPLACE FUNCTION the_commit_this_case_refuses() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'the commit did not go through';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER refuse_the_commit_of_this_flush
+AFTER INSERT ON {OperationLogEntry._meta.db_table}
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION the_commit_this_case_refuses();
+"""
+
+LET_THE_COMMIT_THROUGH_AGAIN = f"""
+DROP TRIGGER IF EXISTS refuse_the_commit_of_this_flush ON {OperationLogEntry._meta.db_table};
+DROP FUNCTION IF EXISTS the_commit_this_case_refuses();
+"""
+
+
+@contextmanager
+def the_commit_refused_after_everything_was_written() -> Iterator[None]:
+    """Let the whole flush run and take the commit away from it at the end.
+
+    **Not `the_write_failing_when_it_reaches` with a later table, and the difference is the whole
+    case.** An execute wrapper is offered statements, and the commit is not one of them, so every
+    fault it can inject lands while the transaction is still open; a path that emits its record one
+    line after the last statement instead of after the commit stays green under it. A deferred
+    constraint fires inside COMMIT itself, which leaves nothing between the record and durability
+    for a wrong implementation to sit in.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(REFUSE_THE_COMMIT)
+    try:
+        yield
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute(LET_THE_COMMIT_THROUGH_AGAIN)
+
+
+def _a_flush_meeting(
+    fault: AbstractContextManager[None],
+    *operation_ids: UUID,
+    by: Party,
+    from_installation: UUID,
+    starting_at: int,
+) -> tuple[int, list[JsonObject]]:
+    """Post one queue into a fault, answering with what the client was told and what the path
+    emitted while it was told it.
+
+    Shared rather than written out per case, unlike the arrangers above it: the fault cases carry
+    this one byte for byte, and ADR-0011 section 4's extension of 2026-08-17 binds MAP-37, MAP-38
+    and MAP-39 to the same shape. What a case actually differs on stays at its call site, which is
+    the fault it arranges and the operations it names.
+
+    The client reads a failure as a response rather than re-raising it, for the measured reason
+    `a_browser` carries; a case asking what the user was shown cannot be written without it.
+    """
+    browser = a_browser(authenticated_as=by.user_id, reading_a_failure_as_a_response=True)
+
+    with fault, the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(
+            OPERATIONS_PATH,
+            _a_contiguous_queue_of(
+                *operation_ids,
+                by=by,
+                from_installation=from_installation,
+                starting_at=starting_at,
+            ),
+            JSON,
+        )
+
+    return answered.status_code, the_documents_of(emitted)
 
 
 def _the_operations_a_record_names(document: JsonObject) -> list[str]:
@@ -374,8 +461,8 @@ def test_a_stream_the_server_could_not_continue_is_recorded_with_the_reason_the_
     a case comparing the record against whatever the body happened to say would call that a gap and
     stay green.
 
-    This refusal is raised inside the binding and taken outside it, so it is one of the three cases
-    the module docstring's rollback paragraph is about."""
+    This refusal is raised inside the binding and taken outside it, so it is the gap the module
+    docstring's rollback paragraph names first."""
     installation = uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
 
@@ -531,24 +618,170 @@ def test_a_failure_nobody_planned_for_is_silent_neither_to_the_client_nor_to_the
     The status of the recorded answer is compared as a set rather than a count, because a path that
     records this failure once and one that records it at two frames are the same answer to the
     clause, while a path that records a different status or nothing at all is not."""
-    browser = a_browser(authenticated_as=alice.user_id, reading_a_failure_as_a_response=True)
-
-    with (
+    what_the_client_was_told, documents = _a_flush_meeting(
         the_write_failing_when_it_reaches(OperationLogEntry._meta.db_table),
-        the_lines_the_logging_path_emits() as emitted,
-    ):
-        answered = browser.post(
-            OPERATIONS_PATH,
-            _a_contiguous_queue_of(uuid4(), by=alice, from_installation=uuid4(), starting_at=0),
-            JSON,
-        )
+        uuid4(),
+        by=alice,
+        from_installation=uuid4(),
+        starting_at=0,
+    )
 
-    recorded = _the_records_of(REQUEST_FAILED, the_documents_of(emitted))
+    recorded = _the_records_of(REQUEST_FAILED, documents)
 
-    assert answered.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert what_the_client_was_told == HTTPStatus.INTERNAL_SERVER_ERROR
     assert set(_the_field_each_record_carries(STATUS, recorded)) == {
         HTTPStatus.INTERNAL_SERVER_ERROR
     }
+
+
+def test_a_flush_that_failed_is_reached_from_the_operation_it_was_about(alice: Party) -> None:
+    """N9's reconstruction is a join **from one operation identifier a user quotes**, and the case
+    above it asks only whether the failure was recorded at all. A record that exists and carries no
+    join key answers the clause and answers nobody: the report that arrives is *my edit is gone*
+    with an identifier attached, and a trail that leads from that identifier to `flush.applied` and
+    `flush.deduplicated` and never to the failure tells that user their work landed.
+
+    **What makes it red:** the failure leaves the frames that knew which operations it was about,
+    so the record that names it is written where only the request is still known. Nothing that
+    names the quoted operation says the flush failed, and the reconstruction stops one step short
+    of the only interesting answer.
+
+    **What would pass it dishonestly:** recording a failure against every operation of every
+    request, which the first case in this module refuses by asserting an accepted flush's trail is
+    exactly `flush.applied`. Interpolating the identifiers into the message is the other, and
+    `_the_records_naming` refuses it by reading the field as the list ADR-0011 section 4 closes.
+
+    The `500` is the control, the same one its sibling above carries: every other end this route
+    has is a refusal with a status of its own, so any other answer means the case never met a
+    failure at all."""
+    attempted = uuid4()
+
+    what_the_client_was_told, documents = _a_flush_meeting(
+        the_write_failing_when_it_reaches(OperationLogEntry._meta.db_table),
+        attempted,
+        by=alice,
+        from_installation=uuid4(),
+        starting_at=0,
+    )
+
+    reached = _the_records_of(REQUEST_FAILED, _the_records_naming(attempted, documents))
+
+    assert what_the_client_was_told == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert reached != []
+
+
+def test_a_flush_that_deduplicated_before_it_failed_leads_back_to_the_operations_that_failed(
+    alice: Party,
+) -> None:
+    """N9's reconstruction clause meeting the ordinary partial resend C12 makes routine: a client
+    resends its whole queue, the server drops what it had already applied and then fails on what
+    was left, and the report that arrives quotes an operation from the half that failed.
+
+    **Why the drop is on the path at all when the flush it rode in never committed**, which is the
+    same discriminator the commit case below reads from the other end (ADR-0011 section 4's
+    correction of 2026-08-17): ask what the record would be false about if the transaction
+    vanished. A drop asserts that an *earlier* flush already applied the operation, which is true
+    whether or not this one commits, so it is emitted where it is taken, and deferring it to a
+    commit that never comes would lose the one record a resent-and-then-failed flush has to offer.
+    This case is where that loss would show.
+
+    **The case above it cannot see this, and one deduplicated operation is the whole difference.**
+    It arranges a flush with nothing to drop, so the only correlation ever bound for that request
+    is the batch itself and any record of the failure names the quoted operation anyway. A resend
+    after a partial flush is the ordinary shape rather than an exotic one (C12, T2.3), and it is
+    where a narrower binding, opened per dropped operation because the dedup is the one decision
+    that is genuinely per operation (ADR-0011 section 4), meets the record written from what the
+    request still remembers.
+
+    **What makes it red:** the failure is recorded after every frame that knew which operations it
+    covered has unwound, so the trail leads from the operation the flush *dropped* and not from the
+    one it lost, and the user who quotes the second is told nothing about it. ADR-0011 section 2's
+    sharpening of 2026-08-17 fixes the merge as widest-first for exactly this, so a narrow binding
+    stays narrow on its own record without narrowing what the request remembers.
+
+    **What would pass it dishonestly:** recording a failure against every operation of every
+    request, which the first case in this module refuses by asserting an accepted flush's trail is
+    exactly `flush.applied`; and holding one correlation open past the request that opened it,
+    which ADR-0011 section 2 refuses with its own reason and which no case here witnesses. **What
+    it does not refuse is a drop that names too much**: a path that stopped narrowing per dropped
+    operation satisfies every assertion below while answering a report about one dropped operation
+    with every other operation's drop, and nothing in this module can see that.
+
+    The deduplication is witnessed rather than assumed, the control `_the_server_took` exists for:
+    a resend that quietly stopped being dropped would leave this case a copy of its sibling and
+    green for a reason it is not about. The `500` is the other control, every other end this route
+    has being a refusal carrying a status of its own.
+
+    **Both trails are read through `_the_records_of` and not through
+    `_the_decisions_recorded_about`, which is the obvious-looking reader and raises here.** A
+    failing flush puts a record on the path that names an operation and carries no event of ours,
+    Django's own answer to the 500 acquiring the keys from the request, so a reader that subscripts
+    the event reports a missing key while saying nothing about the decision it was asked for."""
+    dropped, failed = uuid4(), uuid4()
+    installation = uuid4()
+
+    _the_server_took(
+        a_browser(authenticated_as=alice.user_id),
+        _a_contiguous_queue_of(dropped, by=alice, from_installation=installation, starting_at=0),
+    )
+    what_the_client_was_told, documents = _a_flush_meeting(
+        the_write_failing_when_it_reaches(OperationLogEntry._meta.db_table),
+        dropped,
+        failed,
+        by=alice,
+        from_installation=installation,
+        starting_at=0,
+    )
+
+    assert what_the_client_was_told == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert _the_records_of(FLUSH_DEDUPLICATED, _the_records_naming(dropped, documents)) != []
+    assert _the_records_of(REQUEST_FAILED, _the_records_naming(failed, documents)) != []
+
+
+def test_no_flush_is_recorded_as_applied_over_a_transaction_that_never_committed(
+    alice: Party,
+) -> None:
+    """ADR-0011 section 4's extension of 2026-08-17, which that note calls the direction no case
+    covers: a record asserting a decision took effect is emitted only once the transaction that
+    effected it has committed.
+
+    **Why this record waits while the drop its sibling reads does not**, which is the correction
+    that section took hours later and the reason neither docstring could give before: ask what the
+    record would be false about if the transaction vanished. An application would be false about
+    the write, so it waits for the commit; a refusal and a drop would still be true, so they stay
+    where they are taken.
+
+    **What makes it red:** logging is not transactional, so a record written inside a transaction
+    outlives that transaction's rollback, and the trail then reads *applied* over a database
+    holding nothing. That database is the second assertion, measured rather than argued, and it is
+    the mirror of N9's requirement that every recorded refusal was one a user was actually shown.
+
+    **What would pass it dishonestly:** never recording `flush.applied` at all, which **four**
+    cases in this module refuse between them, two naming the event and two reading a field off the
+    record that names the operation (counted rather than gestured at); and emitting it after the
+    last statement but still inside the transaction, which is why the fault is a deferred constraint
+    rather than the execute wrapper its sibling above uses, for the reason
+    `the_commit_refused_after_everything_was_written` gives.
+
+    The `500` is the first control and it says the flush got as far as its commit: every other way
+    this route ends is a refusal carrying a status of its own, so a `409`, a `404` or a `422` here
+    would mean the arrangement never reached the direction this case is about."""
+    attempted = uuid4()
+
+    what_the_client_was_told, documents = _a_flush_meeting(
+        the_commit_refused_after_everything_was_written(),
+        attempted,
+        by=alice,
+        from_installation=uuid4(),
+        starting_at=0,
+    )
+
+    with tenant_scope(alice.tenant_id):
+        what_the_log_holds = OperationLogEntry.objects.filter(operation_id=attempted).count()
+
+    assert what_the_client_was_told == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert what_the_log_holds == 0
+    assert _the_records_of(FLUSH_APPLIED, documents) == []
 
 
 def test_a_flush_the_server_accepted_records_no_refusal(alice: Party) -> None:
