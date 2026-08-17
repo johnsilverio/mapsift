@@ -132,6 +132,14 @@ signature.
 > hold and keeps the ones it does, while the context still wins wherever it holds a key, so a per-operation
 > record stays narrow.
 >
+> **A trigger recorded rather than a change taken, 2026-08-17: the binding middleware is sync-only and that
+> costs nothing until Channels arrives.** Today the development server is WSGI and Channels is not
+> installed, so the question does not exist. Under ASGI it becomes the one sync entry at the top of a chain
+> whose Django built-ins are all async-capable, which forces the whole request path through `sync_to_async`.
+> **The remedy at that point is the dual-callable shape with `markcoroutinefunction`, never a rewrite**, and
+> it is written here so the day it bites nobody diagnoses it as a performance mystery. The trigger is
+> Channels entering the dependency set, which is `apps/sync` and not this task.
+
 > **One consequence for whoever reads the trail, settled 2026-08-17 and armed for MAP-37, MAP-38 and
 > MAP-39: a record naming an operation is not necessarily ours.** Django's own record about a response
 > carries the keys this section grants it and carries **no event of ours**, so a reader that takes the event
