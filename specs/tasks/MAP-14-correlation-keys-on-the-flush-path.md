@@ -51,12 +51,6 @@ a person.
   on the same path, so N9's every-refusal clause does reach them eventually, and the ground for deferring is
   that **neither is lost work**. A rejected credential leaves the client's queue intact and retryable. The
   `404` of a claim the principal cannot back is the one that is not, which is why it has a case here.
-- **The credential refusals on this route, the 401 and the CSRF 403.** Owner: **ADR-0010**'s seam, which is
-  where that mechanism lives. Declared rather than covered, and the reason is the distinction N9's clause
-  turns on: neither is lost work, because the client still holds its queue and re-authenticates, while the
-  404 a principal earns for a claim it cannot back **is** a queue that can never flush, which is why that one
-  has a case. *Added 2026-08-14 at the Window A review, where the Spec axis found this boundary undeclared
-  rather than uncovered.*
 - **The Rust and TypeScript sides.** Nothing in `libs/core` or `apps/web` changes.
 
 ## Boundary decisions the owner closed
@@ -75,12 +69,7 @@ which is where to read them; this is the pointer.
    `ValidationError` is a real handler with a real body and both pre-handler refusals arrive there. **The
    second note is the one that corrects the first**, and only about `Exception`, which is a pass-through.
 
-8. The wire vocabulary of an emitted record, promoted out of the suite that had been fixing it alone.
-   **ADR-0011 section 4's extension of 2026-08-14.**
-9. The credential refusals declared out of scope rather than covered, in the block above. Closed the same
-   day, at the same review.
-
-The fan-out that closed 1 to 7: `specs/dependencies.md` (the row and agenda item 15), `specs/PRD.md` N9's
+The fan-out that closed them: `specs/dependencies.md` (the row and agenda item 15), `specs/PRD.md` N9's
 Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry and one trap entry), and
 `.claude/rules/python-django.md`.
 
