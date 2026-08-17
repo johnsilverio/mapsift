@@ -7,11 +7,14 @@ PRD **N9** (the requirement, its mechanism half, and its acceptance), **N5** (wh
 v0.16 with its dated OpenTelemetry caveat. **ADR-0011** is the code shape, in full: section 1 the library,
 2 the binding, 3 the redaction, **4 the record granularity and the closed wire vocabulary**, 5 the placement
 under **ADR-0007** sections 1, 2 and 4, 6 the probe exemption, 7 the refusals that never reach a handler
-**with both of its dated notes, the resolution and the sharpening that followed it hours later**; the second
-supersedes the first on what the `Exception` entry does. **ADR-0005** is cited here for the tenant binding
-the flush runs inside, which is a **different** mechanism at a different scope from ADR-0011 section 2's
-per-context key binding and must not be read as nesting one in the other. **ADR-0010** decision 6 for the route and its
-refusal shapes; **ADR-0005** for what the binding runs inside.
+**with all three of its dated notes: the provenance correction, the resolution, and the sharpening that
+followed hours later**; the third supersedes the second on what the `Exception` entry does, and at DEBUG
+false that entry is a pass-through rather than a logging seam. *(This sentence said "both of its dated
+notes" until 2026-08-17, over a section that already carried three, and the note it excluded is the one the
+fourth Evidence bullet below depends on. Found by the pre-dispatch read of ADR-0008 section 9.)*
+**ADR-0005** is cited for the tenant binding the flush runs inside, which is a **different** mechanism at a
+different scope from ADR-0011 section 2's per-context key binding and must not be read as nesting one in the
+other. **ADR-0010** decision 6 for the route and its refusal shapes.
 
 Invariants: **I9** and **I10**, whose decisions are what N9 requires recorded. Constraints: **C6** and the
 privacy posture (a record is a place production data leaks to), **C12** and **C13** (the dedup decision and the
@@ -64,10 +67,12 @@ which is where to read them; this is the pointer.
 4. One record per decision rather than per operation. **Section 4.**
 5. Where each piece lives under ADR-0007. **Section 5.**
 6. The availability probes are exempt from the binding. **Section 6.**
-7. The seam for the refusals that answer before any handler is entered. **Section 7 and both of its notes of
-   2026-08-14**: the conditional does not fire and the split-and-say-so fallback is spent, because
+7. The seam for the refusals that answer before any handler is entered. **Section 7 and all three of its
+   notes of 2026-08-14**: the conditional does not fire and the split-and-say-so fallback is spent, because
    `ValidationError` is a real handler with a real body and both pre-handler refusals arrive there. **The
-   second note is the one that corrects the first**, and only about `Exception`, which is a pass-through.
+   third note corrects the second**, and only about `Exception`, which is a pass-through at DEBUG false, so
+   the *failure with no user-visible signal* clause is reached through Django's own `log_response` and
+   registering our own handler is a choice about the record's shape rather than a necessity.
 
 The fan-out that closed them: `specs/dependencies.md` (the row and agenda item 15), `specs/PRD.md` N9's
 Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry and one trap entry), and
