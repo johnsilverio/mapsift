@@ -157,9 +157,9 @@ second as the one people skip, and it was skipped three times in the session tha
 layer is saturated on both surfaces**, and `.claude/skills/README.md` already carries the law that decides
 this: a prompt instruction is a request, a hook or a gate is enforcement.
 
-So, five changes, each removing a surface or moving a discovery rather than asking for more care. The
-fourth and fifth were both added on 2026-08-17 by the surfaces they name, neither of which had been counted
-when the first three were written.
+So, six changes, each removing a surface or moving a discovery rather than asking for more care. The fourth,
+fifth and sixth were all added on 2026-08-17 by the surfaces they name, none of which had been counted when
+the first three were written; the sixth is about the cost of the machinery rather than about a defect.
 
 1. **A task spec's Acceptance block is a delta, never a copy.** It cites the requirement by identifier and
    lists **only what this task does differently**: what is split, what has no runtime here, what is deferred,
@@ -200,6 +200,19 @@ when the first three were written.
    sweep leaves the memory of having swept. **The sharper statement the three misses of that session share:
    a fan-out reaches the decision being closed and misses the facts the decision changed in passing**, which
    is why the trigger is now the set being touched rather than the decision being closed.
+6. **A correction round that touches no production file closes with the Spec axis alone** (added
+   2026-08-17). The three axes stay the rule for any round that changes production code, and nothing about
+   their independence is reconsidered. **What changed is a measurement, not an opinion.** Across MAP-14 the
+   axes over implementation found two blocking defects in ordinary traffic, a binding that never reached the
+   record Django writes about a response and a carrier the dedup loop overwrote, both of which would have
+   shipped. The axes over **test-only** correction rounds found stale docstring counts and a missing
+   idempotent create, at three full runs each, and **the Spec axis is the one that found both blocking
+   defects of the task**. A correction round also creates prose defects at close to the rate it repairs
+   them, measured: the round that existed to remove four stale counts left a new false one behind in the
+   same file. **The cap that comes with it, so this does not become a licence to stop caring:** after a
+   round's second pass, an advisory that is prose only is recorded in `specs/log.md` and does not gate the
+   merge. A requirement met with green gates is not held hostage to docstring accuracy, and the accuracy is
+   still written down where the next reader meets it.
 
 **What this costs:** one subagent pass per task before Window A, and a fan-out report that is longer than a
 sentence. **What it does not buy:** anything on the two surfaces a machine could have checked instead, and

@@ -131,6 +131,13 @@ signature.
 > the ordinary partial resend C12 makes routine. The carrier therefore takes the keys it does not already
 > hold and keeps the ones it does, while the context still wins wherever it holds a key, so a per-operation
 > record stays narrow.
+>
+> **One consequence for whoever reads the trail, settled 2026-08-17 and armed for MAP-37, MAP-38 and
+> MAP-39: a record naming an operation is not necessarily ours.** Django's own record about a response
+> carries the keys this section grants it and carries **no event of ours**, so a reader that takes the event
+> off every record naming an operation raises rather than answers. **A reader skips what carries no event of
+> ours and carries on**, which is the only reading consistent with this section admitting those records to
+> the path in the first place; asserting they cannot exist would contradict the paragraph above it.
 
 ### 3. Redaction is an allowlist, never a denylist
 
