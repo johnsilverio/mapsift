@@ -163,7 +163,12 @@ Open/ADR line, `CLAUDE.md`, `specs/index.md`, `specs/log.md` (one decision entry
   reading in section 7's second note, and this sentence had not been swept with it.)*
 
 From **ADR-0011 section 6**, which is this task's own and is what the suite pins: an availability probe
-manufactures no record whose correlation keys are empty. **N12's own clause, that the liveness probe keeps
+manufactures no record whose correlation keys are empty. From **ADR-0011 section 4's extension of
+2026-08-17 with its correction of the same day**, which the suite also pins and which this block reached
+only on 2026-08-17: a record that asserts a decision took effect waits for the commit, while a refusal and
+a record of what the flush declined to write stay where they are taken. *(The 2026-08-17 sweep reached this
+document's Evidence block and not its Acceptance block, which is the same miss recorded twice above: the
+fan-out found the decision and not the criterion the decision created. Found by the Spec axis.)* **N12's own clause, that the liveness probe keeps
 passing while a dependency is down, is already carried by `tests/test_probes.py` and is not this task's to
 re-prove** (corrected 2026-08-14, where this line named the N12 clause over a suite that asserts the section
 6 one; each sentence was true and they were not about the same thing).
