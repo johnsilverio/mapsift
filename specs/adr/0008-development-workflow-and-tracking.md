@@ -157,9 +157,9 @@ second as the one people skip, and it was skipped three times in the session tha
 layer is saturated on both surfaces**, and `.claude/skills/README.md` already carries the law that decides
 this: a prompt instruction is a request, a hook or a gate is enforcement.
 
-So, four changes, each removing a surface or moving a discovery rather than asking for more care. The
-fourth was added on 2026-08-17 by the surface it names, which had not been counted when the first three
-were written.
+So, five changes, each removing a surface or moving a discovery rather than asking for more care. The
+fourth and fifth were both added on 2026-08-17 by the surfaces they name, neither of which had been counted
+when the first three were written.
 
 1. **A task spec's Acceptance block is a delta, never a copy.** It cites the requirement by identifier and
    lists **only what this task does differently**: what is split, what has no runtime here, what is deferred,
@@ -187,6 +187,19 @@ were written.
    canon rule forbids answering from memory about the canon, and the verification rule targets another
    agent's report, while a long session makes the orchestrator's own output a source to re-read rather than
    a memory to cite.
+5. **A fan-out sweeps `apps/` and `libs/`, and a count is re-read against its set every time the set is
+   touched** (added 2026-08-17; the mechanical form is in the `fan-out` skill). **Two holes, one round.**
+   The skill's target table and both its verification greps covered the canon documents and `docs/`, a
+   directory that does not exist in this repository, and never covered code. **Code is a fan-out target by
+   this canon's own requirement rather than by tolerance:** `CLAUDE.md` tells a comment to cite the decision
+   and let the document hold the reasoning, and `specs/testing.md` section 6 requires a test to name its
+   requirement, so a docstring is a citation that goes stale exactly like a document and nothing was
+   looking. And the same round produced the second hole in its own fix: a count corrected to three was made
+   false an hour later **by the same session adding a fourth note to the section it counted**, which is
+   MAP-13's recorded lesson that a verdict refined later needs its own sweep, met again because a completed
+   sweep leaves the memory of having swept. **The sharper statement the three misses of that session share:
+   a fan-out reaches the decision being closed and misses the facts the decision changed in passing**, which
+   is why the trigger is now the set being touched rather than the decision being closed.
 
 **What this costs:** one subagent pass per task before Window A, and a fan-out report that is longer than a
 sentence. **What it does not buy:** anything on the two surfaces a machine could have checked instead, and

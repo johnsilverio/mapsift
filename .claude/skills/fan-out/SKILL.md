@@ -47,12 +47,21 @@ document exactly like a decision (foundation section 15).
 and let the tree tell you where it lives:
 
 ```bash
-grep -rn "C7\|M9\|OQ-8" specs/ CLAUDE.md .claude/
-grep -rln "the distinctive phrase the old decision used" specs/ CLAUDE.md .claude/
+grep -rn "C7\|M9\|OQ-8" specs/ CLAUDE.md .claude/ apps/ libs/
+grep -rln "the distinctive phrase the old decision used" specs/ CLAUDE.md .claude/ apps/ libs/
 ```
 
 The second grep is the one people skip and it is the one that finds the stale copy, because a document
 that paraphrased the decision does not cite its identifier.
+
+**`apps/` and `libs/` are in that list since 2026-08-17, and their absence was a hole rather than a
+scoping choice** (ADR-0008 section 9, change 5). This canon **requires** code to cite decisions by
+identifier: `CLAUDE.md`'s comment discipline says to cite the decision and let the document hold the
+reasoning, and `specs/testing.md` section 6 requires a test to name the requirement it implements. So a
+docstring is a citation of the canon, it goes stale exactly like a document, and **nothing swept it**. Found
+when a test module was left saying "both of its notes" about an ADR section that had carried three since the
+day before. The same round found this list sweeping `docs/`, which does not exist in this repository, so the
+sweep was aimed at a phantom while blind to the real target.
 
 ## 3. The targets, and what each one gets
 
@@ -70,6 +79,7 @@ foundation or an ADR first, stop and put it there before touching anything below
 | `specs/dependencies.md` | **any measurement pinned to a version**: what the installed source does, a particularity that bites, a probe against the lockfile. A dated subsection, naming the version read and the ADR it fed | the decision touched no external dependency. **Added 2026-08-14, after this file had no row for it at all** and two django-ninja 1.6.2 measurements were made in one round, cited in an ADR, and never reached the survey the external-dependency rule calls their home. The next window opens this file first, by its path rule, and finds nothing |
 | `specs/session-handoff.md` **section 0** | the live state, and section 6 if a settled objection was reversed | never. Section 0 always moves |
 | `specs/log.md` | **one grep-able line**, oldest first, in the format the file's header states | never |
+| `apps/`, `libs/` | the **citations** in docstrings and test names, which this canon requires rather than tolerates, and which go stale exactly like a document. **You do not edit code here**: a stale citation in a test is a finding returned to the window that owns it, and a stale one in production code is the same. What the fan-out owes is finding it | the decision is named nowhere in code, which the grep answers rather than your memory |
 
 ### Before you write into a target, grep that target for what you are about to say
 
@@ -131,7 +141,7 @@ it converts an obvious gap into a false assurance.
 ## 5. Verify, then report
 
 ```bash
-grep -rn "<the old wording>" specs/ CLAUDE.md .claude/ docs/    # must return nothing
+grep -rn "<the old wording>" specs/ CLAUDE.md .claude/ apps/ libs/    # must return nothing
 grep -rn "—\|–" specs/ CLAUDE.md .claude/ docs/                  # must return nothing
 ```
 
