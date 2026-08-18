@@ -40,7 +40,7 @@ TAKE_THE_PROJECTS_VERSION_ROW = f"""
 
 # GREATEST reads as redundant beside a caller that has already taken a maximum, and collapsing it
 # to EXCLUDED is the defect: a flush that lost a race would lower a cursor another flush raised
-# (ADR-0004 decision 2, extension of 2026-08-11). No case in this suite can see it.
+# (ADR-0004 decision 2, extension of 2026-08-11).
 ADVANCE_THIS_INSTALLATIONS_CURSOR = f"""
     INSERT INTO {ClientCursor._meta.db_table} AS held
         (tenant_id, client_id, project_id, last_applied_mutation_number)

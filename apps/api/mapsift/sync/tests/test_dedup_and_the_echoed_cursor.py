@@ -45,11 +45,11 @@ resend on a gap and M4's missing-cursor reconciliation (MAP-13), which no queue 
 each of them either opens at the first mutation number or continues from the cursor it flushes
 against; the cursor's expiry and the last-seen time (MAP-42); the per-project version
 in the response (MAP-22); the check that a batch's project belongs to the verified tenant (MAP-39);
-and every client half of this axis (MAP-15, MAP-17, MAP-19). **One omission has no owner at all, and
-that is written out rather than left to read as closed:** the guard that stops a cursor moving
-backwards under a lost race needs two concurrent transactions, no harness in this suite opens one,
-and **nothing owns building one today**, though C2's convergence cases and MAP-13's resync will both
-need it.
+and every client half of this axis (MAP-15, MAP-17, MAP-19). **And the guard that stops a cursor
+moving backwards under a lost race is next door**, in `test_the_cursor_under_a_lost_race.py`, which
+is where this suite's second database connection lives (MAP-43): it needs two concurrent
+transactions and every case here runs on one. Convergence (MAP-23, C2) and the resync (MAP-22) each
+extend that harness rather than this module.
 """
 
 from collections.abc import Sequence
