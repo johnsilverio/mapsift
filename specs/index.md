@@ -120,6 +120,12 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     to**, which is the whole purpose of the label. *Reworded 2026-08-14, in the round that produced the
     refutation, where this line still advertised the lesson the rewrite had retired; found by a review axis
     and not by the fan-out that rewrote the block.*
+  - **`tasks/MAP-47-project-and-workspace-creation.md`** — the first sanctioned path that creates a workspace
+    and a project, published as two services in `accounts` under the client-minted identifier and inside the
+    wall, after a pickup measurement showed the fixture was the only writer of **both** rows and not only of
+    the project the issue named. Its boundary block points at a research round (canon plus four external
+    sweeps) whose findings are in `specs/log.md` under 2026-08-18, and its acceptance names the half of C4
+    that has no principal on this path and stays at the route.
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
   - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim
