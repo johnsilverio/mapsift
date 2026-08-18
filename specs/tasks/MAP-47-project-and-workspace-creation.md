@@ -3,7 +3,8 @@
 ## Trace
 
 **Requirement:** PRD **M1** (the account tree; a workspace and a project each resolve to exactly one tenant,
-immutable in the ordinary write path, and the workspace is a project's required parent by M1's Shape) and PRD
+immutable in the ordinary write path, and a project carries its workspace by M1's Shape; "required, with no
+nullable parent" is boundary decision 1's reading, grounded in T6.4 rather than in M1's words) and PRD
 **M3** (the identifier of a workspace and a project is the client's, and the server neither allocates nor
 rewrites it). PRD **A2** is the origin the issue names; its acceptance is about isolation and reachability
 and carries no clause about the act of creation, so nothing here is derived from it beyond the fact that a
@@ -29,28 +30,32 @@ all stand on one sanctioned path instead of building the rows by hand.
 
 ## Out of scope
 
-- **An HTTP surface.** MAP-20's, if it needs one; this task publishes the service.
-- **Who may create a workspace or a project.** The permission model, T6, gated by OQ-7. The service is the
-  path and not the grant.
+- **An HTTP surface.** There is no route on this path; MAP-20 adds one if it needs one. This task publishes
+  the service.
+- **Who may create a workspace or a project.** The detailed permission model is T6.3's and T6.4's Open/ADR,
+  and the licence tiers it depends on are OQ-7 (T6.2). The service is the path and not the grant.
 - **The capability, the registry and the description contract.** Foundation OQ-4 keeps the public capability
   surface outside this slice by name and ADR-0007 section 7 creates the registry at the second capability;
   no `capabilities.py` is created here.
 - **A default or first workspace at account creation.** Refused as a mint (boundary decision 1) and left
-  open as an onboarding question (A2, K2); no test here may assume a new account holds a workspace.
+  open as an onboarding question that no requirement carries today (A2 and K2 are the nearest and are silent;
+  M1's acceptance names the tenant and the owner membership only), a candidate for PRD section 10 rather
+  than for this task; no test here may assume a new account holds a workspace.
 - **Whether a batch's project belongs to the verified tenant.** MAP-39.
 - **A per-tenant uniqueness of a workspace or project name.** Nothing upstream asks for it, and under
   ADR-0005 section 5 it would be new schema, so introducing it here is a finding to report and not a change
   to make.
-- **Deletion, and moving a workspace or a project across tenants.** M1's Open/ADR names cross-tenant transfer
-  as a distinct recorded operation outside Layer 3's scope.
+- **Deleting a workspace or a project**, which no requirement asks of this path, and **moving one across
+  tenants**, which M1's Open/ADR names as a distinct recorded operation outside Layer 3's scope.
 - **The client side.** Minting the identifier in the core is MAP-17; the offline `create_project` that needs
   a `workspace_id` it already knows is MAP-20.
 
 ## Boundary decisions the owner closed
 
-All closed 2026-08-18, after a research round, and registered before this file was written. **The pickup
-comment on MAP-47 is the record and this is the pointer**; `specs/log.md` carries the three lines of that
-date. In one sentence each:
+Decisions 1 to 3 were closed by the owner on 2026-08-18, after a research round, and registered before this
+file was written: **the pickup comment on MAP-47 is the record and this is the pointer**, and `specs/log.md`
+carries the three MAP-47 lines of that date. Decision 4 was taken by the orchestrator at spec-writing and
+says so; 5 and 6 are procedure. In one sentence each:
 
 1. The workspace enters the task: `create_workspace` and `create_project`, both in `accounts/services.py`,
    both under a client-minted identifier, and a project requires an existing workspace with no nullable
@@ -64,7 +69,10 @@ date. In one sentence each:
    `second_project_of` in `apps/api/conftest.py`) move onto the published services in **Window B's refactor
    step under green**, with no assertion changed anywhere. That is test infrastructure moving onto the path
    it exists to exercise, taken after the tests are green, and it does not touch the `implement` skill's rule
-   against editing a test to make it pass.
+   against editing a test to make it pass. **Those two helpers and nothing else:** the three other hand-built
+   rows in the suite (`accounts/tests/test_account_tree.py` line 142, `tests/test_tenant_isolation.py` lines
+   235 and 243) are deliberate refusal cases inside `pytest.raises` or `refused_with`, and moving one onto a
+   service destroys what it asserts.
 5. The pre-dispatch spec read runs, and is not waived.
 6. Acceptance is the delta below.
 
@@ -95,7 +103,9 @@ No transactional claim is made by this task, so the trap is named rather than wo
 finds one it needs, that is a finding.
 
 **What is still open and belongs to the window:** the exact spellings of the two services and their
-keyword-only parameters within ADR-0007 section 3, what a service returns, and how a case shows that the
+parameters, in the shape the existing services in the same module already spell (keyword-only, typed) and
+under ADR-0007 section 3's role for `services.py`, which says what the file holds and nothing about
+signatures; what a service returns; and how a case shows that the
 row it created is unreachable from another tenant without asserting the wall's silence as if it were the
 guard (ADR-0005 section 4, and the `test` skill's rule about an empty result that passes for the wrong
 reason).
@@ -113,8 +123,8 @@ differently:
   with a runtime here and one without.** The half with a runtime is that the service takes the identifier
   and stores exactly it; the half without is the client minting it, which is MAP-17 and is not asserted here.
 - **C4's clause on the flush path is not this task's.** The issue's third acceptance bullet says the row
-  carries "the tenant identifier the principal was verified against"; there is no principal on this path
-  until MAP-20 gives it a route, so what is asserted here is that the row carries the tenant the caller
+  carries "the tenant identifier the principal was verified against"; there is no route and so no principal
+  on this path (MAP-20 adds the route if it needs one), so what is asserted here is that the row carries the tenant the caller
   bound and passed, and that a caller passing a tenant other than the one bound is refused by the wall
   rather than stored (boundary decision 3). The verification of the claim against the principal stays
   ADR-0010 decision 6's, at the route.
