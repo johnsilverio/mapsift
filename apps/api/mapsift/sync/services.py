@@ -73,7 +73,6 @@ def apply_the_flush(operations: list[ClientHalf]) -> int:
 
     # Before the append and not after, though "beside the allocation" reads the other way: the
     # order is a contention trade ADR-0004 decision 2 settles in its extension of 2026-08-11.
-    # No case in this suite catches the swap.
     _advance_the_cursor_of(stream, last_applied)
     append_to_the_operation_log(fresh, tolerating_a_resend=True)
     # Not the direct call this looks like it should be: logging is not transactional, so a record
