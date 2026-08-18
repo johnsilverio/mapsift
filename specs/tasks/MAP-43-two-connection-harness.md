@@ -59,7 +59,7 @@ date. In one sentence each:
    nuance (tripped over, not witnessed) is ADR-0004 decision 2's sharpening of 2026-08-18 and no comment
    restates it.
 3. Failing loudly costs no new dependency: the harness owns bounded waits and a server-side lock timeout
-   on the session that races, and the suite-wide backstop is `faulthandler_timeout` with
+   on the session that races, and the backstop armed per test item is `faulthandler_timeout` with
    `faulthandler_exit_on_timeout` (`specs/dependencies.md` section 1, 2026-08-18).
 4. The harness is shaped by the one case it carries today.
 5. The trace is the one above; T2.1 is a consumer, not the requirement.
@@ -153,5 +153,5 @@ differently:
   them by accident turns the case red rather than vacuous. This is the `test` skill's unwitnessed-happy-path
   rule applied, not a new criterion.
 - **No hang is left possible without a loud failure**: the racing session's wait is bounded on the server
-  side, every Python-side wait is bounded and checked, and the suite-wide backstop is configured, all
+  side, every Python-side wait is bounded and checked, and the per-item backstop is configured, all
   without a new dependency (boundary decision 3).
