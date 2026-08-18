@@ -105,6 +105,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     shortening the clause; and its evidence block hands over the MAP-45 rollback measurement **while refusing
     to hand over the conclusion**, because whether a record survives a rolled-back transaction is a property
     of the path this task builds and nobody has measured it.
+  - **`tasks/MAP-43-two-connection-harness.md`** — the suite's first second database connection, and the
+    cursor's backwards guard witnessed under a real race rather than read. The first task in this folder
+    whose case is **green against `main` from its first run**, because the guard it witnesses already
+    exists, so red is defined against a mutant and the exit is a run the orchestrator performs; its evidence
+    block is a research round transcribed as **readings, dated and sourced**, with the one presence it could
+    not verify named as such, and it hands over the fact that shapes the harness (a Python signal cannot reach
+    a thread blocked in `execute`, only the server can) while leaving the sequencing mechanism to the window.
   - **`tasks/MAP-45-the-unwitnessed-claim-and-the-copied-status.md`** — the two corrections MAP-13's
     post-merge review left, run as one pass over one package. The first file here to cover **two** issues,
     under the batching allowance of `specs/testing.md` section 1.2, and its evidence block is the worked
