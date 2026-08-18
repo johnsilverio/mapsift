@@ -339,7 +339,7 @@ interrupt the wait that matters here, see below.
 
 **What replaces it, at no dependency cost.** pytest **9.0** added `faulthandler_exit_on_timeout` beside the
 older `faulthandler_timeout`: the pair dumps the traceback of **every** thread after N seconds and exits the
-process (`faulthandler.dump_traceback_later(exit=True)`), which is the whole suite-wide net a hang needs.
+process (`faulthandler.dump_traceback_later(exit=True)`), armed per test item over its setup, call and teardown, which is the whole net a hang inside a test needs (a hang in session teardown sits outside it, measured 2026-08-18 in the installed plugin).
 *Verified 2026-08-18 in the installed 9.1.1 (`_pytest/faulthandler.py` registers both ini options).* The
 value is chosen with a wide margin over the slowest test measured in the container, and it is a backstop:
 a case that can hang owns its own bounded waits and its own diagnosis, and the backstop exists for the hang
