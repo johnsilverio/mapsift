@@ -62,14 +62,18 @@ says so; 5 and 6 are procedure. In one sentence each:
    parent; a default workspace at account creation is refused, and the onboarding question is left open by
    name.
 2. A service in `services.py`, not the first capability.
-3. The tenant is an explicit `tenant_id` argument, the service opens no binding and requires one in force;
-   `_create_tenant_owned_by` stays the one self-binding writer because it mints the tenant.
+3. The tenant is an explicit `tenant_id` argument, the service opens no binding and requires one in force,
+   where "requires" is the manager's own `TenantNotBound` (ADR-0005 decision 4) and not a guard the service
+   writes; `_create_tenant_owned_by` stays the one self-binding writer because it mints the tenant.
 4. **Taken by the orchestrator at spec-writing under the 2026-08-04 finding in `specs/log.md`, and reported
    to the owner in the same message:** the shared fixtures that build these rows by hand (`_party` and
    `second_project_of` in `apps/api/conftest.py`) move onto the published services in **Window B's refactor
-   step under green**, with no assertion changed anywhere. That is test infrastructure moving onto the path
-   it exists to exercise, taken after the tests are green, and it does not touch the `implement` skill's rule
-   against editing a test to make it pass. **Those two helpers and nothing else:** the three other hand-built
+   step under green**, with no assertion changed anywhere. The authority is `specs/testing.md` section 1
+   (design happens in the refactor step, under green, and a window may not edit a test **to make it pass**):
+   this is test infrastructure moving onto the path it exists to exercise after every test is already green,
+   so **`apps/api/conftest.py` is in scope for Window B's refactor step and for nothing before it**, and the
+   `implement` skill's "byte-identical test module" sentence yields to the section it defers to. **Those two
+   helpers and nothing else:** the three other hand-built
    rows in the suite (`accounts/tests/test_account_tree.py` line 142, `tests/test_tenant_isolation.py` lines
    235 and 243) are deliberate refusal cases inside `pytest.raises` or `refused_with`, and moving one onto a
    service destroys what it asserts.
@@ -122,7 +126,7 @@ differently:
 - **M3's "the server never allocates an identifier for an object a client can create offline" has one half
   with a runtime here and one without.** The half with a runtime is that the service takes the identifier
   and stores exactly it; the half without is the client minting it, which is MAP-17 and is not asserted here.
-- **C4's clause on the flush path is not this task's.** The issue's third acceptance bullet says the row
+- **The issue's C4-derived bullet has no principal on this path.** The issue's third acceptance bullet says the row
   carries "the tenant identifier the principal was verified against"; there is no route and so no principal
   on this path (MAP-20 adds the route if it needs one), so what is asserted here is that the row carries the tenant the caller
   bound and passed, and that a caller passing a tenant other than the one bound is refused by the wall
