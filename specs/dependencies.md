@@ -324,6 +324,39 @@ The rule stands unchanged, that the generator writes what the installed version 
 not hand-reformatted; what is recorded here is **why the same generator produces two shapes in one
 repository**, so the next person does not go looking for a decision that was never taken.
 
+### `pytest-timeout` is refused, and the hang guard for a concurrency test is pytest's own faulthandler pair
+
+*Surveyed 2026-08-18 at the MAP-43 pickup, the first test in this suite that opens a second database
+connection and can therefore hang on a lock wait rather than fail. Verified against the package index and
+the pinned pytest 9.1.1 rather than from memory.*
+
+**Refused: `pytest-timeout`.** Its released stable is **2.4.0** (2025-05-05); under pytest 9 the ini
+`timeout` option raises an `INTERNALERROR` (`config option 'timeout' expects a string, got int`, upstream
+issue #194), the **2.5.0** that fixed it was published 2026-08-16 and **yanked the same day** ("accidental
+breaking change (probably)"), and its interaction with `pytest-xdist` is an open defect since 2020 (#72).
+Its `thread` method ends the process with `os._exit()` and loses the report; its `signal` method cannot
+interrupt the wait that matters here, see below.
+
+**What replaces it, at no dependency cost.** pytest **9.0** added `faulthandler_exit_on_timeout` beside the
+older `faulthandler_timeout`: the pair dumps the traceback of **every** thread after N seconds and exits the
+process (`faulthandler.dump_traceback_later(exit=True)`), which is the whole suite-wide net a hang needs.
+*Verified 2026-08-18 in the installed 9.1.1 (`_pytest/faulthandler.py` registers both ini options).* The
+value is chosen with a wide margin over the slowest test measured in the container, and it is a backstop:
+a case that can hang owns its own bounded waits and its own diagnosis, and the backstop exists for the hang
+nobody anticipated.
+
+**The particularity that decides the shape of the harness itself, and it is physical rather than
+stylistic.** A Python signal handler runs only in the main thread, so `SIGALRM` (and therefore any
+signal-based test timeout) **cannot interrupt a worker thread blocked inside `cursor.execute` on a lock
+wait**. The only thing that can is the server: `lock_timeout` set on that session aborts the waiting
+statement with SQLSTATE `55P03` (`psycopg.errors.LockNotAvailable`), and `statement_timeout`, if set lower,
+fires first with `57014` instead. Two psycopg 3 facts that follow: a connection is thread-safe but every
+cursor on it shares one transaction, so **a race needs a second connection and never a second cursor**; and
+`Connection.cancel_safe()` is not signal-handler safe, `cancel()` is. Django's own precedent for the pattern
+is `tests/select_for_update/tests.py` (`connection.copy()`, a thread that closes its connection in
+`finally`, `join(5.0)`) and `tests/get_or_create/tests.py::test_creation_in_transaction`, whose sleeps were
+replaced by `threading.Event` in Django PR #19048 because a sleep let the wrong thread win the race.
+
 ---
 
 ## 2. Client core, `libs/core`
