@@ -48,7 +48,8 @@ What is deliberately not here, each with the issue that owns it: convergence, wh
 clients rather than two flushes of one installation (MAP-23, T2.1, C2); the resync a second axis in
 the response opens (MAP-22); and the cursor a refused flush must not have advanced, which is a
 rollback rather than a race (MAP-46). The harness below is shaped by the one case it carries and
-is private to this module until a second suite reads it (ADR-0007 section 6).
+stays in this module: the root `conftest.py` is where what more than one suite reads belongs
+(ADR-0007 section 6), and a second reader is what would move it there.
 """
 
 import threading
@@ -160,7 +161,7 @@ def _bound_the_wait_and_name_the_backend(session: ASessionInTheRace) -> None:
             "SELECT set_config('lock_timeout', %s, true), pg_backend_pid()",
             [THE_LONGEST_A_LOCK_MAY_BE_WAITED_FOR],
         )
-        session.backend_pid = probe.fetchone()[1]
+        _, session.backend_pid = probe.fetchone()
 
 
 def _wait_for(reached: threading.Event, otherwise: str) -> None:
@@ -232,9 +233,11 @@ def _the_race_for_the_cursor(
     only once the database reports the loser queued behind it, so the order is decided by an answer
     and never by an elapsed duration.
 
-    The browsers are built here rather than in each thread, because two threads sharing one client
-    would share its mutable cookie jar, and a session written on one connection and read on another
-    is the one thing this harness must not have to reason about.
+    The browsers are built here rather than inside each thread, because `a_browser` does database
+    work of its own (`User.objects.get`, then `force_login`), and a thread doing it after its
+    wrapper is installed puts those statements in front of the race, where the instrument would
+    have to learn to ignore them. Each thread still gets one of its own, because a client's cookie
+    jar is mutable and two threads sharing a client would share it.
     """
     winner, loser = ASessionInTheRace("winning"), ASessionInTheRace("losing")
     the_loser_is_at_the_cursor = threading.Event()
@@ -313,8 +316,11 @@ def _the_race_for_the_cursor(
         for thread in reversed(running):
             thread.join(THE_LONGEST_ANY_WAIT_MAY_LAST)
 
-    if winning.is_alive() or losing.is_alive():
-        raise TheRaceWasNotStaged("a flush outlived every bound this harness sets for it")
+    outlived = [flush.name for flush in (winning, losing) if flush.is_alive()]
+    if outlived:
+        raise TheRaceWasNotStaged(
+            f"{' and '.join(outlived)} outlived every bound this harness sets for it"
+        )
     _refuse_a_race_that_did_not_run(winner, loser)
 
     return seen
