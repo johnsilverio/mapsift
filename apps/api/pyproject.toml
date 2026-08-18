@@ -92,11 +92,12 @@ addopts = "-q --strict-markers --strict-config"
 # before any conftest.py loads, which is why the environment has to reach the process from outside
 # (compose supplies it) and cannot be arranged by a fixture.
 DJANGO_SETTINGS_MODULE = "config.settings"
-# The suite-wide net for a hang, and the whole of what this project takes for one: pytest-timeout
-# is refused and this pair replaces it at no dependency (specs/dependencies.md section 1,
-# 2026-08-18). The value is a wide margin over the slowest test measured in this container
-# (0.61 s, 2026-08-18) and, deliberately, over every bound a case sets for itself, because a
-# backstop that fires first replaces that case's own diagnosis with a stack dump.
+# The net for a hang, armed per test item over its setup, call and teardown, and the whole of what
+# this project takes for one: pytest-timeout is refused and this pair replaces it at no dependency
+# (specs/dependencies.md section 1, 2026-08-18). The value is a wide margin over the slowest test
+# measured in this container (0.61 s, 2026-08-18) and, deliberately, over every bound a case sets
+# for itself, because a backstop that fires first replaces that case's own diagnosis with a stack
+# dump.
 faulthandler_timeout = 60
 faulthandler_exit_on_timeout = true
 
