@@ -52,13 +52,22 @@ date. In one sentence each:
    mutant run, and the review runs on all three axes.
 2. The window may strike the one production sentence this task makes false, in `mapsift/sync/services.py`
    beside the cursor upsert, and nothing else in production; the stale sentence in the dedup module's
-   docstring is test code and is the window's own.
+   docstring is test code and is the window's own. **Extended 2026-08-18 at the review, because the count
+   was wrong:** the round falsified **two** sentences, and the second, "No case in this suite catches the
+   swap" above the cursor write in `apply_the_flush`, was measured false by the order-swap mutant at all
+   three axes. The correction round may strike that one too, and still nothing else in production; the
+   nuance (tripped over, not witnessed) is ADR-0004 decision 2's sharpening of 2026-08-18 and no comment
+   restates it.
 3. Failing loudly costs no new dependency: the harness owns bounded waits and a server-side lock timeout
    on the session that races, and the suite-wide backstop is `faulthandler_timeout` with
    `faulthandler_exit_on_timeout` (`specs/dependencies.md` section 1, 2026-08-18).
 4. The harness is shaped by the one case it carries today.
 5. The trace is the one above; T2.1 is a consumer, not the requirement.
 6. Acceptance is the delta below.
+7. **The pre-dispatch spec read did not run for this task, by the owner's waiver of 2026-08-18** (ADR-0008
+   section 9 change 2), after four attempts were stopped; the Spec axis then found the counting defect in
+   decision 2 above, which is the kind of finding that read exists to catch before a window. Recorded here
+   and in `specs/log.md` rather than left to look like an oversight.
 
 ## Evidence handed over
 

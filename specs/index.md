@@ -107,8 +107,9 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     of the path this task builds and nobody has measured it.
   - **`tasks/MAP-43-two-connection-harness.md`** — the suite's first second database connection, and the
     cursor's backwards guard witnessed under a real race rather than read. The first task in this folder
-    whose case is **green against `main` from its first run**, because the guard it witnesses already
-    exists, so red is defined against a mutant and the exit is a run the orchestrator performs; its evidence
+    to write a **new** case that is **green against `main` from its first run** (MAP-45 repointed an
+    existing one), because the guard it witnesses already exists, so red is defined against a mutant and
+    the exit is a run the orchestrator performs; its evidence
     block is a research round transcribed as **readings, dated and sourced**, with the one presence it could
     not verify named as such, and it hands over the fact that shapes the harness (a Python signal cannot reach
     a thread blocked in `execute`, only the server can) while leaving the sequencing mechanism to the window.
