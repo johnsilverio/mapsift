@@ -143,7 +143,8 @@ handed the owner to paste**, in the XML shape of `specs/testing.md` section 1.1,
 `implement` skill and pointing at the task spec. **Show it before you run it.** A dispatch the owner cannot
 read is a briefing nobody reviewed, and the prompt is the most carefully constructed artifact of the loop.
 
-**Use `Agent` with `subagent_type: general-purpose` and `model: opus`**, one call, and let it run in the
+**Use `Agent` with `subagent_type: window` and `model: opus`** (the repository's delegated worker,
+`.claude/agents/window.md`, pinned to Opus; it said `general-purpose` until 2026-08-19), one call, and let it run in the
 background so the session stays usable. The window invokes its own skill; `test` and `implement` carry no
 `disable-model-invocation`, which is what makes that possible and is why this works at all.
 

@@ -12,7 +12,7 @@ in the loop whose artifacts no gate reads, every round since MAP-10 produced a b
 it owned, and four of the seven sat in the task spec, where a window is told by section 1.1 not to question
 handed-over evidence and therefore cannot catch them.
 
-**One `Agent` call, `subagent_type: general-purpose`, `model: opus`.** It is a read, so it never edits.
+**One `Agent` call, `subagent_type: window`, `model: opus`** (`general-purpose` until 2026-08-19). It is a read, so it never edits.
 
 ---
 
