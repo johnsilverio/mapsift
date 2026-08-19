@@ -39,8 +39,8 @@ def _create_tenant_owned_by(owner: User, *, kind: Tenant.Kind, name: str) -> Mem
 def create_workspace(*, workspace_id: UUID, tenant_id: UUID, name: str) -> Workspace:
     """Create a workspace in the tenant already in force, under the identifier handed in (M1, M3).
 
-    Requires a tenant binding and opens none, and the tenant handed in is the row's own value
-    rather than a second authority beside that binding (ADR-0005 sections 3 and 4).
+    Requires a tenant binding and opens none; a `tenant_id` other than the bound one is refused
+    by the policy rather than stored (ADR-0005 sections 3 and 4).
     """
     return Workspace.objects.create(id=workspace_id, tenant_id=tenant_id, name=name)
 
@@ -48,8 +48,8 @@ def create_workspace(*, workspace_id: UUID, tenant_id: UUID, name: str) -> Works
 def create_project(*, project_id: UUID, tenant_id: UUID, workspace_id: UUID, name: str) -> Project:
     """Create a project inside an existing workspace of the tenant in force (M1, M3).
 
-    Requires a tenant binding and opens none, and the tenant handed in is the row's own value
-    rather than a second authority beside that binding (ADR-0005 sections 3 and 4).
+    Requires a tenant binding and opens none; a `tenant_id` other than the bound one is refused
+    by the policy rather than stored (ADR-0005 sections 3 and 4).
     """
     return Project.objects.create(
         id=project_id, tenant_id=tenant_id, workspace_id=workspace_id, name=name
