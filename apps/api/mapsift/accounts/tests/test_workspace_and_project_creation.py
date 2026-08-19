@@ -47,6 +47,32 @@ def test_a_project_is_stored_under_the_identifier_its_caller_minted(alice: Party
         assert Project.objects.filter(pk=minted).exists()
 
 
+def test_a_workspace_is_stored_under_the_name_its_caller_gave(alice: Party) -> None:
+    """M1: the name is part of a workspace's shape, so the row carries what the caller named it
+    rather than the empty value a field with no default lands."""
+    minted = uuid4()
+
+    with tenant_scope(alice.tenant_id):
+        create_workspace(workspace_id=minted, tenant_id=alice.tenant_id, name="Campo")
+
+        assert Workspace.objects.get(pk=minted).name == "Campo"
+
+
+def test_a_project_is_stored_under_the_name_its_caller_gave(alice: Party) -> None:
+    """M1, for the reason and in the shape of the workspace case above."""
+    minted = uuid4()
+
+    with tenant_scope(alice.tenant_id):
+        create_project(
+            project_id=minted,
+            tenant_id=alice.tenant_id,
+            workspace_id=alice.workspace_id,
+            name="Fazenda Boa Vista",
+        )
+
+        assert Project.objects.get(pk=minted).name == "Fazenda Boa Vista"
+
+
 def test_a_workspace_belongs_to_exactly_the_tenant_it_was_created_under(
     alice: Party, bob: Party
 ) -> None:
@@ -100,8 +126,10 @@ def test_a_project_holds_the_workspace_it_was_created_in(alice: Party) -> None:
 def test_a_project_cannot_be_created_under_a_workspace_that_does_not_exist(
     alice: Party,
 ) -> None:
-    """M1, ADR-0005 section 5: the parent is required rather than nullable, and the composite
-    reference is what refuses, which is why the SQLSTATE is named rather than the exception."""
+    """M1: the parent is required rather than nullable, so a project naming a workspace that
+    exists nowhere is refused by referential integrity, named by its SQLSTATE rather than by the
+    exception. Which reference refused is outside what this case sees, because a single-column one
+    would refuse this too."""
     with refused_with(FOREIGN_KEY_VIOLATION), tenant_scope(alice.tenant_id):
         create_project(
             project_id=uuid4(),
@@ -111,15 +139,30 @@ def test_a_project_cannot_be_created_under_a_workspace_that_does_not_exist(
         )
 
 
+def test_a_project_cannot_be_created_under_another_tenants_workspace(
+    alice: Party, bob: Party
+) -> None:
+    """M1, C4, ADR-0005 section 5: the workspace named exists, so a single-column reference is
+    satisfied and only the composite one over (tenant_id, workspace_id) can refuse. Referential
+    integrity bypasses the policy by design, so the wall is not what answers here."""
+    with refused_with(FOREIGN_KEY_VIOLATION), tenant_scope(alice.tenant_id):
+        create_project(
+            project_id=uuid4(),
+            tenant_id=alice.tenant_id,
+            workspace_id=bob.workspace_id,
+            name="borrowed",
+        )
+
+
 def test_creating_a_workspace_with_no_tenant_bound_is_refused_by_the_application_guard() -> None:
-    """C4, N9, ADR-0005 sections 3 and 4: the service requires a binding and opens none, so with
+    """C4, ADR-0005 sections 3 and 4: the service requires a binding and opens none, so with
     none in force it refuses by name instead of writing a row the wall would have to police."""
     with pytest.raises(TenantNotBound):
         create_workspace(workspace_id=uuid4(), tenant_id=uuid4(), name="unbound")
 
 
 def test_creating_a_project_with_no_tenant_bound_is_refused_by_the_application_guard() -> None:
-    """C4, N9, ADR-0005 sections 3 and 4."""
+    """C4, ADR-0005 sections 3 and 4."""
     with pytest.raises(TenantNotBound):
         create_project(
             project_id=uuid4(),
