@@ -27,8 +27,8 @@ from django.db import Error, connection
 from django.middleware.csrf import get_token
 from django.test import Client, RequestFactory
 
-from mapsift.accounts.models import Project, User, Workspace
-from mapsift.accounts.services import create_personal_account
+from mapsift.accounts.models import User
+from mapsift.accounts.services import create_personal_account, create_project, create_workspace
 from mapsift.common.binding import tenant_scope
 
 # ADR-0005 section 3: every policy keys on this column, so carrying it is what puts a table inside
@@ -82,9 +82,9 @@ def _party(email: str, name: str) -> Party:
     workspace_id, project_id = uuid4(), uuid4()
 
     with tenant_scope(membership.tenant_id):
-        Workspace.objects.create(id=workspace_id, tenant_id=membership.tenant_id, name=name)
-        Project.objects.create(
-            id=project_id,
+        create_workspace(workspace_id=workspace_id, tenant_id=membership.tenant_id, name=name)
+        create_project(
+            project_id=project_id,
             tenant_id=membership.tenant_id,
             workspace_id=workspace_id,
             name=name,
@@ -104,8 +104,8 @@ def second_project_of(party: Party) -> UUID:
     project_id = uuid4()
 
     with tenant_scope(party.tenant_id):
-        Project.objects.create(
-            id=project_id,
+        create_project(
+            project_id=project_id,
             tenant_id=party.tenant_id,
             workspace_id=party.workspace_id,
             name="the other project",
