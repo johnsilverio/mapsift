@@ -614,6 +614,23 @@ changed.
 
 ---
 
+- **`sqlparse` 0.5.5 to 0.6.0, raised by Dependabot as a version bump on 2026-08-17 and merged as pull request
+  37 on 2026-08-18; assessed after the fact on 2026-08-19, and the verdict is taken.** The release carries five
+  security fixes by the changelog's own text: three lexer and grouping denial-of-service cases on crafted
+  statements (CVE-2026-59893, CVE-2026-54284, CVE-2026-71491), a quadratic `format(reindent=True)`
+  (GHSA-cfqr-cjx5-5jcm), and unescaped backslashes in the `python` and `php` output formats (CVE-2026-59894).
+  **Exposure here is zero, measured against the image:** `sqlparse` is a transitive dependency of Django 5.2.16
+  and nothing under `apps/api/mapsift` imports it; the pinned Django imports it in four places, of which two are
+  the MySQL and SQLite introspection this backend never loads, one is `django.test.runner`'s debug-SQL
+  formatting, and one is `django/db/backends/base/operations.py`, whose `prepare_sql_script` splits the SQL a
+  `RunSQL` migration or `sqlmigrate` hands it, which is SQL authored in this repository and never a request
+  body. **The remedy is free:** a minor inside Django's `>=0.3.1` range, Python 3.10+ required and 3.13 running,
+  a lockfile-only change, CI green on the pull request. Free remedy for zero exposure is taken for the reason
+  the `hono` entry gives, standing alerts are the noise that hides the next real one. **Re-check trigger:**
+  none needed; the package is not ours to call. **The process note, so it is not repeated:** the merge landed
+  without this entry and the `api` image, which bakes `uv.lock` at build time, ran a gate on the old lock
+  until `just build api` was run on 2026-08-18; a lockfile bump is followed by a rebuild before the next gate.
+
 ## 6. Not chosen yet: the dependency-gated ADR agenda
 
 Each of these is a decision that this survey must feed before it can be made without guessing. They are listed so the agenda is visible in one place.
