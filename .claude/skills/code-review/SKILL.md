@@ -105,8 +105,17 @@ task spec path. The criteria are identical on every review, so writing them fres
 run and lets the copies drift, which is the argument that moved the window protocol's standing discipline
 into `test` and `implement`.
 
-**Three `Agent` calls in one message** so they run concurrently, `subagent_type: general-purpose`, and
-**`model: opus`** on each, because the axes are the judgement half of this loop. Every prompt **ends with
+**Three `Agent` calls in one message** so they run concurrently, `subagent_type: window` (the repository's
+delegated worker, `.claude/agents/window.md`, pinned to Opus; `general-purpose` until 2026-08-19) and
+**`model: opus`** on each, because the axes are the judgement half of this loop.
+
+**An axis reads the tree and never writes to it, and it never shares the test database** (added 2026-08-19,
+ADR-0002 section 5; measured at MAP-47's Window B review, `specs/log.md` trap of that date). A mutant is run
+only through a scratch copy mounted read-only over the container path, the standing instrument since
+MAP-43, never by editing the working tree and restoring it, because another axis reads that tree at the same
+moment. And `pytest` runs with `--create-db` or against a database of the axis's own, because three axes
+sharing `test_mapsift` drop it under each other's runs and produce phantom failures. The three prompts
+carry the sentence; this paragraph is why. Every prompt **ends with
 two instrumentation lines** asking whether the root `CLAUDE.md` was already in context and whether any tool
 call was intercepted. They cost nothing and they are what turns a claim about the harness into a
 measurement.

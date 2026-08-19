@@ -86,6 +86,19 @@ The decision is here. The enforceable restatement is in `.claude/rules/*.md` wit
 > with it: the three judgement axes moved from "separate contexts where available" to **three parallel
 > subagents** with a fixed subagent type and model. That is a mechanism decision and it lives here, with the
 > measurements behind it in ADR-0008 section 4.
+>
+> **Amended 2026-08-19, at the close of MAP-47, on the same mechanism.** Two things moved. **The fixed subagent
+> type is `window`**, a delegated worker pinned to Opus and committed at `.claude/agents/window.md` so the type
+> the skills name exists on every clone and not only where a developer's user-level agents happen to carry it
+> (the owner's decision of 2026-08-18, measured rather than assumed: every subagent request of the MAP-47
+> rounds recorded `claude-opus-5`, 1418 of 1418); the `CLAUDE_CODE_SUBAGENT_MODEL=opus` project setting of the
+> same date stays as the floor for any dispatch that names another type. **And a review axis reads the tree and
+> never writes to it, and never shares the test database**: a mutant runs only through a scratch copy mounted
+> read-only over the container path, and `pytest` runs with `--create-db` or against a database of the axis's
+> own. Measured at MAP-47's Window B review (`specs/log.md` trap of 2026-08-19): one axis ran mutants by editing
+> the working tree and restoring it, another read the mutated file, and three axes sharing `test_mapsift`
+> dropped it under each other's runs. The three axis prompts and the `code-review`, `orchestrate` and
+> spec-read procedures restate this and decide nothing.
 
 ---
 

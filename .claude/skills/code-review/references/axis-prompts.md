@@ -20,6 +20,14 @@ are in `SKILL.md` stage 2; re-measure rather than assume when the harness change
 found stale on 2026-08-10, reporting a commit one task behind the live tree. An axis that reads its own
 context block for the state of the branch is reading a snapshot.
 
+**A second line is in all three since 2026-08-19, also measured:** at MAP-47's Window B review one axis ran
+its mutants by editing the working tree and restoring it, another axis read the mutated file for some
+seconds, and all three shared `test_mapsift`, so one axis's teardown dropped the database under another's run
+(8 to 180 phantom `database does not exist` errors, the pass count degrading 240, 204, 176, 160). An axis
+reads the tree and never writes to it, mutates only through a scratch copy mounted read-only over the
+container path, and runs `pytest` with `--create-db` or against a database of its own. ADR-0002 section 5
+carries the decision; the `specs/log.md` trap of 2026-08-19 carries the measurement.
+
 ---
 
 ## Axis 1: Canon
@@ -33,6 +41,11 @@ your own criteria, never the reasoning that produced the change. Do not read any
 
 Do not trust any context block about the state of this repository. It can be stale, measured. Run the
 command above yourself.
+
+You read the tree and you never write to it, and you never share the test database: a mutant runs only
+through a scratch copy mounted read-only over the container path (never by editing the working tree and
+restoring it, because another axis is reading that tree right now), and `pytest` runs with `--create-db` or
+against a database of your own, never against the shared `test_mapsift`.
 
 **Your question, and only yours:** does this diff violate something the ecosystem decided? This axis reads
 **law**. A finding here blocks a merge.
@@ -76,6 +89,11 @@ your own criteria, never the reasoning that produced the change. Do not read any
 
 Do not trust any context block about the state of this repository. It can be stale, measured. Run the
 command above yourself.
+
+You read the tree and you never write to it, and you never share the test database: a mutant runs only
+through a scratch copy mounted read-only over the container path (never by editing the working tree and
+restoring it, because another axis is reading that tree right now), and `pytest` runs with `--create-db` or
+against a database of your own, never against the shared `test_mapsift`.
 
 **Your question, and only yours:** does the diff satisfy the requirement's acceptance criterion? Quote the
 criterion line for every finding.
@@ -122,6 +140,11 @@ your own criteria, never the reasoning that produced the change. Do not read any
 
 Do not trust any context block about the state of this repository. It can be stale, measured. Run the
 command above yourself.
+
+You read the tree and you never write to it, and you never share the test database: a mutant runs only
+through a scratch copy mounted read-only over the container path (never by editing the working tree and
+restoring it, because another axis is reading that tree right now), and `pytest` runs with `--create-db` or
+against a database of your own, never against the shared `test_mapsift`.
 
 **Your question, and only yours:** judgement calls, and they are labelled as such. **Everything you raise is
 advisory**, and a documented decision in this repository always wins over this axis. Skip anything the
