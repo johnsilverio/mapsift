@@ -1243,6 +1243,7 @@ This section is the PRD's own gap list, kept current so completion is a checked 
 - **The preview-versus-authoritative surface (M5):** deferred to Layer 4, and Layer 4 never received it. No S requirement mentions a preview value.
 - **The panel inventory and the preset layouts:** S8 defers to the design system, U7 defers to K1 and to an ADR, K1 defers to a design decision with the engineer. The loop closes with nobody deciding.
 - **The support matrix and the named reference devices (N11):** the acceptance requires them to live in `specs/dependencies.md`, which exists and does not carry them yet.
+- **Whether a new account is given a first workspace at onboarding** (opened 2026-08-18 at MAP-47's pickup, a product decision): M1 auto-creates the tenant and the owner membership only, A2 creates a project *within* a workspace, and K2's guided start says nothing about the containers a new account holds, so a first workspace is currently created by nobody. If it is ever minted, it is a call to the published `create_workspace` from the account path and never schema; the research behind the pickup (Felt's default project, Figma's reversal on container-less drafts, Mergin Maps' server-side container and client-side leaf) is in `specs/log.md` under 2026-08-18.
 
 **10.7 Acceptance criteria that are not yet falsifiable.** J2 left this list in v0.10 (see 10.2). Three read as tests and are not:
 
