@@ -1,8 +1,12 @@
-"""Creating an account, which is the one write that mints a tenant (M1)."""
+"""The writes on the account tree (M1): minting an account, and the containers below its tenant.
 
-from uuid import uuid4
+Creating an account is the one write here that binds a tenant itself, because it is the one that
+mints it; the rest require a binding already in force (ADR-0005 sections 3 and 4).
+"""
 
-from mapsift.accounts.models import Membership, Tenant, User
+from uuid import UUID, uuid4
+
+from mapsift.accounts.models import Membership, Project, Tenant, User, Workspace
 from mapsift.common.binding import tenant_scope
 
 
@@ -30,3 +34,19 @@ def _create_tenant_owned_by(owner: User, *, kind: Tenant.Kind, name: str) -> Mem
             # T6.3: an owner requires a full editing licence, so this is not a default to pick.
             licence=Membership.Licence.EDITOR,
         )
+
+
+def create_workspace(*, workspace_id: UUID, tenant_id: UUID, name: str) -> Workspace:
+    """Create a workspace in the tenant already in force, under the identifier handed in (M1, M3).
+
+    Requires a tenant binding and opens none (ADR-0005 sections 3 and 4).
+    """
+    raise NotImplementedError
+
+
+def create_project(*, project_id: UUID, tenant_id: UUID, workspace_id: UUID, name: str) -> Project:
+    """Create a project inside an existing workspace of the tenant in force (M1, M3).
+
+    Requires a tenant binding and opens none (ADR-0005 sections 3 and 4).
+    """
+    raise NotImplementedError
