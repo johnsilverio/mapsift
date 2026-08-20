@@ -123,11 +123,12 @@ def _a_contiguous_queue_of(
 
     **Local rather than hoisted into `conftest.py`, which is the opposite of what that file argues
     for its connection instruments, and the difference is the count of spellings.** This package
-    holds several queue arrangers whose names and signatures differ, each documented as named apart
-    on purpose, and every other module holding one is outside this task's scope. A shared home
-    would therefore gain another spelling rather than lose one, which is the failure the rule
-    exists against; `conftest.py` holds the per-operation arrangers this builds on for the reason
-    that does apply, which is that every module needs those and they have one shape.
+    holds six functions minting a whole batch body from operation identifiers, under four names and
+    five signatures (counted 2026-08-20), each documented as named apart on purpose, and every other
+    module holding one is outside this task's scope. A shared home would therefore add a spelling
+    rather than remove one, because the five in other modules stay where they are, which is the
+    failure the rule exists against; `conftest.py` holds the per-operation arrangers this builds on
+    for the reason that does apply, which is that every module needs those and they have one shape.
     """
     return {
         "operations": [
