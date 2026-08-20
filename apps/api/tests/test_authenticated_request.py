@@ -31,10 +31,12 @@ was found.
 **Every batch here that expects to be accepted names a real project of the tenant it claims**, added
 at MAP-39, and the arrange is where that is said rather than any assertion. A flush now carries a
 second claim verified after the binding (ADR-0010 decision 6's addition of 2026-08-20), so a batch
-sporting a random project identifier off the conftest helpers' default is refused, and the cases
-below that assert only which bindings were opened would have gone on passing while the request they
-witness had quietly stopped being an accepted one. That is the failure this file's own
-discrimination rule exists against, arriving through the arrange instead of through the act.
+that takes the conftest helpers' default project, which is a fresh random identifier, is refused,
+and the cases below would have gone on passing on their binding assertions alone while the request
+they witness had quietly stopped being an accepted one. Each of those cases now carries the status
+assertion beside its binding ones (the MAP-39 correction round), so the request going refused fails
+the case instead of passing it quietly. That is the failure this file's own discrimination rule
+exists against, arriving through the arrange instead of through the act.
 
 **What this suite cannot prove, stated so it is not mistaken for coverage.** The Django test client
 is same-process: it exercises neither the origin nor the cookie over the wire, so the same-origin
@@ -179,8 +181,9 @@ def test_the_wall_is_bound_to_the_session_user_and_never_to_a_field_of_the_reque
     her_queue = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, her_queue, JSON)
+        response = browser.post(OPERATIONS_PATH, her_queue, JSON)
 
+    assert response.status_code == HTTPStatus.OK
     assert bindings.users == [alice.user_id]
 
 
@@ -194,8 +197,9 @@ def test_the_tenant_reaches_its_binding_as_a_parameter_and_never_as_statement_te
     her_queue = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, her_queue, JSON)
+        response = browser.post(OPERATIONS_PATH, her_queue, JSON)
 
+    assert response.status_code == HTTPStatus.OK
     assert bindings.tenants == [alice.tenant_id]
     assert bindings.interpolated == []
 
@@ -206,18 +210,21 @@ def test_the_binding_a_request_opened_is_transaction_scoped_and_does_not_survive
     """ADR-0005 section 3, measurements C and D: Django holds a connection open across requests, so
     a session-scoped binding reaches the next request on it, which may belong to another tenant.
 
-    Three assertions and one behaviour, because the arm that catches measurement D is invisible on
+    Four assertions and one behaviour, because the arm that catches measurement D is invisible on
     its own twice over. `session_scoped` is empty for a request that bound nothing at all, so the
-    first line is what makes the second mean something; and the parameter already answers the empty
+    tenant line is what makes it mean something; and the parameter already answers the empty
     string before the act, because the arrange step's own `tenant_scope` defined it and let it
     revert (measured 2026-08-07: an untouched parameter answers NULL, this one answers ''), so the
-    third line cannot tell a correct request from one that bound nothing either."""
+    parameter line cannot tell a correct request from one that bound nothing either. The status is
+    the fourth arm and the first line, and a request refused after its binding was opened satisfies
+    all three of the others, which is the shape the project claim introduced (MAP-39)."""
     browser = a_browser(authenticated_as=alice.user_id)
     her_queue = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, her_queue, JSON)
+        response = browser.post(OPERATIONS_PATH, her_queue, JSON)
 
+    assert response.status_code == HTTPStatus.OK
     assert bindings.tenants == [alice.tenant_id]
     assert bindings.session_scoped == []
     assert _the_tenant_parameter_now() == REVERTED_WITH_ITS_TRANSACTION
@@ -327,8 +334,9 @@ def test_a_principal_holding_two_tenants_binds_the_one_this_request_claims() -> 
     )
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, on_the_organization, JSON)
+        response = browser.post(OPERATIONS_PATH, on_the_organization, JSON)
 
+    assert response.status_code == HTTPStatus.OK
     assert bindings.tenants == [organization.tenant_id]
 
 
@@ -343,8 +351,9 @@ def test_the_same_principal_binds_its_other_tenant_when_that_is_what_the_request
     )
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, on_the_personal_tenant, JSON)
+        response = browser.post(OPERATIONS_PATH, on_the_personal_tenant, JSON)
 
+    assert response.status_code == HTTPStatus.OK
     assert bindings.tenants == [personal.tenant_id]
 
 
