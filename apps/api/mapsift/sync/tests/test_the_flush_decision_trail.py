@@ -45,11 +45,12 @@ refusals below have no seam but the route in any case.
 
 **A record emitted inside a transaction that later rolls back does survive it, measured 2026-08-17
 and now written into ADR-0011 section 4.** The cases arranging an answer raised inside a binding and
-taken outside it are the gap, the unbacked claim, the failure nobody planned for, the operation that
-failure is reached from, the flush that deduplicated before it failed, and the commit that never
-went through, which is the shape that cost MAP-45 three docstrings on 2026-08-14, two corrected and
-one struck. Every one of them but the last decides what the path emitted without reading a durable
-store at all: the capture takes each line **as the handler is asked to write it**, which is the same
+taken outside it are the gap, the unbacked tenant claim, the unbacked project claim, the failure
+nobody planned for, the operation that failure is reached from, the flush that deduplicated before
+it failed, and the commit that never went through, which is the shape that cost MAP-45 three
+docstrings on 2026-08-14, two corrected and one struck. Every one of them but the last decides what
+the path emitted without reading a durable store at all: the capture takes each line **as the
+handler is asked to write it**, which is the same
 witness-it-as-it-runs instrument MAP-45 landed on. The commit that never went through does read the
 store, as a **control** rather than as a trail, because the whole of what it asserts is that a
 record claimed a state the store does not hold.
@@ -579,6 +580,40 @@ def test_a_claim_the_principal_cannot_back_is_recorded_though_the_client_is_told
             _a_contiguous_queue_of(uuid4(), by=alice, from_installation=uuid4(), starting_at=0),
             JSON,
         )
+
+    recorded = _the_records_of(REQUEST_REFUSED, the_documents_of(emitted))
+
+    assert refused.status_code == HTTPStatus.NOT_FOUND
+    assert _the_field_each_record_carries(STATUS, recorded) == [HTTPStatus.NOT_FOUND]
+    assert "" not in _the_reasons_recorded(recorded)
+
+
+def test_a_project_claim_the_verified_tenant_cannot_back_is_recorded_though_it_too_says_nothing(
+    alice: Party, bob: Party
+) -> None:
+    """N9's every-refusal clause on the second answer this route keeps silent on purpose, and the
+    mirror of the case above rather than a repetition of it. That one refuses a **tenant** claim
+    before anything binds; this one refuses a **project** claim from a principal whose tenant claim
+    was good, after the binding and before the cursor is read (ADR-0010 decision 6's addition of
+    2026-08-20). Two mechanisms, one status, one empty body, so the record is the only thing that
+    can ever tell a support desk which of them answered.
+
+    **The reason is therefore asserted present rather than only the status**, for the reason its
+    sibling gives: a record carrying the status alone reproduces in the trail exactly the silence
+    the body is required to keep. What the reason *says* is not pinned to a literal, because
+    ADR-0011 section 4 closes the field names and the event names and leaves the 404's reason value
+    to the window that emits it, and it is read through `_the_reasons_recorded` because an absent
+    field raises before the status assertion could show anything and a null one reads as `"None"`.
+
+    The status is the positive control and it separates this refusal from the two it stands beside:
+    a malformed batch answers 422 and never reaches the verification at all."""
+    browser = a_browser(authenticated_as=alice.user_id)
+    on_a_project_of_bobs = {
+        "operations": [a_feature_create_claiming(alice.tenant_id, project_id=bob.project_id)]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        refused = browser.post(OPERATIONS_PATH, on_a_project_of_bobs, JSON)
 
     recorded = _the_records_of(REQUEST_REFUSED, the_documents_of(emitted))
 
