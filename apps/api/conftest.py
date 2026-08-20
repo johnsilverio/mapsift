@@ -77,18 +77,28 @@ class Party:
     email: str
 
 
-def _party(email: str, name: str) -> Party:
-    membership = create_personal_account(email=email)
+def a_project_under_a_new_workspace_of(tenant_id: UUID, *, named: str) -> tuple[UUID, UUID]:
+    """A fresh workspace and one project inside it, through the services that publish them (M1).
+
+    Answers with the two identifiers in tree order, the workspace and then the project it holds.
+    A tenant built through the account services holds nothing below its membership, and a batch a
+    flush is meant to accept has to name a project the verified tenant really holds (ADR-0010
+    decision 6's addition of 2026-08-20), so a suite that builds a tenant inline runs this too.
+    """
     workspace_id, project_id = uuid4(), uuid4()
 
-    with tenant_scope(membership.tenant_id):
-        create_workspace(workspace_id=workspace_id, tenant_id=membership.tenant_id, name=name)
+    with tenant_scope(tenant_id):
+        create_workspace(workspace_id=workspace_id, tenant_id=tenant_id, name=named)
         create_project(
-            project_id=project_id,
-            tenant_id=membership.tenant_id,
-            workspace_id=workspace_id,
-            name=name,
+            project_id=project_id, tenant_id=tenant_id, workspace_id=workspace_id, name=named
         )
+
+    return workspace_id, project_id
+
+
+def _party(email: str, name: str) -> Party:
+    membership = create_personal_account(email=email)
+    workspace_id, project_id = a_project_under_a_new_workspace_of(membership.tenant_id, named=name)
 
     return Party(
         user_id=membership.user_id,

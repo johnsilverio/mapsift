@@ -31,7 +31,7 @@ was found.
 **Every batch here that expects to be accepted names a real project of the tenant it claims**, added
 at MAP-39, and the arrange is where that is said rather than any assertion. A flush now carries a
 second claim verified after the binding (ADR-0010 decision 6's addition of 2026-08-20), so a batch
-sorting a random project identifier off the conftest helpers' default is refused, and the cases
+sporting a random project identifier off the conftest helpers' default is refused, and the cases
 below that assert only which bindings were opened would have gone on passing while the request they
 witness had quietly stopped being an accepted one. That is the failure this file's own
 discrimination rule exists against, arriving through the arrange instead of through the act.
@@ -56,15 +56,10 @@ from conftest import (
     Party,
     a_browser,
     a_feature_create_claiming,
+    a_project_under_a_new_workspace_of,
     bindings_opened,
 )
-from mapsift.accounts.services import (
-    create_organization_account,
-    create_personal_account,
-    create_project,
-    create_workspace,
-)
-from mapsift.common.binding import tenant_scope
+from mapsift.accounts.services import create_organization_account, create_personal_account
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -94,26 +89,14 @@ def a_batch_of_one_tenant_claiming(tenant_id: UUID, *project_ids: UUID) -> JsonO
 
 
 def _a_project_of(tenant_id: UUID) -> UUID:
-    """A workspace and a project inside a tenant, through the services that publish them (M1).
+    """A project a tenant really holds, for the two cases that build their tenants inline.
 
-    The two cases that build their tenants inline get nothing below the membership from the account
-    services, so a batch of theirs has no real project to name until one is made here. Called in the
-    arrange and never inside `bindings_opened`, which records every binding opened in its block and
-    would otherwise report this one beside the request's.
+    Those get nothing below the membership from the account services, so a batch of theirs has no
+    real project to name until one is made here. Called in the arrange and never inside
+    `bindings_opened`, which records every binding opened in its block and would otherwise report
+    this one beside the request's.
     """
-    workspace_id, project_id = uuid4(), uuid4()
-
-    with tenant_scope(tenant_id):
-        create_workspace(
-            workspace_id=workspace_id, tenant_id=tenant_id, name="a workspace of this tenant"
-        )
-        create_project(
-            project_id=project_id,
-            tenant_id=tenant_id,
-            workspace_id=workspace_id,
-            name="a project of this tenant",
-        )
-
+    _, project_id = a_project_under_a_new_workspace_of(tenant_id, named="a project of this tenant")
     return project_id
 
 
