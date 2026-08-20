@@ -8,7 +8,10 @@ from django.http import Http404
 from ninja import Router, Schema, Status
 from pydantic import PrivateAttr, model_validator
 
-from mapsift.accounts.selectors import the_session_user_holds_a_membership_in
+from mapsift.accounts.selectors import (
+    the_bound_tenant_holds_the_project,
+    the_session_user_holds_a_membership_in,
+)
 from mapsift.common.binding import tenant_scope, user_scope
 from mapsift.common.decision_trail import (
     TheDecisionARecordNames,
@@ -32,6 +35,7 @@ router = Router(tags=["sync"])
 # Not a `WhyAStreamCannotBeContinued`: that set is the 409's wire contract and this value is a
 # record's alone, which ADR-0011 section 4 leaves open where a refusal has no upstream set.
 NO_MEMBERSHIP_IN_THE_TENANT_CLAIMED = "no_membership_in_the_tenant_claimed"
+NO_PROJECT_IN_THE_TENANT_VERIFIED = "no_project_in_the_tenant_verified"
 
 
 class OperationBatch(Schema):
@@ -58,6 +62,11 @@ class OperationBatch(Schema):
     def tenant_claimed(self) -> UUID:
         """The one tenant every operation in this batch addresses, read where it was validated."""
         return self._stream_claimed.tenant_id
+
+    @property
+    def project_claimed(self) -> UUID:
+        """The one project every operation in this batch addresses, read where it was validated."""
+        return self._stream_claimed.project_id
 
     @property
     def client_claimed(self) -> UUID:
@@ -105,6 +114,7 @@ def flush_operations(
         # landing above the comparison.
         try:
             with tenant_scope(batch.tenant_claimed):
+                _refuse_a_project_the_verified_tenant_does_not_hold(batch.project_claimed)
                 applied = apply_the_flush(batch.operations)
         except ThisStreamCannotBeContinued as refusal:
             record_the_decision(
@@ -133,4 +143,18 @@ def _refuse_a_claim_this_principal_cannot_back(tenant_id: UUID) -> None:
     )
     # Bare: any message here tells this answer apart from the one a tenant that never existed
     # earns, and that difference is the leak (T6.5).
+    raise Http404
+
+
+def _refuse_a_project_the_verified_tenant_does_not_hold(project_id: UUID) -> None:
+    if the_bound_tenant_holds_the_project(project_id):
+        return
+
+    record_the_decision(
+        TheDecisionARecordNames.REQUEST_REFUSED,
+        status=HTTPStatus.NOT_FOUND,
+        reason=NO_PROJECT_IN_THE_TENANT_VERIFIED,
+    )
+    # Bare for the reason the sibling above is, on the project axis (T6.5, ADR-0010 decision 6's
+    # addition of 2026-08-20).
     raise Http404
