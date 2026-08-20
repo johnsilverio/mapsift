@@ -50,10 +50,10 @@ nobody planned for, the operation that failure is reached from, the flush that d
 it failed, and the commit that never went through, which is the shape that cost MAP-45 three
 docstrings on 2026-08-14, two corrected and one struck. Every one of them but the last decides what
 the path emitted without reading a durable store at all: the capture takes each line **as the
-handler is asked to write it**, which is the same
-witness-it-as-it-runs instrument MAP-45 landed on. The commit that never went through does read the
-store, as a **control** rather than as a trail, because the whole of what it asserts is that a
-record claimed a state the store does not hold.
+handler is asked to write it**, which is the same witness-it-as-it-runs instrument MAP-45 landed
+on. The commit that never went through does read the store, as a **control** rather than as a
+trail, because the whole of what it asserts is that a record claimed a state the store does not
+hold.
 """
 
 from collections.abc import Iterator, Sequence
@@ -123,9 +123,9 @@ def _a_contiguous_queue_of(
 
     **Local rather than hoisted into `conftest.py`, which is the opposite of what that file argues
     for its connection instruments, and the difference is the count of spellings.** This package
-    holds four queue arrangers under three names and three signatures, each documented as named
-    apart on purpose, and every other module holding one is outside this task's scope. A shared
-    home would therefore gain a fifth spelling rather than lose one, which is the failure the rule
+    holds several queue arrangers whose names and signatures differ, each documented as named apart
+    on purpose, and every other module holding one is outside this task's scope. A shared home
+    would therefore gain another spelling rather than lose one, which is the failure the rule
     exists against; `conftest.py` holds the per-operation arrangers this builds on for the reason
     that does apply, which is that every module needs those and they have one shape.
     """
@@ -595,8 +595,8 @@ def test_a_project_claim_the_verified_tenant_cannot_back_is_recorded_though_it_t
     mirror of the case above rather than a repetition of it. That one refuses a **tenant** claim
     before anything binds; this one refuses a **project** claim from a principal whose tenant claim
     was good, after the binding and before the cursor is read (ADR-0010 decision 6's addition of
-    2026-08-20). Two mechanisms, one status, one empty body, so the record is the only thing that
-    can ever tell a support desk which of them answered.
+    2026-08-20). Two mechanisms, one status, one constant body, so the record is the only thing
+    that can ever tell a support desk which of them answered.
 
     **The reason is therefore asserted present rather than only the status**, for the reason its
     sibling gives: a record carrying the status alone reproduces in the trail exactly the silence

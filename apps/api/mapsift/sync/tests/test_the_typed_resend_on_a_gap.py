@@ -32,9 +32,11 @@ What is deliberately not here, each with the issue that owns it: the cursor's ex
 and how a client rehandshakes after being told the server holds none (MAP-42), so nothing below
 collects a cursor and the absent one is simply an installation the server has never met; the
 two-connection harness (MAP-43), so no case here needs two concurrent flushes; the per-project
-version in the response (MAP-22); the check that a batch's project belongs to the verified tenant
-(MAP-39); and every client half of this axis, which is minting the clientID, persisting the queue,
-advancing from the echo and reacting to either refusal (MAP-15, MAP-17, MAP-19).
+version in the response (MAP-22); the check that a batch's project belongs to the verified tenant,
+which landed at MAP-39 and is `test_the_project_claim_on_the_flush_path.py`'s, including the case
+pinning that it is taken before the cursor this module is about is ever read; and every client half
+of this axis, which is minting the clientID, persisting the queue, advancing from the echo and
+reacting to either refusal (MAP-15, MAP-17, MAP-19).
 """
 
 from http import HTTPStatus
