@@ -90,7 +90,7 @@ def test_a_logged_entry_replays_the_operation_its_client_authored(alice: Party) 
     starves MAP-12, whose dedup reads the clientID and the mutation number off them. The whole
     envelope is asserted through the generated reader rather than field by field, because a
     field-by-field assertion pins the fields somebody remembered."""
-    authored = a_feature_create_claiming(alice.tenant_id)
+    authored = a_feature_create_claiming(alice.tenant_id, project_id=alice.project_id)
     browser = a_browser(authenticated_as=alice.user_id)
 
     browser.post(OPERATIONS_PATH, {"operations": [authored]}, JSON)
@@ -108,7 +108,7 @@ def test_a_logged_entry_replays_the_catalogs_other_operation_with_its_payload(
     structurally different targets and only this one carries a payload, so an entry shaped around
     `feature.create` drops the geometry of a `feature.geometry.set` while the case above stays
     green, which is exactly the log MAP-11's replay could not read back."""
-    authored = a_geometry_set_claiming(alice.tenant_id)
+    authored = a_geometry_set_claiming(alice.tenant_id, project_id=alice.project_id)
     browser = a_browser(authenticated_as=alice.user_id)
 
     browser.post(OPERATIONS_PATH, {"operations": [authored]}, JSON)

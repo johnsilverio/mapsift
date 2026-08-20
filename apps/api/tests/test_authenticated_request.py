@@ -28,6 +28,14 @@ the parser does with a statement it cannot parse. Deleting either arm of the rec
 failures; deleting neither costs none, which is how the gap in the first version of this paragraph
 was found.
 
+**Every batch here that expects to be accepted names a real project of the tenant it claims**, added
+at MAP-39, and the arrange is where that is said rather than any assertion. A flush now carries a
+second claim verified after the binding (ADR-0010 decision 6's addition of 2026-08-20), so a batch
+sorting a random project identifier off the conftest helpers' default is refused, and the cases
+below that assert only which bindings were opened would have gone on passing while the request they
+witness had quietly stopped being an accepted one. That is the failure this file's own
+discrimination rule exists against, arriving through the arrange instead of through the act.
+
 **What this suite cannot prove, stated so it is not mistaken for coverage.** The Django test client
 is same-process: it exercises neither the origin nor the cookie over the wire, so the same-origin
 premise ADR-0010 decision 2 rests on is out of reach here and is MAP-20's to prove.
@@ -50,7 +58,13 @@ from conftest import (
     a_feature_create_claiming,
     bindings_opened,
 )
-from mapsift.accounts.services import create_organization_account, create_personal_account
+from mapsift.accounts.services import (
+    create_organization_account,
+    create_personal_account,
+    create_project,
+    create_workspace,
+)
+from mapsift.common.binding import tenant_scope
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -77,6 +91,30 @@ def a_batch_of_one_tenant_claiming(tenant_id: UUID, *project_ids: UUID) -> JsonO
             for project_id in project_ids
         ]
     }
+
+
+def _a_project_of(tenant_id: UUID) -> UUID:
+    """A workspace and a project inside a tenant, through the services that publish them (M1).
+
+    The two cases that build their tenants inline get nothing below the membership from the account
+    services, so a batch of theirs has no real project to name until one is made here. Called in the
+    arrange and never inside `bindings_opened`, which records every binding opened in its block and
+    would otherwise report this one beside the request's.
+    """
+    workspace_id, project_id = uuid4(), uuid4()
+
+    with tenant_scope(tenant_id):
+        create_workspace(
+            workspace_id=workspace_id, tenant_id=tenant_id, name="a workspace of this tenant"
+        )
+        create_project(
+            project_id=project_id,
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            name="a project of this tenant",
+        )
+
+    return project_id
 
 
 def _the_tenant_parameter_now() -> str | None:
@@ -140,9 +178,10 @@ def test_a_claim_the_principal_holds_is_accepted_and_binds_exactly_that_tenant(
     """C4, ADR-0005 section 3: the binding is made once per request, and the value it carries is
     the one the envelope claimed and the principal was proven to hold."""
     browser = a_browser(authenticated_as=alice.user_id)
+    her_queue = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     with bindings_opened() as bindings:
-        response = browser.post(OPERATIONS_PATH, a_batch_claiming(alice.tenant_id), JSON)
+        response = browser.post(OPERATIONS_PATH, her_queue, JSON)
 
     assert response.status_code == HTTPStatus.OK
     assert bindings.tenants == [alice.tenant_id]
@@ -154,9 +193,10 @@ def test_the_wall_is_bound_to_the_session_user_and_never_to_a_field_of_the_reque
     """T5.1, C13, ADR-0005 section 8: the user binding is what makes the login question answerable
     before a tenant exists, and the identity it carries is the session's, not the client's."""
     browser = a_browser(authenticated_as=alice.user_id)
+    her_queue = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, a_batch_claiming(alice.tenant_id), JSON)
+        browser.post(OPERATIONS_PATH, her_queue, JSON)
 
     assert bindings.users == [alice.user_id]
 
@@ -168,9 +208,10 @@ def test_the_tenant_reaches_its_binding_as_a_parameter_and_never_as_statement_te
     and is not revocable, so an injection on the binding path re-binds the tenant and the wall does
     not stop it. Parameterising the statement is the control, not the tidier spelling."""
     browser = a_browser(authenticated_as=alice.user_id)
+    her_queue = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, a_batch_claiming(alice.tenant_id), JSON)
+        browser.post(OPERATIONS_PATH, her_queue, JSON)
 
     assert bindings.tenants == [alice.tenant_id]
     assert bindings.interpolated == []
@@ -189,9 +230,10 @@ def test_the_binding_a_request_opened_is_transaction_scoped_and_does_not_survive
     revert (measured 2026-08-07: an untouched parameter answers NULL, this one answers ''), so the
     third line cannot tell a correct request from one that bound nothing either."""
     browser = a_browser(authenticated_as=alice.user_id)
+    her_queue = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, a_batch_claiming(alice.tenant_id), JSON)
+        browser.post(OPERATIONS_PATH, her_queue, JSON)
 
     assert bindings.tenants == [alice.tenant_id]
     assert bindings.session_scoped == []
@@ -282,7 +324,7 @@ def test_one_body_is_accepted_for_the_principal_holding_the_tenant_and_not_for_t
 ) -> None:
     """T5.1, C13, I10: the answer is a function of the authenticated session and never of a field
     the request supplied, which one body sent by two principals is what proves."""
-    body = a_batch_claiming(alice.tenant_id)
+    body = a_batch_of_one_tenant_claiming(alice.tenant_id, alice.project_id)
 
     for_alice = a_browser(authenticated_as=alice.user_id).post(OPERATIONS_PATH, body, JSON)
     for_bob = a_browser(authenticated_as=bob.user_id).post(OPERATIONS_PATH, body, JSON)
@@ -297,9 +339,12 @@ def test_a_principal_holding_two_tenants_binds_the_one_this_request_claims() -> 
     personal = create_personal_account(email="ana@example.com")
     organization = create_organization_account(name="Acme Ambiental", owner=personal.user)
     browser = a_browser(authenticated_as=personal.user_id)
+    on_the_organization = a_batch_of_one_tenant_claiming(
+        organization.tenant_id, _a_project_of(organization.tenant_id)
+    )
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, a_batch_claiming(organization.tenant_id), JSON)
+        browser.post(OPERATIONS_PATH, on_the_organization, JSON)
 
     assert bindings.tenants == [organization.tenant_id]
 
@@ -310,9 +355,12 @@ def test_the_same_principal_binds_its_other_tenant_when_that_is_what_the_request
     personal = create_personal_account(email="ana@example.com")
     create_organization_account(name="Acme Ambiental", owner=personal.user)
     browser = a_browser(authenticated_as=personal.user_id)
+    on_the_personal_tenant = a_batch_of_one_tenant_claiming(
+        personal.tenant_id, _a_project_of(personal.tenant_id)
+    )
 
     with bindings_opened() as bindings:
-        browser.post(OPERATIONS_PATH, a_batch_claiming(personal.tenant_id), JSON)
+        browser.post(OPERATIONS_PATH, on_the_personal_tenant, JSON)
 
     assert bindings.tenants == [personal.tenant_id]
 
