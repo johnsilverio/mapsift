@@ -20,7 +20,7 @@ half).
 **Inside the wall a project of another tenant and a project that never existed are one silence by
 construction**, so T6.5's indistinguishability is the mechanism here rather than something defended
 against it. That is also what makes the positive case load-bearing: this refusal shares its status
-and its empty body with the tenant claim's, so every refusal below is satisfied by a verification
+and its constant body with the tenant claim's, so every refusal below is satisfied by a verification
 that refuses everything, and
 `test_a_project_the_verified_tenant_holds_is_addressable_by_its_member` is the only line that says
 otherwise.
