@@ -97,9 +97,9 @@ class FlushRefusal(Schema):
 def flush_operations(
     request: AuthenticatedRequest, batch: OperationBatch
 ) -> Status[FlushAcknowledgement] | Status[FlushRefusal]:
-    """Append a batch to the operation log under a tenant claim the principal holds, and answer
-    with the number this installation has now had applied, or with why its stream could not be
-    continued here (M15, T2.3, M10, M4)."""
+    """Append a batch to the operation log under a tenant claim the principal holds and a project
+    that tenant holds, and answer with the number this installation has now had applied, or with
+    why its stream could not be continued here (M15, T2.3, M10, M4)."""
     with (
         correlated_by(
             tenant_id=batch.tenant_claimed,
