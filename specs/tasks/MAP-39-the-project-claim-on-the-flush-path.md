@@ -75,7 +75,11 @@ section 9), restated here rather than closed at this pickup.
    site, through the file's own `a_batch_of_one_tenant_claiming` or an explicit argument; the
    `a_batch_claiming` helper's own default is not edited, because among its callers are the disagreement
    cases ADR-0010 decision 6's additions of 2026-08-11 and 2026-08-13 say an implementing window may not
-   edit.
+   edit. *(Note of 2026-08-20, after the Window B review: "changing no assertion anywhere" bound this
+   pinning pass, which changed none. The correction round the review ordered then gave the same five cases
+   a status assertion each, measured blind without it by two mutants; that round's authorization and
+   measurements are in `specs/log.md` under this date, and the two texts are a sequence rather than a
+   contradiction.)*
 3. Acceptance is the delta below; the issue's Acceptance block is a copy of T6.5 and T6.4 and the delta
    replaces it for the windows' reading. The issue itself stays as it is: ADR-0008 section 9 keeps a Linear
    issue's acceptance copied from the requirement.
@@ -103,7 +107,8 @@ Five more cases in `tests/test_authenticated_request.py` post an unpinned single
 only what was bound (lines 151, 164, 179, 294 and 307); three run on `alice`, and the two at 294 and
 307 hold no project to pin, as boundary decision 2 records. They stay green under the new check, because the
 binding they witness precedes it, and they stop witnessing an accepted request without any assertion
-noticing; boundary decision 2 reaches them for that reason. Every other post to the route, in this file and
+noticing; boundary decision 2 reaches them for that reason. *(The noticing half was closed by the
+correction round of 2026-08-20: each of the five now asserts the status it witnesses.)* Every other post to the route, in this file and
 in every other module, either pins `by.project_id` or a `second_project_of` row, or expects a refusal (a
 credential, CSRF or not-found case, or a 422 at the Pydantic boundary) that fires before this check can
 run. Window A re-verifies by running the suite and reports the actual red
