@@ -66,9 +66,10 @@ from conftest import (
     a_feature_create_claiming,
     second_project_of,
     statements_reaching,
+    the_writes_among,
 )
 from mapsift.common.binding import tenant_scope
-from mapsift.sync.models import OperationLogEntry, ProjectVersionCounter
+from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -228,6 +229,41 @@ def test_a_flush_answers_with_the_last_mutation_number_it_applied(alice: Party) 
     )
 
     assert response.json() == {THE_ECHO: 2}
+
+
+def test_an_applied_flush_writes_this_installations_cursor(alice: Party) -> None:
+    """T2.3 and C12 with M4, the storage side of the case above: the echo is the only thing a
+    client advances from, and the server can only echo on the next flush what it kept on this one,
+    so an applied flush has to leave that row written. **Already true and already covered
+    indirectly**, by the dedup this module witnesses throughout, which a server keeping no cursor
+    cannot deliver at all; this case introduces no criterion and pins no product guarantee this
+    module did not already carry.
+
+    **It is here to arm `the_writes_among`, and the false green it closes was reproduced twice
+    before it could reach `main`.** Measured 2026-08-20, before this case existed, with that
+    helper's body replaced by `return []` through a scratch `conftest.py` mounted over the
+    container path: the whole suite stayed green at 247 passed, and against a server advancing the
+    cursor **before** refusing a gap the module reading it stayed green at 7 passed as well. That
+    is the exact defect `test_a_refused_flush_leaves_this_installations_cursor_where_it_was`
+    (`test_the_typed_resend_on_a_gap.py`) exists to close, reproduced one layer down in the
+    instrument that case reads, and a witness nothing can make fail is not one.
+
+    **The assertion is that a write happened and deliberately not that exactly one did.** The
+    cursor being raised in a single statement of its own is ADR-0004 decision 2's extension of
+    2026-08-11, with reasons of its own about which row is contended and for how long, so counting
+    here would fold a second behaviour into a case about something else.
+
+    **Here rather than beside the case it arms**, on the precedent the sibling instrument already
+    set: `statements_reaching` is kept honest by `test_project_version_allocation.py`'s lock count,
+    in the module whose subject is the write, while the two cases reading it for an *absence* sit
+    in this module and in the gap module and ride on that one. The subject here is the server's
+    memory of how far this installation got, which is this module's first line."""
+    browser = a_browser(authenticated_as=alice.user_id)
+
+    with statements_reaching(ClientCursor._meta.db_table) as reaching_the_cursors_table:
+        _the_server_took(browser, _a_queue_of([uuid4()], by=alice, from_installation=uuid4()))
+
+    assert the_writes_among(reaching_the_cursors_table) != []
 
 
 def test_a_batch_the_cursor_has_already_seen_appends_nothing_to_the_log(alice: Party) -> None:
