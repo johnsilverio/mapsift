@@ -151,6 +151,11 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     resync-cursor hole it exposed in PRD M10, in two stages (the database ordering strategy first, with a negative
     control that had to catch the known sequence trap, then the protocol loop under deliberate chaos). The plan
     stays on disk so a reader can check that what ran is what was planned; the decision lives in ADR-0004.
+  - **`spikes/map-50-projection-strategy/`** — not a spike plan but the **experiment** behind ADR-0012: the
+    parameterised fixture, the compared queries, the known-wrong variant and the negative control that grades
+    it. Kept because a decision resting on a measurement should be re-runnable, which SP-1's throwaway-harness
+    rule covers for the code and not for the result; ADR-0004 promised result files that exist nowhere, and
+    MAP-54 is where that gap is settled for the canon rather than per ADR.
 - **`testing.md`** — the canonical method document: Red/Green/Refactor in two clean-context windows, behaviour over
   implementation, the decision-versus-effect split that makes it possible, the kinds of test in this project
   (including the shared cross-runtime golden corpus and why measurements are not CI gates), where tests live,
@@ -253,3 +258,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     to add their own decisions). It reverses
     the dependency survey's own leaning and carries the reason: `django-structlog` requires `django-ipware`
     and binds the client address by default, which is the data the requirement exists to keep out.
+  - **`adr/0012-the-operation-log-projection-strategy.md`** — how the current state the application reads is
+    materialized from the append-only log, and where the applied server half is stored. Closes the
+    materialization half of M15's `Open / ADR` (its retention half is OQ-20 and stays open) on the number
+    foundation section 10 demands before a materialised projection may be built at all: a maintained
+    current-state table, with replay on read rejected at 96 times in its best correct form. **The first ADR
+    here whose own research figures were refuted by the probe sent to reproduce them**, each having been
+    measured with the isolation policy bypassed or against a log shaped differently from this one, which is
+    why the experiment is kept beside it rather than described. It also says twice what it does *not* fix:
+    M15's reproducibility clause does not discriminate between the two strategies, and the projection read
+    takes no spatial index under the policy (MAP-51).
