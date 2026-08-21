@@ -468,7 +468,7 @@ The offline-first spine: an element edit is local and durable before the network
 Server-ordered sync over PostgreSQL, with versioning, gap detection, resync, and idempotent partial-failure recovery; Channels carries transport and presence only.
 
 #### T2.1 Convergence under server order
-- **Requirement:** after reconnect, all clients reach one identical state, and the order is the one PostgreSQL defines via a monotonic per-feature version; no client diverges permanently.
+- **Requirement:** after reconnect, all clients reach one identical state, and the order is the one PostgreSQL defines via the monotonic per-project version allocated inside the flush transaction (M10, ADR-0004), while the per-feature version orders and detects conflict on one feature and is not the flush's ordering axis; no client diverges permanently. *(Corrected 2026-08-21, foundation v0.18.1: this sentence named the per-feature version, inherited from a foundation sentence that predated the OQ-10 closure and was corrected in the same round.)*
 - **Basis:** I2, foundation section 10; C2.
 - **Provenance:** closed v0.1, sync-tier role corrected v0.2.
 - **Acceptance:** concurrent edits from two clients, replayed in server order, converge to one identical state on both.

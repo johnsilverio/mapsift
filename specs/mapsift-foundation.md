@@ -1,6 +1,6 @@
 # Mapsift Foundation
 
-> **Status:** living document, foundation v0.18 (2026-08-11). Supersedes v0.17.1; revisions in section 15.
+> **Status:** living document, foundation v0.18.1 (2026-08-21). Supersedes v0.18; revisions in section 15.
 > **Authority:** this is the single source of truth for Mapsift. Every other document
 > (PRD, ADRs, per-task specs, CLAUDE.md constraints, Linear issues) derives from this
 > file and must not contradict it. When a derived document and this file disagree, this
@@ -1404,7 +1404,11 @@ Rust because of garbage-collection pauses and single-threaded head-of-line block
 (convergence). Concretely:
 
 - The operation-queue flush is a **transactional API call** (django-ninja) that the database orders, using a
-  **monotonic per-feature version**.
+  **monotonic per-project version** allocated inside the flush transaction, which is what makes version order
+  equal commit order by construction. The **per-feature version** is a different axis: it orders operations
+  and detects conflict on one feature, and it is not what orders the flush. *(Corrected 2026-08-21 in
+  v0.18.1; this sentence carried the per-feature version unchanged from v0.2 and the fan-out that ratified
+  the per-project version when OQ-10 closed never reached it.)*
 - **Channels carries WebSocket transport and presence broadcast only** ("feature X changed to version N" as a
   notification). Silent drop is tolerable for presence (a lost cursor frame diverges nothing) and is
   **never** relied on for sync correctness.
@@ -2317,6 +2321,19 @@ state, so the two never diverge. The procedure lives in the project's tracking s
     constitution, where it still read as a costed consequence of a closed decision. It now carries its own
     warning: no source, no date, illustration only, and Hort is the real evidence while not measuring the
     cross-runtime boundary at all.
+- **2026-08-21, foundation v0.18.1 (patch: section 10's ordering sentence is corrected to the axis this
+  document had already ratified).** Annotation only, on the v0.5.1, v0.8.1, v0.11.1 and v0.17.1 precedent: no
+  decision, invariant intent, or open question moved, because the decision this corrects was already taken
+  here. Section 10's bullet said the database orders the flush "using a monotonic per-feature version",
+  wording carried unchanged from v0.2, while this document's own OQ-10 closure states that "the ratified
+  strategy is the per-project version" and ADR-0004 and PRD M10 both hold the two axes apart. So the
+  constitution contradicted itself in two places and the derived documents inherited the older half. **Found
+  2026-08-21 by two independent research windows at the MAP-50 pickup, each of which saw only half:** one read
+  I2 and concluded the foundation named no axis at all, the other found this sentence and its `CLAUDE.md`
+  restatement. **Fan-out:** section 10's bullet, `CLAUDE.md` C9 with its current-version pointers, and PRD
+  T2.1's requirement sentence. **Deliberately not touched:** the v0.2 changelog entry carrying the same
+  wording, because a provenance citation records what that round decided and is not rewritten when a later
+  round supersedes it.
 - **2026-08-11, foundation v0.18 (the per-client cursor is keyed by the flush domain, so its cardinality and
   its cost both move).** A one-change round, logged as a round rather than a patch because a stated cost is
   **false** rather than merely incomplete, and the only open question about this cursor is sized against it.
