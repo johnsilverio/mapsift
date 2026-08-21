@@ -51,9 +51,10 @@ from conftest import (
     a_browser,
     a_feature_create_claiming,
     statements_reaching,
+    the_writes_among,
 )
 from mapsift.common.binding import tenant_scope
-from mapsift.sync.models import OperationLogEntry, ProjectVersionCounter
+from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -212,6 +213,57 @@ def test_a_flush_starting_above_the_cursor_applies_nothing_at_all(alice: Party) 
     assert the_append == []
 
 
+def test_a_refused_flush_leaves_this_installations_cursor_where_it_was(alice: Party) -> None:
+    """M10's acceptance as narrowed 2026-08-13, on the second of the two writes a broken server
+    could make before refusing; the first is the append
+    `test_a_flush_starting_above_the_cursor_applies_nothing_at_all` witnesses. The cursor is the one
+    thing C12 has a client advance from, so a server that raises it and then refuses has told this
+    installation the refusal never happened, and the installation's own dedup then drops exactly the
+    operations it was being asked to resend (M4; ADR-0004 decision 2's extension of 2026-08-11 for
+    where that write sits and why it is one statement of its own).
+
+    **The advance is witnessed as it runs and never as the value it left**, which is the measurement
+    of 2026-08-14 that struck the residue
+    `test_the_resend_a_refusal_asked_for_lands_whole_rather_than_being_deduplicated_away` had
+    claimed: the write sits inside the transaction the refusal exits by exception, so a correct
+    server and a broken one leave the same value behind and every case reading state afterwards is
+    blind to the difference.
+
+    **The writes are separated from the reads rather than the recording being asserted empty, and
+    that is this case's difficulty rather than a nicety.** The flush *reads* this table on this
+    path, because reading the cursor is how the gap is detected, so against a correct server the
+    recording carries one SELECT (measured 2026-08-20) and the shape that worked for the append does
+    not transfer. Asserting the recording whole would pin how many times the flush reads, and
+    spelling the write inside this case would put here the knowledge `statements_reaching` exists to
+    keep out of it; what counts as a write is `the_writes_among`'s, and what stops that filter
+    answering empty to everything is `test_an_applied_flush_writes_this_installations_cursor`
+    (`test_dedup_and_the_echoed_cursor.py`), which reads it for the write an accepted flush makes.
+
+    **The refusal is arranged through the helper that pins its reason**, for the reason that
+    helper's other caller gives and one this case sharpens: `gap_above_cursor` is raised only
+    against a cursor that already exists, so pinning it is what proves the arrange step's flush
+    wrote one, and what makes an empty recording here a write withheld rather than a table nothing
+    has ever touched."""
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+
+    _the_server_took(
+        browser,
+        _a_contiguous_queue_of(
+            uuid4(), uuid4(), by=alice, from_installation=installation, starting_at=0
+        ),
+    )
+    with statements_reaching(ClientCursor._meta.db_table) as reaching_the_cursors_table:
+        _the_server_refused_the_gap(
+            browser,
+            _a_contiguous_queue_of(
+                uuid4(), uuid4(), by=alice, from_installation=installation, starting_at=3
+            ),
+        )
+
+    assert the_writes_among(reaching_the_cursors_table) == []
+
+
 def test_a_flush_above_the_first_mutation_number_from_an_installation_with_no_cursor_says_so(
     alice: Party,
 ) -> None:
@@ -290,8 +342,11 @@ def test_the_resend_a_refusal_asked_for_lands_whole_rather_than_being_deduplicat
 
     **The residue this case was written against is struck rather than claimed**, 2026-08-14 and
     measured: an implementation that advances the cursor and then refuses leaves this case green,
-    and every other in this module with it, because the advance sits inside the transaction the
-    refusal exits, exactly as the append does. Putting that property back under test is MAP-46."""
+    and every case this module then held with it, because the advance sits inside the transaction
+    the refusal exits, exactly as the append does. That property landed at MAP-46 and is
+    `test_a_refused_flush_leaves_this_installations_cursor_where_it_was`'s, above, which is not
+    blind to that implementation because it witnesses the advance as it runs rather than as the
+    value it left."""
     applied = [uuid4(), uuid4()]
     the_missing_one = uuid4()
     # Shared with the refused batch on purpose: this is the resend that refusal asked for, not a
