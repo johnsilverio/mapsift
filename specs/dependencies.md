@@ -643,7 +643,12 @@ Each of these is a decision that this survey must feed before it can be made wit
 6. The MVT tile server.
 7. ~~The type-generation toolchain.~~ **CLOSED 2026-08-05 by ADR-0009 for the halves the envelope contract forces**, on a research round against primary sources that refuted the narrowing this item recorded (the Rust-to-TypeScript direction does not fall out of wasm-bindgen for a data contract, and the Rust-to-Python direction the flush path forces was never named): schemars pinned to JSON Schema 2020-12, datamodel-code-generator with its native `--check` as the CI gate, tsify into the wasm-pack pkg with ts-rs into `libs/contracts` as the recorded exit. **The Rust-to-Dart path stays open** with its trigger (`apps/mobile` existing); section 2 carries the survey detail.
 8. The editing library.
-9. The operation-log projection strategy.
+9. ~~The operation-log projection strategy.~~ **CLOSED 2026-08-21 by ADR-0012**, on a reproduction probe run
+   against PostgreSQL 18.4 with the isolation policy in force: a maintained current-state table, replay on
+   read rejected at 96x in its best correct form and 756x written naively. The experiment is kept at
+   `specs/spikes/map-50-projection-strategy/` so the numbers can be re-run, which is more than this agenda's
+   older entries left behind (MAP-54). The probe also **refuted the round's own first figures**, which had
+   been measured with the policy bypassed and against a log carrying a typed geometry column.
 10. The object-storage reference shape for images and its offline behaviour.
 11. The component catalog tool and the token export format. **Widened 2026-08-05:** the same ADR answers
     whether `libs/ui` adopts **`@angular/aria`** (section 3, Angular), for new primitives, as a rebase of the
