@@ -199,6 +199,16 @@ this list.
   > domain's ordinary case, and wrong by an order of magnitude the day two consultancies work the same
   > municipality.
   >
+  > **Corrected 2026-08-21 at the MAP-50 probe: this measurement is not reproducible under the isolation
+  > policy, and both of its numbers require a spatial index scan that does not happen there.** Row-level
+  > security refuses a non-`leakproof` qual as an index condition and `st_intersects` is not leakproof, so
+  > under the policy neither index shape is scanned: both plan as a Parallel Seq Scan, and the entry counts
+  > above have no plan to come from. Either the 2026-08-04 probe supplied the tenant as a literal predicate
+  > rather than through the policy, or something else in it differs from the shipped schema. **The trigger
+  > this block names for adopting the composite, that its plan shows the index scanning entries belonging to
+  > tenants the query cannot see, is unobservable under the policy for the same reason.** The finding is
+  > **MAP-51**; ADR-0005's Consequences carries the matching correction, dated the same day.
+  >
   > **The trigger, named rather than left to judgement:** the composite plus `btree_gist` is introduced
   > when a measured tenant-scoped spatial query on real data crosses the I6 per-tile budget **and** its
   > plan shows the index scanning entries belonging to tenants the query cannot see. That is a

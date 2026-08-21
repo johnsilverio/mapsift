@@ -175,6 +175,17 @@ Permissive policies on one table combine with `OR`, PostgreSQL's own rule, so th
 - **Every tenant-scoped transaction pays one extra statement**, the binding, and a transaction that forgets it gets nothing rather than everything, which is the right direction for a mistake to fail in.
 - **Composite keys cost one unique index per tenant-owned table** and make every foreign key two columns wide, which is more schema than a single-column reference and is what buys probe H's hole being shut.
 - **Row-level security adds a predicate to every query on a protected table.** It is cheap when the indexes lead with the tenant identifier and expensive when they do not, which is why decision 5 makes that ordering part of the decision rather than a later tuning pass.
+>   **Corrected 2026-08-21, at the MAP-50 probe, because the sentence above is false for a spatial read and
+>   the tenant-leading rule cannot fix it.** Row-level security refuses to use a qual as an **index
+>   condition** unless that qual's functions are `leakproof`, and `st_intersects` and `geometry_overlaps` are
+>   not (`proleakproof = false`, measured on PostGIS 3.6.4). So a bounding-box read on a tenant-owned table
+>   takes **no spatial index at all** under the policy: the plain GiST plans as a Parallel Seq Scan at 42.5 ms
+>   over 20,000 features and 109 ms over 60,000, and **the composite `(tenant_id, geometry)` that decision 5
+>   prescribes plans the same way**, at 49.0 ms and roughly twice the index size. The same query with the
+>   policy bypassed is a Bitmap Index Scan at 1.4 ms. What the policy disqualifies is the **spatial** half of
+>   the index condition, so leading with the tenant narrows nothing. **This is MAP-51**, and it reaches
+>   decision 6, whose tile path performs exactly this read as `mapsift_tile` with the policy applied.
+
 - **The application role cannot run migrations**, so two connection profiles exist and the deployment has to keep them straight.
 
 **The limit this does not remove, stated rather than implied away.** Row-level security protects against a query that crosses the boundary. It does not protect against **code that can run arbitrary SQL on an already-bound connection**, because measurement E shows the binding is settable by the same unprivileged role and is not revocable. Injection on the application path therefore remains a full compromise of that tenant's session, and the controls that address it are the parameterised binding above, mypy strict, and the ORM being the ordinary path.
