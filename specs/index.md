@@ -126,6 +126,18 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     the project the issue named. Its boundary block points at a research round (canon plus four external
     sweeps) whose findings are in `specs/log.md` under 2026-08-18, and its acceptance names the half of C4
     that has no principal on this path and stays at the route.
+  - **`tasks/MAP-39-the-project-claim-on-the-flush-path.md`** — the flush route made to refuse a project the
+    verified tenant does not hold, the hole one level below C4 that the wall does not close because the wall
+    keys on the tenant. Its pickup put the check inside the binding rather than ahead of it, because `Project`
+    is tenant-owned and an unbound read answers with nothing, and ADR-0010 decision 6 gained the addition of
+    2026-08-20 for the same reason. *Registered 2026-08-20, at MAP-46's round; it had been on disk unlisted
+    since its own merge, which is the gap this line closes.*
+  - **`tasks/MAP-46-the-cursor-a-refused-flush-must-not-have-advanced.md`** — the second of the two writes a
+    refusal must not leave behind, after the append MAP-45 witnessed. The first spec here whose instrument
+    could not simply be repointed from its twin: the flush **reads** the cursor to detect the gap, so the
+    empty-recording shape does not transfer, and a reader that separates the writes was measured into
+    existence rather than assumed. Its fourth boundary decision was closed **after** the first review round,
+    when the new instrument was measured to permit a false green of its own.
   - **`tasks/MAP-27-login-membership-policy.md`** — the login question answered without a hole in the wall,
     the single deliberate exception ADR-0005 section 8 names, `FOR SELECT` only.
   - **`tasks/MAP-34-authenticated-request-seam.md`** — the principal on a request and the tenant claim
