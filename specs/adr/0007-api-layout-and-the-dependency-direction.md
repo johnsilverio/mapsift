@@ -155,6 +155,12 @@ protected_modules = ["mapsift.accounts.models"]
 allowed_importers = ["mapsift.accounts"]
 ```
 
+> **The snippet above is the two-package form and the file has four** (noted 2026-08-21 at ADR-0012's
+> writing, which leans on the order): `layers = ["sync", "layers", "accounts", "common"]`, still
+> `exhaustive = true`, with one `protected` contract per package rather than the single one shown. The growth
+> is what this section says should happen; what it costs is that **the tier order is load-bearing for a
+> decision taken elsewhere and lives only in a config file**, so ADR-0012 decision 2 states it in prose.
+
 Two things about this being thin today, stated rather than glossed. **Two layers assert almost nothing**, and
 that is fine: ADR-0001 section 6 already established that a gate exists before the code it governs, and the
 first violation this prevents is the concrete one in the Context. **The `protected` contract is the part that
