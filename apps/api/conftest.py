@@ -4,9 +4,10 @@
 what M1, N2, C4 and ADR-0005 are tested on.
 
 **The request-level harness** in the middle serves the authenticated request of ADR-0010, and is
-here rather than beside its suite because the flush (MAP-10) consumes the same three pieces: a
-client that is refused what a browser is refused, a record of which bindings a request opened, and
-an operation as the client authored it.
+here rather than beside its suite because the flush (MAP-10) consumes nine of its pieces (counted
+2026-08-20), among them a client that is refused what a browser is refused, a record of which
+bindings a request opened, an operation as the client authored it, and the recorder of what a
+request's connection ran.
 
 **The logging-path harness** at the foot serves ADR-0011 and PRD N9, for the same reason and one
 more: the path is `config` and `common` while every suite that reads it sits in a different
@@ -322,6 +323,33 @@ def statements_reaching(table: str) -> Iterator[list[str]]:
 
     with connection.execute_wrapper(record):
         yield seen
+
+
+# The one verb that only reads, so everything else naming the table is taken for a write. A closed
+# set of one rather than a list of the write verbs, because a spelling missing from a list of
+# writes would report as a read and carry a case asserting no write towards green.
+THE_VERB_THAT_READS = "SELECT"
+
+
+def the_writes_among(statements: Sequence[str]) -> list[str]:
+    """The statements of a recording that could have changed a row, its reads left out.
+
+    The reader `statements_reaching` needs wherever the path under test also **reads** the table it
+    is being asked to have left alone. That recording is never empty there, so an assertion over
+    the whole of it either pins how many times the path read or spells a write inside the case, and
+    both are implementation rather than behaviour. What any one path reads and writes is that
+    path's own measurement and belongs in the case that took it, never here.
+
+    Here rather than beside either of the two cases that read it, one per module (counted
+    2026-08-20), on this suite's own bar for moving an instrument: the finding that produced it is
+    recorded as carrying forward to MAP-22 and MAP-23, and it reads over a recorder three modules
+    already share.
+    """
+    return [
+        statement
+        for statement in statements
+        if not statement.lstrip().upper().startswith(THE_VERB_THAT_READS)
+    ]
 
 
 def a_browser(
