@@ -34,7 +34,7 @@
 | pytest | ratified; surveyed 2026-08-01 | **9.1.1**, Python >=3.10 |
 | pytest-django | ratified; surveyed 2026-08-01 | **4.12.0** (2026-02-14), Python >=3.10, pytest >=7.0, classifiers covering Django 4.2, 5.1, 5.2 and 6.0 |
 | pytest-asyncio | ratified; surveyed 2026-08-01 **with a caveat** | **0.26.0**, declaring `pytest >=8.4,<10`, so it accepts the pytest 9.1.1 above. **Its release date could not be confirmed from the package index** (the index's own release listing came back internally inconsistent), so this row is re-verified when the lockfile resolves it. Recorded as unconfirmed rather than asserted |
-| PostgreSQL 18 + PostGIS | ratified (foundation v0.14, superseding the 16 of v0.6) | **the major is ratified and the minor always runs current**, per upstream policy. Chosen by remaining support runway: PostgreSQL supports each major for five years from its initial release and **designates no LTS at all**, so the pick is the newest stable major the ecosystem supports, not a nonexistent long-term line. *Verified 2026-07-31 against the upstream versioning policy and release list: 14 through 18 supported, 14 expiring 2026-11-12, current minor 18.4, next major in beta and therefore excluded.* PostGIS 3.6 covers PostgreSQL 12 through 18 (3.6.2 released 2026-02-06), and Django's floor is PostgreSQL 14, so neither constrains the choice. See the particularities below |
+| PostgreSQL 18 + PostGIS | ratified (foundation v0.14, superseding the 16 of v0.6) | **the major is ratified and the minor always runs current**, per upstream policy. Chosen by remaining support runway: PostgreSQL supports each major for five years from its initial release and **designates no LTS at all**, so the pick is the newest stable major the ecosystem supports, not a nonexistent long-term line. *Verified 2026-07-31 against the upstream versioning policy and release list: 14 through 18 supported, 14 expiring 2026-11-12, current minor 18.4, next major in beta and therefore excluded.* PostGIS 3.6 covers PostgreSQL 12 through 18 (3.6.2 released 2026-02-06), and Django's floor is PostgreSQL 14, so neither constrains the choice. **What the container actually runs, measured 2026-08-24 rather than read: PostgreSQL 18.6, PostGIS 3.6.4, GEOS 3.14.1 (compiled against 3.13.1), PROJ 9.8.1.** The image was pulled on 2026-08-21, so the minor-runs-current policy above is met again after a drift, and the ratios in ADR-0012 and in `specs/spikes/map-50-projection-strategy/` were taken one minor behind on 18.4 with GEOS 3.13.1. Ratios transfer between minors; absolute milliseconds do not. See the particularities below |
 | Redis | ratified | Channels layer and Celery broker. **The Client View Record possibility is closed and this row no longer carries it:** SP-1 eliminated the row-version strategy on read cost, and ADR-0004 ratified the per-project version, whose cursor is an ordinary integer column in PostgreSQL. Redis is therefore off the sync correctness path entirely, which is a better place for it to be |
 
 **Nothing in this section is unsurveyed as of 2026-08-01, and as of the same day it is PINNED.** The `apps/api`
@@ -675,6 +675,44 @@ Each of these is a decision that this survey must feed before it can be made wit
     recorded source) differ in whether a fresh clone can run the suite offline. Nothing in `.gitignore` excludes
     fixture data, deliberately, because a silently ignored fixture is a suite that passes on one machine and
     fails on another.
+
+18. **The spatial read under the isolation policy** (added 2026-08-24, MAP-51). Row-level security refuses a
+    qual as an **index condition** unless that qual's functions are `leakproof`, and no PostGIS spatial
+    predicate is one: measured on the running container 2026-08-24, all three `st_intersects` overloads
+    (`(geometry,geometry)`, `(geography,geography)` and `(text,text)`) and `geometry_overlaps` report
+    `proleakproof = false`, while `uuid_eq` reports true. So a bounding-box read on a tenant-owned table
+    takes **no spatial index at all** under the wall, and ADR-0005 decision 5's tenant-leading composite does
+    not repair it, because what the policy disqualifies is the **spatial** half of the index condition. It
+    reaches the tile path of decision 6 and therefore sits underneath foundation I6's per-tile budget.
+    **What this item owes before the decision can be made without guessing:** whether marking those functions
+    `LEAKPROOF` is an assertion this product can sign, which turns on whether a PostGIS predicate can reveal
+    a hidden row through an error message or through timing, and that is a probe rather than a reading. The
+    same decision settles what becomes of decision 5's composite, which an earlier draft of this item called
+    refuted and which measurement contradicts: with `st_intersects` marked, a **plain** GiST index scan visits
+    entries belonging to tenants the reader cannot see, while a tenant-leading composite visits only the
+    reader's. **The upstream particularity this survey exists to record, verified 2026-08-24 against the
+    PostGIS repository:** PostGIS audited its own leakproof surface in PR 1110 (merged 2026-07-07) and marked
+    **only** the serialized-value compare and hash functions, keeping the scope, in its own words, to
+    "serialized-value compare/hash functions, avoiding GEOS, GDAL, accessor, and **bbox predicate surfaces**",
+    with the broader review left open for "GEOS/GDAL/error-producing functions **and bbox operators**". Both
+    candidate surfaces are therefore excluded by name upstream. It lands in **3.7 and not in the pinned 3.6.4**:
+    `LEAKPROOF` appears 0 times in `postgis/postgis.sql.in` at tag 3.6.4 and 8 times at 3.7.0rc1, and the change
+    was not back-patched. **A separate measured particularity of the same class:** the marking is superuser-only
+    (`mapsift_owner`, which runs migrations, is refused with `must be owner of function`), an extension upgrade
+    re-emits `CREATE OR REPLACE` for every function and silently resets it, and a non-binary `pg_dump` drops it
+    because an extension member carries only its ACL, so it survives the upgrade path that gets tested and
+    vanishes on the restore path N12 requires rehearsing. **And the published attack on this mechanism, verified
+    2026-08-24 against the arXiv record and the paper itself:** Zachary Espiritu (MongoDB Research) and David
+    Cash (University of Chicago), *Plaintext Recovery Against Post-Filtering Access Control*, USENIX Security
+    2026, pages 3753 to 3772, arXiv 2608.11730, published 2026-08-12. It attacks PostgreSQL 18.1 row-level
+    security at default settings and amplifies an existence oracle into record reconstruction, and **its threat
+    model explicitly covers users who reach the database only through a trusted application**, so "our users
+    cannot run SQL" is not a defence. Two things in it bind here. Its mechanism requires the optimizer to push a
+    **leakproof** predicate below the policy, so it does not reach a configuration where nothing is marked. And
+    its mitigation is a tenant-leading composite index **plus** a policy the planner can see through, measured
+    at 49.9 per cent attack success with both and 100 per cent with either alone; this project's policy is
+    already the transparent kind, which its own plans show by carrying the tenant predicate into the index
+    condition.
 
 **And one that was not an ADR but a spike, now closed:** the sync ordering strategy (a per-project version counter, a transaction-id watermark, or row versioning with a Client View Record) was decided by the SP-1 spike against measurements rather than by reading, and **ADR-0004 ratifies the per-project version**. The documented design space is Replicache's three backend strategies, whose stated ceiling for the serialized shape is about fifty pushes per second per space, comfortably above a project edited by a handful of people. *Verified 2026-07-30.*
 
