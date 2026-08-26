@@ -2,10 +2,13 @@
 
 Trace: C4, N2, T6.1; foundation I4; ADR-0005 (the roles, the binding, the composite keys, and in
 section 8 the wall's single deliberate exception). These are invariant acceptance tests and they
-may never be weakened (specs/testing.md sections 4 and 9). Every case here is one of ADR-0005's
-probes, or its section 8 decision, turned from a measurement into a gate.
+may never be weakened (specs/testing.md sections 4 and 9). Most cases here are one of ADR-0005's
+probes, or its section 8, turned from a measurement into a gate. Two are not: they run the
+unique-key gate against a schema built for the purpose, because how that gate reads the catalogue
+is itself a C4 channel and a catalogue gate can only be shown a schema, never told about one.
 """
 
+from collections.abc import Callable, Iterator
 from uuid import uuid4
 
 import pytest
@@ -27,6 +30,21 @@ RUNTIME_ROLES = ("mapsift_app", "mapsift_tile", "mapsift_tokens")
 # permissive, and whether it carries a USING and a WITH CHECK. `*` is FOR ALL, `r` is FOR SELECT.
 TENANT_ISOLATION = ("*", True, True, True)
 THE_LOGIN_QUESTION = ("r", True, True, False)
+
+# The scratch schema the two unique-key cases below are shown. `tenant_id` is what puts the table
+# inside the wall and so into the enumeration; `name` and `slug` are there to be spelled into a
+# natural key two ways.
+A_SCRATCH_TABLE = "scratch_table_of_the_unique_key_gate"
+A_SCRATCH_TABLES_COLUMNS = (
+    "id uuid NOT NULL, tenant_id uuid NOT NULL, name text NOT NULL, slug text NOT NULL"
+)
+
+# The same natural key in the two spellings a schema can reach for, on tables identical but for the
+# index. The pair is what separates a reading that lost the expression from a widening that stopped
+# reading the position, which the real schema cannot do on its own: it carries five non-primary
+# unique indexes and every one of them is over plain columns (measured 2026-08-26).
+A_GLOBAL_KEY_AS_AN_EXPRESSION = "(lower(name) || slug)"
+A_PER_TENANT_KEY_AS_AN_EXPRESSION = "tenant_id, (lower(name))"
 
 
 def test_the_suite_runs_as_a_role_the_wall_applies_to() -> None:
@@ -120,6 +138,68 @@ def test_no_unique_key_on_a_tenant_owned_table_answers_across_the_wall(
         )
 
         assert cursor.fetchall() == []
+
+
+@pytest.fixture(autouse=True)
+def no_scratch_table_left_from_a_killed_run(transactional_db: None) -> None:
+    """Guarantee the scratch table is absent before any case in this module reads the catalogue."""
+    # Autouse, and the builder below depends on it so the order is fixed rather than lucky: a
+    # killed run commits the table (`transaction=True` is autocommit), and the RLS enumeration
+    # case it breaks runs earlier in this file than the builder, so a drop there is too late.
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {A_SCRATCH_TABLE}")
+
+
+@pytest.fixture
+def a_table_whose_natural_key_is(
+    no_scratch_table_left_from_a_killed_run: None,
+) -> Iterator[Callable[[str], frozenset[str]]]:
+    """Build one table inside the wall carrying the given unique key, and answer as an enumeration.
+
+    Answers in the shape a catalogue gate takes its tables in, so the gate under test is reached
+    the way the suite reaches it rather than through a second reading written here.
+    """
+
+    def carrying(unique_key: str) -> frozenset[str]:
+        with connection.cursor() as cursor:
+            cursor.execute(f"CREATE TABLE {A_SCRATCH_TABLE} ({A_SCRATCH_TABLES_COLUMNS})")
+            cursor.execute(f"CREATE UNIQUE INDEX ON {A_SCRATCH_TABLE} ({unique_key})")
+
+        return frozenset({A_SCRATCH_TABLE})
+
+    yield carrying
+
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {A_SCRATCH_TABLE}")
+
+
+def test_the_unique_key_gate_catches_a_global_key_declared_over_an_expression(
+    a_table_whose_natural_key_is: Callable[[str], frozenset[str]],
+) -> None:
+    """N2, ADR-0005 section 5, and section 7's note of 2026-08-25 on case 4: a natural key
+    spelled as an expression is the same global key spelled differently, and the collision it
+    answers with is raised beneath row security either way. A reading that loses that key does not
+    return something odd, it returns nothing, so the gate never examines the index and the failure
+    mode is a false pass. The gate is handed that one table and nothing else, so a refusal here can
+    be about no other schema and nothing here rests on how the refusal is worded."""
+    tables = a_table_whose_natural_key_is(A_GLOBAL_KEY_AS_AN_EXPRESSION)
+
+    with pytest.raises(AssertionError):
+        test_no_unique_key_on_a_tenant_owned_table_answers_across_the_wall(tables)
+
+
+def test_the_unique_key_gate_accepts_a_per_tenant_key_declared_over_an_expression(
+    a_table_whose_natural_key_is: Callable[[str], frozenset[str]],
+) -> None:
+    """N2, ADR-0005 section 5: what makes a natural key legal is that it is scoped per tenant, not
+    what it is spelled over, so a gate widened until any expression looks global would refuse the
+    schema section 5 asks for. Green from the day it was written and not deletable for it: the
+    tempting widening, `indexprs IS NOT NULL`, is true of both spellings, so under it this key is
+    flagged and the case above still passes. Nothing else in the suite catches that, because the
+    real schema carries no expression key at all."""
+    tables = a_table_whose_natural_key_is(A_PER_TENANT_KEY_AS_AN_EXPRESSION)
+
+    test_no_unique_key_on_a_tenant_owned_table_answers_across_the_wall(tables)
 
 
 def test_a_tenant_scoped_query_with_no_binding_in_force_returns_nothing(alice: Party) -> None:
