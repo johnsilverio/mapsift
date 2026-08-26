@@ -27,6 +27,14 @@ ADR-0005's note asks for one helper "every catalogue gate calls" rather than for
 
 - **MAP-51's container-index gate.** It consumes this helper and is blocked on it. Publishing the helper is
   this task's; using it there is not.
+- **How many key columns a gate looks at**, as opposed to how it reads them. **MAP-60**, opened 2026-08-26
+  out of this round's Window A. The conversion of the two `test_account_tree.py` call sites **preserves their
+  current first-column semantics**: changing what a gate asserts while changing how it reads is a widening
+  nobody could see, and MAP-60 carries the red case that proves the wider reading catches something.
+- **The validity and partiality flags on a gate that asserts an index serves a read.** **MAP-61**, opened
+  2026-08-26. The reasoning below rules those flags out for *this* gate and does **not** transfer to
+  `test_membership_is_indexed_by_the_user_the_login_question_asks_about`, which is the opposite class; that
+  call site was not considered when the block below was written.
 - **Widening what the gates enumerate.** `relkind = 'p'` for a partitioned parent, `geography` and
   domain-typed geometry columns are each real and each is about **what** is enumerated rather than **how** an
   index is read. Unowned, and deliberately not opened here.
