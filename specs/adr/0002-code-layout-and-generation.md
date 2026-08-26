@@ -100,6 +100,42 @@ The decision is here. The enforceable restatement is in `.claude/rules/*.md` wit
 > dropped it under each other's runs. The three axis prompts and the `code-review`, `orchestrate` and
 > spec-read procedures restate this and decide nothing.
 
+> **Amended 2026-08-25, at the MAP-51 implementation round's research, on three things the 2026-08-19 clause
+> got right for a mutant and wrong or silent for everything else.**
+>
+> **A mutant goes in the artifact that carries the guarantee.** A guarantee expressed in Python source is
+> mutated through a scratch copy mounted read-only over its container path, which is unchanged and remains
+> the common case. **A guarantee that lives in the database** (a catalogue row, a policy, a grant, an index)
+> is mutated by a statement against a database created for that run and dropped after it, and no source
+> mutant substitutes: for a case reading `pg_proc`, corrupting the enumeration query turns it red for the
+> wrong reason. Where the statement is beyond every role the product runs as, it is issued as the compose
+> superuser; `ALTER FUNCTION ... LEAKPROOF` is superuser-only, measured, so an in-suite positive control that
+> marks and rolls back is impossible. The run ends by proving the mutant is gone.
+>
+> **A database mutant requires `--reuse-db`, and the sentence above saying `--create-db` silently defeats
+> one.** Measured 2026-08-25: with a marking in place in an isolated test database, the same case run with
+> `--create-db` reports green, because `--create-db` drops and rebuilds from migrations and takes the mutant
+> with it. The rule is therefore **a database of the run's own**, never the shared `test_mapsift`, with
+> `--reuse-db` when a database mutant is in play.
+>
+> **A mount creates its own destination, so a probe never names a container path that does not already
+> exist.** `-v` and `--mount` alike hand the runtime a bind whose mount point must exist, and the runtime
+> creates it: an empty file when the source is a file, the whole directory chain otherwise. Because `/app` is
+> a bind of `apps/api`, a destination invented under it is written into the repository as root, and where the
+> runtime also created the parent directory the host user cannot remove it without a container.
+> **`--mount`, `--tmpfs` and a named volume do not change this**, measured; they govern the source, which was
+> never the failure. Two shapes are allowed. A **mutant** goes over a path that already exists. A **probe**
+> whose destination does not exist is mounted outside every bind (`/probe/x.py`, never under `/app`) and
+> invoked by that path, with `-c /app/pyproject.toml` when it needs the project's pytest configuration; it
+> does not see `apps/api/conftest.py`, and `-p conftest` does not recover it, because pytest-django calls
+> `django.setup()` after a `-p` plugin is imported, so **a probe needing a shared fixture is a mutant over an
+> existing path rather than a probe**. If a stub is created anyway, remove it from inside a container:
+> `docker run --rm -v "$PWD":/w alpine:3 rm -rf /w/<path>`.
+>
+> This supersedes the clause proposed in `specs/log.md` on 2026-08-20 and never applied, whose second half
+> ("lives outside the repository") named the **host source** when what must not exist is the **container
+> destination**: in all ten recorded stubs the host source existed.
+
 ---
 
 ## Consequences
