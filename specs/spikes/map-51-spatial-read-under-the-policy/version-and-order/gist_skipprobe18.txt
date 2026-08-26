@@ -1,0 +1,19 @@
+############ skipprobe18
+ gist_size 
+ 82 MB
+### GiST only, tenant-scoped bbox read (the ADR Context case)
+   Buffers: shared hit=15865 read=56135
+   ->  Seq Scan on feature (actual time=235.735..2085.060 rows=346.00 loops=1)
+         Rows Removed by Filter: 2087654
+         Buffers: shared hit=15865 read=56135
+   Buffers: shared hit=103
+ Execution Time: 2131.788 ms
+### GiST only, KNN ordering (the ADR Consequences exception)
+   Buffers: shared hit=3 read=12
+   ->  Index Scan using p_gist on feature (actual time=0.392..0.477 rows=5.00 loops=1)
+         Order By: (geometry <-> '0101000020421200000000000000C047C000000000008031C0'::geometry)
+         Rows Removed by Filter: 3
+         Index Searches: 1
+         Buffers: shared hit=3 read=12
+   Buffers: shared hit=18 read=4 dirtied=1
+ Execution Time: 0.584 ms
