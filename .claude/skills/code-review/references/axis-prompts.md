@@ -25,8 +25,15 @@ its mutants by editing the working tree and restoring it, another axis read the 
 seconds, and all three shared `test_mapsift`, so one axis's teardown dropped the database under another's run
 (8 to 180 phantom `database does not exist` errors, the pass count degrading 240, 204, 176, 160). An axis
 reads the tree and never writes to it, mutates only through a scratch copy mounted read-only over the
-container path, and runs `pytest` with `--create-db` or against a database of its own. ADR-0002 section 5
+container path, and runs `pytest` against a database of its own. ADR-0002 section 5
 carries the decision; the `specs/log.md` trap of 2026-08-19 carries the measurement.
+
+**A third line was added 2026-08-25 and it corrects the second.** That sentence used to offer `--create-db`
+as an alternative, and `--create-db` **silently defeats a mutant that lives in the database**, rebuilding
+from migrations and taking the marking with it, so the case reports green. It also said nothing about the
+probe that creates its own destination: a mount whose container path does not already exist is written into
+the repository as root, and it happened ten times across two review rounds. Both are ADR-0002 section 5 as
+amended 2026-08-25; the `specs/log.md` traps of 2026-08-20 and 2026-08-25 carry the measurements.
 
 ---
 
@@ -44,8 +51,12 @@ command above yourself.
 
 You read the tree and you never write to it, and you never share the test database: a mutant runs only
 through a scratch copy mounted read-only over the container path (never by editing the working tree and
-restoring it, because another axis is reading that tree right now), and `pytest` runs with `--create-db` or
-against a database of your own, never against the shared `test_mapsift`.
+restoring it, because another axis is reading that tree right now), and `pytest` runs against a database of
+your own, never against the shared `test_mapsift`. A mutant that lives in the **database** rather than in
+Python source is applied to that database and the run uses `--reuse-db`: `--create-db` rebuilds from
+migrations and takes the mutant with it, so the case reports green (measured 2026-08-25). And a probe never
+names a container path that does not already exist, because the mount creates it in the repository as root
+(ADR-0002 section 5, amended 2026-08-25).
 
 **Your question, and only yours:** does this diff violate something the ecosystem decided? This axis reads
 **law**. A finding here blocks a merge.
@@ -92,8 +103,12 @@ command above yourself.
 
 You read the tree and you never write to it, and you never share the test database: a mutant runs only
 through a scratch copy mounted read-only over the container path (never by editing the working tree and
-restoring it, because another axis is reading that tree right now), and `pytest` runs with `--create-db` or
-against a database of your own, never against the shared `test_mapsift`.
+restoring it, because another axis is reading that tree right now), and `pytest` runs against a database of
+your own, never against the shared `test_mapsift`. A mutant that lives in the **database** rather than in
+Python source is applied to that database and the run uses `--reuse-db`: `--create-db` rebuilds from
+migrations and takes the mutant with it, so the case reports green (measured 2026-08-25). And a probe never
+names a container path that does not already exist, because the mount creates it in the repository as root
+(ADR-0002 section 5, amended 2026-08-25).
 
 **Your question, and only yours:** does the diff satisfy the requirement's acceptance criterion? Quote the
 criterion line for every finding.
@@ -143,8 +158,12 @@ command above yourself.
 
 You read the tree and you never write to it, and you never share the test database: a mutant runs only
 through a scratch copy mounted read-only over the container path (never by editing the working tree and
-restoring it, because another axis is reading that tree right now), and `pytest` runs with `--create-db` or
-against a database of your own, never against the shared `test_mapsift`.
+restoring it, because another axis is reading that tree right now), and `pytest` runs against a database of
+your own, never against the shared `test_mapsift`. A mutant that lives in the **database** rather than in
+Python source is applied to that database and the run uses `--reuse-db`: `--create-db` rebuilds from
+migrations and takes the mutant with it, so the case reports green (measured 2026-08-25). And a probe never
+names a container path that does not already exist, because the mount creates it in the repository as root
+(ADR-0002 section 5, amended 2026-08-25).
 
 **Your question, and only yours:** judgement calls, and they are labelled as such. **Everything you raise is
 advisory**, and a documented decision in this repository always wins over this axis. Skip anything the
