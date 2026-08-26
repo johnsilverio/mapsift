@@ -289,6 +289,15 @@ rules) is deferred to the PRD and is NOT pre-decided here.
   PostGIS (ST_AsMVT) via the tile server (Martin), with edits writing straight to PostGIS and HTTP tile
   caching. Pre-generated base tiles plus merge-on-demand (the Lightning shape) are introduced only when a
   measured per-tile bottleneck is crossed, not up front.
+- **No PostGIS predicate is ever marked `LEAKPROOF`, and every spatial read names a container (ADR-0013).**
+  Row-level security will not use a qual as an index condition unless its functions are `leakproof`, and none
+  of PostGIS's are, so a bounding-box read under the wall takes no spatial index. The remedy is **not** to
+  assert leakproofness: that marking is refused by any role and through any path, migration and provisioning
+  included, and a migration or probe that adds one is a defect the way a raw colour in a component is. What
+  works instead needs no assertion, because a read that names a **layer, layer set or project** as well as the
+  tenant builds its index condition out of `uuid_eq` alone and visits zero entries belonging to a tenant the
+  reader cannot see. The failure mode of a forgotten container is slow and closed, never fast and open, on the
+  qual path; the `ORDER BY` path is a measured exception ADR-0013 records and does not close.
 - **MapLibre is the renderer, with an editing restriction.** Render volume as MVT tiles on the GPU; keep
   only the small set of elements under live edit in a client-side GeoJSON source (Terra Draw or Geoman). The
   editable working set is capped; a whole layer is never promoted to live editing. Snapping gives shared-edge

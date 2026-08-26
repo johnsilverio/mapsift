@@ -114,7 +114,21 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
   `UNIQUE (tenant_id, id)`, and every **natural** unique key unique per tenant rather than globally.
   Referential integrity checks always bypass row security, so this is the only thing that closes that channel.
 - DO lead every index serving a tenant-scoped query with `tenant_id`, because the policy adds that predicate
-  to every query on the table (structural performance, foundation section 10).
+  to every query on the table (structural performance, foundation section 10). **And put the container key
+  second, not third** (**ADR-0013** condition 2): an index that buries the container behind another column
+  makes the read depend on PostgreSQL 18's nbtree skip scan, which costs one index descent per value of the
+  buried column and pays nothing once there are a few hundred of them.
+- DO give every **spatial** read a container as well as the tenant, a layer, a layer set or a project, so the
+  index condition is built from `uuid_eq` alone (**ADR-0013** decision 2). The published selector takes that
+  container as a **required argument**, so the unqualified form is not expressible rather than merely
+  discouraged.
+- DON'T write a spatial lookup outside that selector module, `__intersects`, `__within`, `__bboverlaps` and
+  their siblings included. One word added to a `filter()` is how the unqualified shape arrives, and it arrives
+  by accident rather than by decision.
+- DON'T mark any PostGIS function `LEAKPROOF`, in a migration, in provisioning or by hand on a live database.
+  It is refused outright (**ADR-0013** decision 1) and a catalogue case fails the build if one appears. Row
+  security refuses a non-`leakproof` qual as an index condition, and the answer to that is the container
+  above, never an assertion about somebody else's code.
 - DO let the application raise when a tenant-scoped query runs with no binding in force. The policy denies
   silently by construction, and a silent empty result is indistinguishable from an empty tenant (N9, N12).
 - The wall's one deliberate exception is the login question (ADR-0005 section 8): `membership` carries a

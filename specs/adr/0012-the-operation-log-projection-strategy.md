@@ -205,6 +205,15 @@ against a ceiling N1 states at the 75th percentile, so it is indicative rather t
 The projection is necessary and insufficient, and the rest is **MAP-51**, which is an ADR of its own because
 the candidate remedy is a security assertion.
 
+> **Closed 2026-08-25 by ADR-0013, and the candidate remedy was refused rather than taken.** Nothing in this
+> product marks a PostGIS predicate `LEAKPROOF`. What replaces it needs no assertion: a read that names a
+> **container** as well as the tenant builds its index condition out of `uuid_eq` alone and does take an
+> index, so the sequential scan described above is what an **unqualified** read gets and not what the
+> sanctioned shape gets. The paragraph above stands as the state of the question on 2026-08-21; the answer,
+> its four conditions and the measurements are ADR-0013's. **Nothing in this ADR's own decision moves**: the
+> maintained current-state table was chosen against replay on read, and that comparison is untouched by which
+> index the read then takes.
+
 It does not take retention, archival or physical deletion (OQ-20, which is the other half of M15's
 `Open / ADR` line), the conflict rule or preserve-not-discard (the next slice, gated on OQ-8), whether the
 server denormalises geometry into a typed column beside the jsonb (unowned, see above), or snapshotting,
