@@ -102,11 +102,19 @@ Read them there. The delta:
   the offending table is created by the case itself, so nothing persists between runs and the `--reuse-db`
   rule below is background rather than instruction. The ADR-0002 clauses matter here for the **probe** half,
   not the mutant half.
+- **The identifier gates gained a control set the first Acceptance did not name, and it is scope the review
+  ratified rather than creep.** *(Added 2026-08-26.)* The conversion reads a **rendered** column name, which
+  is a new way to be blind that `attnum` did not have, so the two gates in `test_account_tree.py` needed the
+  quoted-identifier pair that pins it. Each pair brackets one variable: the same defect under a plain name
+  must still be caught. **And each pair carries an arm that accepts what the rule permits**, because the
+  gate's real-schema run proves nothing on its own: there are zero column defaults anywhere in the tenant's
+  tables, so a gate widened to read every column ships green and the suite is byte-identical. That last arm
+  delivers **MAP-62**, which closes here rather than separately.
 - **The helper is Window B's to write and to shape, and Window A does not name it.** The split is clean here
   and worth stating because the helper is test infrastructure rather than production code, which is where the
   two roles blur: **Window A** writes a case that creates a table carrying an expression unique key and asserts
   the gate flags it, which is red because of how the gate reads, and **Window B** makes it green by publishing
-  one reading and repointing the five call sites. A case that names a helper by import would be Window A
+  one reading and repointing the four call sites. A case that names a helper by import would be Window A
   choosing Window B's design.
 - **The helper's second consumer is not merged, though it is on disk.** MAP-51's container case is untracked in
   this working tree and survives a branch switch, so a window will be looking at it. It is a Window A draft
