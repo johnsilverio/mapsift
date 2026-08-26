@@ -14,7 +14,15 @@ from uuid import uuid4
 import pytest
 from django.db import connection
 
-from conftest import FOREIGN_KEY_VIOLATION, POLICY_VIOLATION, Party, refused_with
+from conftest import (
+    EVERY_SCRATCH_TABLE,
+    FOREIGN_KEY_VIOLATION,
+    POLICY_VIOLATION,
+    SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE,
+    THE_KEY_COLUMNS_OF_EVERY_INDEX,
+    Party,
+    refused_with,
+)
 from mapsift.accounts.models import Membership, Project, Workspace
 from mapsift.accounts.selectors import memberships_of_the_session_user
 from mapsift.common.binding import TenantNotBound, UserAlreadyBound, tenant_scope, user_scope
@@ -34,7 +42,6 @@ THE_LOGIN_QUESTION = ("r", True, True, False)
 # The scratch schema the two unique-key cases below are shown. `tenant_id` is what puts the table
 # inside the wall and so into the enumeration; `name` and `slug` are there to be spelled into a
 # natural key two ways.
-A_SCRATCH_TABLE = "scratch_table_of_the_unique_key_gate"
 A_SCRATCH_TABLES_COLUMNS = (
     "id uuid NOT NULL, tenant_id uuid NOT NULL, name text NOT NULL, slug text NOT NULL"
 )
@@ -121,33 +128,40 @@ def test_no_unique_key_on_a_tenant_owned_table_answers_across_the_wall(
     per tenant is what closes that; the primary key stays global under ADR-0006."""
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            THE_KEY_COLUMNS_OF_EVERY_INDEX
+            + """
             SELECT c.relname, i.relname
             FROM pg_index x
             JOIN pg_class c ON c.oid = x.indrelid
             JOIN pg_class i ON i.oid = x.indexrelid
             JOIN pg_namespace n ON n.oid = c.relnamespace
-            JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = x.indkey[0]
+            JOIN index_key_columns leading_key
+              ON leading_key.indexrelid = x.indexrelid AND leading_key.ord = 1
             WHERE n.nspname = 'public'
               AND c.relname = ANY(%s)
               AND x.indisunique
               AND NOT x.indisprimary
-              AND a.attname <> %s
+              AND leading_key.key_column <> %s
             """,
             [sorted(tenant_owned_tables), "tenant_id"],
         )
+        answering_across_the_wall = cursor.fetchall()
 
-        assert cursor.fetchall() == []
+        assert answering_across_the_wall == [], (
+            "a unique key that does not lead on the tenant answers across the wall "
+            f"(ADR-0005 section 5), as (table, index): {answering_across_the_wall}"
+        )
 
 
 @pytest.fixture(autouse=True)
 def no_scratch_table_left_from_a_killed_run(transactional_db: None) -> None:
-    """Guarantee the scratch table is absent before any case in this module reads the catalogue."""
-    # Autouse, and the builder below depends on it so the order is fixed rather than lucky: a
-    # killed run commits the table (`transaction=True` is autocommit), and the RLS enumeration
-    # case it breaks runs earlier in this file than the builder, so a drop there is too late.
+    """Guarantee every scratch table is absent before a case in this module reads the catalogue."""
+    # Every one and not just this module's: a killed run commits its table (`transaction=True` is
+    # autocommit) and either module's leftover poisons the same enumeration. Autouse, and the
+    # builder depends on it, because the cases it breaks run earlier here than the builder does.
     with connection.cursor() as cursor:
-        cursor.execute(f"DROP TABLE IF EXISTS {A_SCRATCH_TABLE}")
+        for scratch_table in EVERY_SCRATCH_TABLE:
+            cursor.execute(f"DROP TABLE IF EXISTS {scratch_table}")
 
 
 @pytest.fixture
@@ -162,15 +176,19 @@ def a_table_whose_natural_key_is(
 
     def carrying(unique_key: str) -> frozenset[str]:
         with connection.cursor() as cursor:
-            cursor.execute(f"CREATE TABLE {A_SCRATCH_TABLE} ({A_SCRATCH_TABLES_COLUMNS})")
-            cursor.execute(f"CREATE UNIQUE INDEX ON {A_SCRATCH_TABLE} ({unique_key})")
+            cursor.execute(
+                f"CREATE TABLE {SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE} ({A_SCRATCH_TABLES_COLUMNS})"
+            )
+            cursor.execute(
+                f"CREATE UNIQUE INDEX ON {SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE} ({unique_key})"
+            )
 
-        return frozenset({A_SCRATCH_TABLE})
+        return frozenset({SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE})
 
     yield carrying
 
     with connection.cursor() as cursor:
-        cursor.execute(f"DROP TABLE IF EXISTS {A_SCRATCH_TABLE}")
+        cursor.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE}")
 
 
 def test_the_unique_key_gate_catches_a_global_key_declared_over_an_expression(

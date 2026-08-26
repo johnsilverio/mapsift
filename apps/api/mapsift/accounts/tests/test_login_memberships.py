@@ -10,6 +10,7 @@ from uuid import uuid4
 import pytest
 from django.db import connection
 
+from conftest import THE_KEY_COLUMNS_OF_EVERY_INDEX
 from mapsift.accounts.models import Membership, User
 from mapsift.accounts.selectors import memberships_of_the_session_user
 from mapsift.accounts.services import create_organization_account, create_personal_account
@@ -106,14 +107,16 @@ def test_membership_is_indexed_by_the_user_the_login_question_asks_about() -> No
     the index missing."""
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            THE_KEY_COLUMNS_OF_EVERY_INDEX
+            + """
             SELECT i.relname
             FROM pg_index x
             JOIN pg_class c ON c.oid = x.indrelid
             JOIN pg_class i ON i.oid = x.indexrelid
             JOIN pg_namespace n ON n.oid = c.relnamespace
-            JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = x.indkey[0]
-            WHERE n.nspname = 'public' AND c.relname = %s AND a.attname = %s
+            JOIN index_key_columns leading_key
+              ON leading_key.indexrelid = x.indexrelid AND leading_key.ord = 1
+            WHERE n.nspname = 'public' AND c.relname = %s AND leading_key.key_column = %s
             """,
             [Membership._meta.db_table, "user_id"],
         )

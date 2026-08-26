@@ -156,6 +156,31 @@ def tenant_owned_tables(transactional_db: None) -> frozenset[str]:
         return frozenset(row[0] for row in cursor.fetchall())
 
 
+# The tables the catalogue gates are shown, named here rather than in the modules that build them:
+# each carries the tenant column, so one a killed run left committed enters the enumeration above
+# and poisons every gate reading it, in either module (measured 2026-08-26, both directions).
+SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE = "scratch_table_of_the_unique_key_gate"
+SCRATCH_TABLE_OF_THE_IDENTIFIER_GATES = "scratch_table_of_the_identifier_gates"
+EVERY_SCRATCH_TABLE = (
+    SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE,
+    SCRATCH_TABLE_OF_THE_IDENTIFIER_GATES,
+)
+
+
+# ADR-0005 section 7 (note of 2026-08-25) and ADR-0013 section 5: a `WITH` prefix publishing
+# `index_key_columns` as (indexrelid, ord, key_column). Never a join on `pg_attribute` by
+# `indkey`, which looks right and drops every expression key, whose `indkey` entry is 0.
+THE_KEY_COLUMNS_OF_EVERY_INDEX = """
+    WITH index_key_columns AS (
+        SELECT every_index.indexrelid,
+               k.ord,
+               pg_get_indexdef(every_index.indexrelid, k.ord, false) AS key_column
+        FROM pg_index every_index
+        CROSS JOIN LATERAL generate_series(1, every_index.indnkeyatts) AS k(ord)
+    )
+"""
+
+
 # ADR-0005 section 2: the role the Django runtime connects as, and the one whose per-table grant is
 # where each table's own guarantee lives.
 RUNTIME_ROLE = "mapsift_app"
