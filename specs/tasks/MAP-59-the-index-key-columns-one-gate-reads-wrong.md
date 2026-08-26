@@ -15,7 +15,10 @@ this task publishes. **ADR-0002 section 5** for how a mutant and a probe are run
 Every catalogue gate reads an index's key columns through one reading, and that reading does not lose an
 expression key.
 
-**That is five call sites and not two, and converting all five is the ruling rather than the window's guess.**
+**That is four call sites and not two, and converting all four is the ruling rather than the window's guess.**
+*(Corrected 2026-08-26: this block said five and counted MAP-51's copy, which the Out of scope block below
+scopes out in the same file. Four is right; the fifth is another issue's untracked draft and consumes this
+helper in its own round. Found by Window B, which declined to convert it and asked rather than choosing.)*
 `grep -rn "indkey" apps/api` returns `tests/test_tenant_isolation.py`, `mapsift/accounts/tests/test_account_tree.py`
 twice, `mapsift/accounts/tests/test_login_memberships.py`, and MAP-51's untracked copy. Only the first two are
 unsafe today: the `test_account_tree.py` pair is filtered to `indisprimary`, where an expression key cannot

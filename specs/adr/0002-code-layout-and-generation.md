@@ -112,6 +112,17 @@ The decision is here. The enforceable restatement is in `.claude/rules/*.md` wit
 > superuser; `ALTER FUNCTION ... LEAKPROOF` is superuser-only, measured, so an in-suite positive control that
 > marks and rolls back is impossible. The run ends by proving the mutant is gone.
 >
+> **A database of the run's own is reached with the role the suite normally connects as, and that is a
+> second thing rather than a restatement.** Overriding `DATABASE_URL` wholesale to repoint the database
+> silently repoints the **role** too, and the obvious value to paste is the compose bootstrap superuser,
+> which carries `rolsuper` and `rolbypassrls`. Every row-level-security case then passes or fails for the
+> wrong reason with the wall off entirely, and the tables still report `relrowsecurity` and
+> `relforcerowsecurity` true, because `FORCE` addresses the owner and not a superuser. Change the database
+> name and keep the user and password. Measured 2026-08-26, where a window scoped a probe run to one module,
+> read a mutant's behaviour out of an environment with no wall, and inferred a mechanism that did not exist;
+> `test_the_suite_runs_as_a_role_the_wall_applies_to` fires immediately on such an environment and is the
+> first case ADR-0005 section 2 asks for, but a run narrowed to another module never reaches it.
+>
 > **A database mutant requires `--reuse-db`, and the sentence above saying `--create-db` silently defeats
 > one.** Measured 2026-08-25: with a marking in place in an isolated test database, the same case run with
 > `--create-db` reports green, because `--create-db` drops and rebuilds from migrations and takes the mutant
