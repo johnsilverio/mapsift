@@ -1,0 +1,76 @@
+############ skipprobe17
+###### INDEX (tenant_id, project_id, layer_id)
+### layer container (1000-row layer), z12 box
+   Buffers: shared read=437 written=132
+   ->  Index Scan using p_i on feature (actual time=3.413..3.413 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (layer_id = 'cccccccc-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1000
+         Buffers: shared read=437 written=132
+   Buffers: shared hit=75 read=10
+   Buffers: shared hit=437
+   ->  Index Scan using p_i on feature (actual time=1.247..1.247 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (layer_id = 'cccccccc-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1000
+         Buffers: shared hit=437
+### project container (1100 rows), z12 box
+   Buffers: shared hit=38 read=3 written=1
+   ->  Index Scan using p_i on feature (actual time=0.625..0.625 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (project_id = 'bbbbbbbb-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1100
+         Buffers: shared hit=38 read=3 written=1
+   Buffers: shared hit=5
+   Buffers: shared hit=41
+   ->  Index Scan using p_i on feature (actual time=0.539..0.540 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (project_id = 'bbbbbbbb-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1100
+         Buffers: shared hit=41
+###### INDEX (tenant_id, layer_id, project_id)
+### layer container (1000-row layer), z12 box
+   Buffers: shared hit=35 read=3
+   ->  Index Scan using p_i on feature (actual time=0.407..0.407 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (layer_id = 'cccccccc-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1000
+         Buffers: shared hit=35 read=3
+   Buffers: shared hit=23 read=1
+   Buffers: shared hit=38
+   ->  Index Scan using p_i on feature (actual time=0.321..0.321 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (layer_id = 'cccccccc-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1000
+         Buffers: shared hit=38
+### project container (1100 rows), z12 box
+   Buffers: shared hit=41 read=399
+   ->  Index Scan using p_i on feature (actual time=1.625..1.625 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (project_id = 'bbbbbbbb-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1100
+         Buffers: shared hit=41 read=399
+   Buffers: shared hit=3
+   Buffers: shared hit=440
+   ->  Index Scan using p_i on feature (actual time=1.046..1.047 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (project_id = 'bbbbbbbb-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1100
+         Buffers: shared hit=440
+###### INDEX (tenant_id, layer_id)
+### layer container (1000-row layer), z12 box
+   Buffers: shared hit=35 read=3
+   ->  Index Scan using p_i on feature (actual time=0.392..0.393 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (layer_id = 'cccccccc-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1000
+         Buffers: shared hit=35 read=3
+   Buffers: shared hit=22 read=1
+   Buffers: shared hit=38
+   ->  Index Scan using p_i on feature (actual time=0.349..0.349 rows=0 loops=1)
+         Index Cond: ((tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid) AND (layer_id = 'cccccccc-0000-0000-0000-000000000001'::uuid))
+         Rows Removed by Filter: 1000
+         Buffers: shared hit=38
+### project container (1100 rows), z12 box
+   Buffers: shared hit=41 read=15534 written=9505
+   ->  Index Scan using p_i on feature (actual time=337.010..337.010 rows=0 loops=1)
+         Index Cond: (tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid)
+         Rows Removed by Filter: 440000
+         Buffers: shared hit=41 read=15534 written=9505
+   Buffers: shared hit=3
+   Buffers: shared hit=14128 read=1447 written=1063
+   ->  Index Scan using p_i on feature (actual time=185.653..185.654 rows=0 loops=1)
+         Index Cond: (tenant_id = (NULLIF(current_setting('mapsift.tenant_id'::text, true), ''::text))::uuid)
+         Rows Removed by Filter: 440000
+         Buffers: shared hit=14128 read=1447 written=1063
