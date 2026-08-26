@@ -122,6 +122,20 @@ The decision is here. The enforceable restatement is in `.claude/rules/*.md` wit
 > read a mutant's behaviour out of an environment with no wall, and inferred a mechanism that did not exist;
 > `test_the_suite_runs_as_a_role_the_wall_applies_to` fires immediately on such an environment and is the
 > first case ADR-0005 section 2 asks for, but a run narrowed to another module never reaches it.
+
+> **How the value is supplied, corrected 2026-08-26 the same day it was first written, because the first
+> wording named a mechanism that does not work.** It said to pass `-e DATABASE_URL` with no `=` and supply it
+> "from an env file the run already has". **Neither env file this repository ships carries that key**:
+> `infra/.env` has none, so Docker drops the unset passthrough and `infra/compose.yaml`'s own `api`
+> `environment:` block stands, and the run lands on the shared database the paragraph above exists to keep it
+> out of, with no error and no warning. What works is **an env file written for the run**, carrying that
+> run's own database name and passed with `--env-file`, or the value **exported in the calling shell** and
+> picked up by the bare `-e DATABASE_URL` passthrough. Verify what actually reached the container before
+> trusting the run.
+>
+> **And it is never written inline.** `-e DATABASE_URL=postgresql://user:password@...` puts a credential on
+> the command line and is refused by the permission classifier (measured 2026-08-26 at a review axis; this is
+> a separate finding from the role measurement above and shares only its date).
 >
 > **A database mutant requires `--reuse-db`, and the sentence above saying `--create-db` silently defeats
 > one.** Measured 2026-08-25: with a marking in place in an isolated test database, the same case run with

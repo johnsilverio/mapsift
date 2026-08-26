@@ -35,6 +35,13 @@ probe that creates its own destination: a mount whose container path does not al
 the repository as root, and it happened ten times across two review rounds. Both are ADR-0002 section 5 as
 amended 2026-08-25; the `specs/log.md` traps of 2026-08-20 and 2026-08-25 carry the measurements.
 
+**A fourth line was added 2026-08-26 and it is the one that fails silently.** Repointing `DATABASE_URL` at a
+database of the run's own repoints the **role** too, and the value everyone reaches for is the compose
+bootstrap superuser, which carries `rolsuper` and `rolbypassrls`: the wall goes off, the tables still report
+`relrowsecurity` true because `FORCE` addresses the owner and not a superuser, and every case then passes or
+fails for the wrong reason. `test_the_suite_runs_as_a_role_the_wall_applies_to` catches it and a run narrowed
+to another module never reaches it.
+
 ---
 
 ## Axis 1: Canon
@@ -57,6 +64,14 @@ Python source is applied to that database and the run uses `--reuse-db`: `--crea
 migrations and takes the mutant with it, so the case reports green (measured 2026-08-25). And a probe never
 names a container path that does not already exist, because the mount creates it in the repository as root
 (ADR-0002 section 5, amended 2026-08-25).
+
+A database of the run's own is reached with the **role the suite normally connects as**: change the database
+name and keep the user and password, because pasting the compose bootstrap superuser turns the isolation wall
+off entirely and every row-level-security case then passes or fails for the wrong reason. Supply the value
+from an env file **you wrote for the run**, or export it in your shell and pass the bare `-e DATABASE_URL`
+passthrough; neither env file this repository ships carries that key, so `-e DATABASE_URL` alone silently
+leaves you on the shared database. Never write it inline as `-e DATABASE_URL=postgresql://user:password@...`,
+which puts a credential on the command line and is refused (ADR-0002 section 5, amended 2026-08-26).
 
 **Your question, and only yours:** does this diff violate something the ecosystem decided? This axis reads
 **law**. A finding here blocks a merge.
@@ -109,6 +124,14 @@ Python source is applied to that database and the run uses `--reuse-db`: `--crea
 migrations and takes the mutant with it, so the case reports green (measured 2026-08-25). And a probe never
 names a container path that does not already exist, because the mount creates it in the repository as root
 (ADR-0002 section 5, amended 2026-08-25).
+
+A database of the run's own is reached with the **role the suite normally connects as**: change the database
+name and keep the user and password, because pasting the compose bootstrap superuser turns the isolation wall
+off entirely and every row-level-security case then passes or fails for the wrong reason. Supply the value
+from an env file **you wrote for the run**, or export it in your shell and pass the bare `-e DATABASE_URL`
+passthrough; neither env file this repository ships carries that key, so `-e DATABASE_URL` alone silently
+leaves you on the shared database. Never write it inline as `-e DATABASE_URL=postgresql://user:password@...`,
+which puts a credential on the command line and is refused (ADR-0002 section 5, amended 2026-08-26).
 
 **Your question, and only yours:** does the diff satisfy the requirement's acceptance criterion? Quote the
 criterion line for every finding.
@@ -164,6 +187,14 @@ Python source is applied to that database and the run uses `--reuse-db`: `--crea
 migrations and takes the mutant with it, so the case reports green (measured 2026-08-25). And a probe never
 names a container path that does not already exist, because the mount creates it in the repository as root
 (ADR-0002 section 5, amended 2026-08-25).
+
+A database of the run's own is reached with the **role the suite normally connects as**: change the database
+name and keep the user and password, because pasting the compose bootstrap superuser turns the isolation wall
+off entirely and every row-level-security case then passes or fails for the wrong reason. Supply the value
+from an env file **you wrote for the run**, or export it in your shell and pass the bare `-e DATABASE_URL`
+passthrough; neither env file this repository ships carries that key, so `-e DATABASE_URL` alone silently
+leaves you on the shared database. Never write it inline as `-e DATABASE_URL=postgresql://user:password@...`,
+which puts a credential on the command line and is refused (ADR-0002 section 5, amended 2026-08-26).
 
 **Your question, and only yours:** judgement calls, and they are labelled as such. **Everything you raise is
 advisory**, and a documented decision in this repository always wins over this axis. Skip anything the
