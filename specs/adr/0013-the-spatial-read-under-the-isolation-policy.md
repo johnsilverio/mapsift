@@ -30,6 +30,13 @@ MAP-51 opened this and named the candidate remedy: `ALTER FUNCTION st_intersects
 
 ## What was measured
 
+**The experiment is kept at `specs/spikes/map-51-spatial-read-under-the-policy/`** so every number below can be
+re-run rather than believed, which is the rule ADR-0012 set and which ADR-0004 broke (MAP-54). It carries the
+fixture, the sweep, the leak probe, the committed baseline the checker grades a fresh run against, and the
+negative control that grades the checker. Re-run on 2026-08-25 on the same container: the buffer counts and
+index-entry counts reproduce to the block, and the milliseconds do not transfer between runs and must not be
+read as signal.
+
 Everything below was measured rather than read, on **PostgreSQL 18.6, PostGIS 3.6.4, GEOS 3.14.1, PROJ 9.8.1, on 2026-08-24**, single-process, against a **2,088,000-row fixture**: two tenants sharing one region, four projects each, four layers per project at 1,000, 10,000, 50,000 and 200,000 features, heap clustered by layer. Reads run as `mapsift_app` with the tenant bound under `FORCE ROW LEVEL SECURITY` and ADR-0005 decision 3's exact policy expression. The plan and the law were measured twice independently, once by a research strand and once by the orchestrator reviewing it.
 
 ### The plan that needs nothing marked
@@ -63,8 +70,40 @@ The box does not appear in that table because it does not appear in the cost. A 
 ### The four conditions the result depends on, and the fourth is the boundary
 
 1. **Every spatial read names a container.** Without one the prefix is the tenant, which is the first row of the table.
-2. **A `(tenant_id, project_id, layer_id)` btree exists.** It costs **15 MB at two million rows**, against 275 MB for the three-column GiST.
-3. **The heap stays clustered by layer.** Scattered, the same reads cost **10 to 25 times the buffers**, and a 200,000-row layer becomes slower than a full sequential scan of the whole two-million-row table.
+2. **A btree exists whose leading columns are the tenant and then the container the read names**, which in this product is `(tenant_id, layer_id)` and `(tenant_id, project_id)`. They cost **14 MB each at two million rows**, against 275 MB for the three-column GiST.
+
+   > **Corrected 2026-08-25, at the implementation round's research. This condition originally named one
+   > `(tenant_id, project_id, layer_id)` btree, and that shape is a regression the tree does not currently
+   > carry.** With `project_id` between the tenant and the layer, a read naming the **layer** and not the
+   > project has no contiguous range to start from, and what closes the gap is PostgreSQL 18's nbtree **skip
+   > scan** (release 18 note E.6.3.1.2, commit `92fe23d93`; `nbtpreprocesskeys.c` at `REL_18_STABLE` records
+   > that before 18 such a qual "always resulted in a full scan"). Measured on this fixture on **17.11 and
+   > 18.6** with PostGIS 3.6.4 (2026-08-25), the 1,000-row layer costs **965 buffers on 17 against 50 on 18**,
+   > because 17 reads the tenant's entire index prefix and checks the layer key per entry.
+   >
+   > **The skip is not free on 18 either: it costs one index descent per project in the tenant**
+   > (`Index Searches: P + 1`), recovering 7.7 times at four projects, 1.2 times at a hundred, and **nothing
+   > at four hundred**, where nbtree abandons it and the read lands back on the 17 figure. The original result
+   > was measured on a fixture with **four** projects, and a tenant with four hundred is not exotic here.
+   >
+   > **With the container leading, the same read is 38 buffers on 17 and on 18 alike, at every project
+   > count.** The slope of the law below, 0.035 buffers per prefix row, is version- and order-independent;
+   > only the intercept ever moved, from the tenant's whole index prefix to a single descent. The two-index
+   > shape is the best measurement in every row of the sweep on both versions, it is the shape
+   > `layers_feature` already half carries, and it makes the implementation round's migration **additive**
+   > rather than a replacement of an index that reads are already using. The sweep is at
+   > `specs/spikes/map-51-spatial-read-under-the-policy/version-and-order/`.
+   >
+   > **None of this touches the security half, and the refusal of decision 1 is not reopened.** The tenant is
+   > the leading column on every shape and its bound qual is `uuid_eq` on every supported version, so the scan
+   > never leaves the reader's own prefix: measured on 17.11, the 1,000-row layer read costs 965 buffers
+   > against an 1,881-page index, for either tenant, which is that tenant's half and no more, with zero
+   > foreign entries. Skip scan cannot promote a non-`leakproof` qual either, established two ways.
+   > `restriction_is_securely_promotable()` runs in `indxpath.c` before any restriction clause becomes an
+   > index clause, while skip arrays are generated downstream in nbtree and are **synthetic**, carrying no
+   > user qual and evaluating no user function; and across all 168 btree cells of the sweep, on both
+   > versions, `st_intersects` appears in `Index Cond` **zero** times and in `Filter` every time.
+3. **The heap stays clustered by layer.** Scattered, the same reads cost **10 to 25 times the buffers**, and a 200,000-row layer becomes slower than a full sequential scan of the whole two-million-row table. *(Both figures sharpened 2026-08-25 by the experiment: the measured multiple is 9.6 to 25.1, so the low end is rounded up here; and the 200,000-row layer loses to the sequential scan **on time and not on blocks**, at 68,285 buffers and 876 to 1,105 ms against 72,000 buffers and 378 to 525 ms, because the blocks are random rather than sequential. The condition and its consequence are unchanged.)*
 4. **The layer stays small**, because the cost is linear and unbounded in it.
 
 ### Where it stops, as a number rather than as a worry
@@ -103,6 +142,15 @@ Four things carry it, and the first alone would be enough.
 
 `st_intersects(geometry,geometry)` does both halves of that, on four error surfaces, two of which name the argument's SRID as well as its geometry type (2026-08-24).
 
+> **Corrected 2026-08-25, by the experiment sent to make this document re-runnable: the four surfaces are a
+> family and not one signature.** Four surfaces reproduce and two name an SRID, but only **two of the four
+> sit on the `(geometry,geometry)` overload**, and only **one** of those names an SRID; the other two belong
+> to the `geography` and `text` overloads. **The refusal is untouched**, because one surface on the exact
+> signature a spatial qual uses is already both halves of the disqualification: the mixed-SRID throw fires
+> for some argument values and not others **and** puts the argument's SRID and geometry type in the message.
+> The `PolyhedralSurface` surface on the same signature is the one the leak probe actually drives. What was
+> wrong is the precision of the attribution, not the conclusion drawn from it.
+
 **The conditional form of it was demonstrated to fail on its own terms.** The earlier draft's answer was that the throw is unreachable while the index condition carries the tenant key. On a plan with no index condition the guarantee has nothing to stand on, and that is not a hypothetical plan: it is what a wide box gets. Measured on a schema carrying the draft's own mandated index, marked, with the declared cost forced to 1, the leak fires and names a hidden row's geometry type. The remaining protection was upstream's cost model, which is a number this product does not own and which the draft's own test would only have watched rather than held.
 
 **Upstream is on the other side of the question and its review is open.** PostGIS excluded both candidate surfaces by name and left the broader review outstanding (`specs/dependencies.md` item 18). Asserting on behalf of a project that declined to assert about the same functions is signing over somebody else's code with less knowledge of it than they have.
@@ -113,9 +161,22 @@ Four things carry it, and the first alone would be enough.
 
 ### 2. The container-scoped spatial read is the sanctioned shape
 
-**A spatial read on a tenant-owned table names a layer, a layer set, or a project as well as the tenant.** The index condition is then built entirely from `uuid_eq`, which is already leakproof in core, and the geometry predicate stays behind the policy as a heap filter where it belongs.
+**A spatial read on a tenant-owned table names a layer, a layer set, or a project as well as the tenant.**
+
+> **Two of those three containers are modelled and one is not (noted 2026-08-25).** `apps/api` carries
+> `Layer` and `Project`; nothing in the tree or in the PRD models a layer set. The sanctioned shape is
+> unchanged and the seam admits whatever containers exist; this note exists so a reader does not go looking
+> for a model that was never built. The index condition is then built entirely from `uuid_eq`, which is already leakproof in core, and the geometry predicate stays behind the policy as a heap filter where it belongs.
 
 The security half is stated plainly, because it is what the refusal buys. With nothing marked, a spatial read that reaches production **without** its container is slow and closed. It is never fast and open. Under the refused assertion the same omission would have been an isolation defect; here it is a performance defect. That asymmetry is the decision, and the rest of this ADR is the price of it.
+
+> **Qualified 2026-08-25, at this round's fan-out: the two sentences above are true of the qual path this
+> decision governs and are not true of the ordering path.** The Consequences record the measured exception
+> and this decision must not be read without it: the leakproof gate applies to quals and not to `ORDER BY`
+> pathkeys, so a nearest-neighbour ordering takes the plain GiST with nothing marked and **does** visit index
+> entries belonging to a tenant the reader cannot see. Nothing is handed to a throwing predicate there, so
+> the refusal still closes the error surface and the plan-choice channel it claims to close. What is narrowed
+> is the scope of "never fast and open", not the decision.
 
 The performance half is the law above: cost linear in the container prefix and independent of the box, which is the right shape for the map, where a reader zoomed into one layer pays for that layer and not for everything the tenant owns.
 
@@ -147,6 +208,75 @@ Cases 1 to 6 stand unchanged. Both new cases are **by construction rather than b
 
 7. **From the catalogue.** Enumerate every function belonging to a PostGIS extension and every function this product defines, and assert that none reports `proleakproof = true`, so a marking added by hand on a live database fails the build; and every tenant-owned table carrying a geometry column carries a btree whose leading columns are the tenant and the container keys. Core's own markings are outside this case and have to stay outside it: `uuid_eq` is marked in core (2026-08-24) and decision 2's entire plan rests on that, so a case widened to the whole catalogue would fail the build on a clean install and would be refusing what this ADR depends on.
 8. **From the plan.** A bounding-box read through the published seam, bound to a tenant, with the policy in force, witnesses the **plan** and not the rows: the index condition carries the tenant and the container and is built only from `uuid_eq`, and the number of index entries visited equals the number the reader owns. MAP-51's own acceptance names the trap this closes, "a test that asserts only the returned rows passes for the wrong reason here", and it is the same trap ADR-0005's append-only addition met on 2026-08-07, where asserting that nothing changed passed for the wrong reason under two different causes.
+
+> **What case 8 guarantees, stated rather than wished for (added 2026-08-25, at the implementation round's
+> pickup; its premise corrected the same day, see below).** **Forcing the index path is the ruling, and
+> growing the fixture until the planner chooses on its own is refused**, because that turns a gate into a
+> measurement and `specs/testing.md` section 4 keeps measurements out of CI for the reason a randomly
+> failing suite is one people learn to ignore. The mechanism is the window's to choose.
+>
+> *The reason first given for forcing was wrong and is retracted rather than quietly rewritten.* It said a
+> planner given a few dozen rows takes a sequential scan. Measured at 90 rows on the real table and again on
+> two nine-row fixtures, **unforced**, the planner already takes an index path with this very condition,
+> because `st_intersects` ships a declared cost of 5000 and makes the sequential scan expensive. The ruling
+> survives on a better reason than the one it was given: forcing makes the case independent of a cost
+> constant this product does not own and upstream can change.
+>
+> **And the measurement this note left open is closed.** Whether a forced index path over a few-dozen-row
+> table reproduces the `Index Cond` measured on the 2,088,000-row fixture was named here as established by
+> nobody. It is established: three parties measured it independently on 2026-08-25, against the real
+> `layers_feature` and against two scratch fixtures, and the condition comes back byte for byte as
+> `baseline.jsonl` records it under `cfg3_btree_tpl`, for the layer container and for the project container
+> alike.
+
+> **What each case must actually witness, corrected 2026-08-25 after the research round measured both of
+> them passing on a schema that violates the property they exist to prove.** Two tables identical but for
+> the index, one carrying the container btree and one carrying `((id::text), tenant_id, project_id,
+> layer_id)`, which does **not** lead on the tenant: the `Index Cond` came back byte-identical, `Actual Rows`
+> and `Rows Removed by Filter` came back identical, and the bad index swept its entire 40,003-entry index at
+> 553 buffers against 7. Every assertion designed above passed on both.
+>
+> **Case 8 asserts the name of the index the plan chose.** `Index Name` is carried on both node types the
+> sweep records, so it costs nothing against the rule that the node type is not pinned, and it is the only
+> field measured to discriminate the two schemas. Four repairs come with it, each measured rather than
+> reasoned: an assertion over the index condition is made only after that condition is proven **non-empty**,
+> because the same read forced to a sequential scan yields an empty condition on which every negative
+> assertion passes; the condition is collected from **every** index node rather than the first in pre-order,
+> because the claim is about all of them; `Order By` is modelled and asserted absent, so the ordering path
+> this ADR could not close cannot arrive disguised as a clean plan; and the count of index entries is not
+> read as `Actual Rows` plus `Rows Removed by Filter`, which was measured returning **180 on a bitmap path
+> and 90 on an index-scan path for the same read at the same instant**, is a per-loop average once `loops`
+> exceeds one, and is truncated by `int()` against PostgreSQL 18's fractional rendering. Where a magnitude is
+> kept it is bounded rather than equated, in the shape PostgreSQL's own `memoize.sql` uses, since the
+> property is **zero foreign entries** and not an exact count.
+>
+> **Case 7 reads an index's key columns through `pg_get_indexdef(indexrelid, k, false)` over
+> `generate_series(1, indnkeyatts)`**, never through a hand-rolled join on `pg_attribute`. For an expression
+> key `indkey` carries `0`, no attribute has `attnum = 0`, the join drops the entry, and re-packing the
+> remaining positions renders an index whose tenant key sits second as one that leads on it. The failure mode
+> is a **false pass**. The same defect is merged in ADR-0005 decision 7's unique-key case and is MAP-59, which
+> owns the shared helper both gates call. Case 7 additionally requires `indisvalid`, `indisready` and
+> `indislive`, and rejects `indpred IS NOT NULL` outright rather than reasoning about which partial predicates
+> happen to still serve a spatial read; and it asserts the prefix columns carry the **`uuid_ops`** operator
+> class, which is this decision's "built entirely from `uuid_eq`" written in the catalogue rather than in
+> prose.
+>
+> **And case 7 gains a positive arm and two widenings.** It asserts that `uuid_eq` **is** `leakproof`, because
+> decision 2's entire plan rests on that and a core marking is revocable, PostgreSQL having unmarked
+> `gen_random_uuid()` in 2024. Its enumeration covers **`btree_gist`**, whose 212 functions this ADR's own
+> Context measured and whose opclasses are what would make a composite `(tenant_id, geometry)` index condition
+> possible, and it filters `deptype = 'e'` so a function that acquired a dependency on a non-PostGIS extension
+> cannot fall out of both arms silently.
+>
+> What the case therefore witnesses is **the shape of the index path when that path is taken**: that the
+> condition is built from `uuid_eq` alone and that the entries visited are only the reader's. It does **not**
+> witness that the planner takes that path in production, and it is not evidence for any timing. This is
+> ADR-0002 section 5's third rule applied to this case, the same rule decision 4 above applies to the source
+> gate.
+>
+> **The plan's node type is not part of the assertion.** The committed baseline records the same index and
+> the same condition under `Index Scan` at 1,000 to 50,000 prefix rows and under `Bitmap Heap Scan > Bitmap
+> Index Scan` at 200,000, so a case pinning the node would be pinning the fixture size.
 
 ### 6. Where the container prefix stops is foundation section 6's tiling gate, not a security decision
 

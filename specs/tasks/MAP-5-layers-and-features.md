@@ -209,12 +209,21 @@ this list.
   > tenants the query cannot see, is unobservable under the policy for the same reason.** The finding is
   > **MAP-51**; ADR-0005's Consequences carries the matching correction, dated the same day.
   >
-  > **The trigger, named rather than left to judgement:** the composite plus `btree_gist` is introduced
+  > ~~**The trigger, named rather than left to judgement:** the composite plus `btree_gist` is introduced
   > when a measured tenant-scoped spatial query on real data crosses the I6 per-tile budget **and** its
   > plan shows the index scanning entries belonging to tenants the query cannot see. That is a
   > measurement under the N1 protocol, recorded with its device, versions, fixture and date, and it is
   > deliberately two conditions rather than one, because the first alone can be met by a query that is
-  > slow for a reason this index cannot fix.
+  > slow for a reason this index cannot fix.~~
+  >
+  > **Struck 2026-08-25 by ADR-0013, which decided this question rather than leaving it to a trigger.** The
+  > composite `(tenant_id, geometry)` under `btree_gist` is **not** adopted, ever, and is foreclosed by name:
+  > what the read needs is a btree with **no geometry in it at all**, `(tenant_id, project_id, layer_id)`,
+  > which costs 15 MB at two million rows against the three-column GiST's 275 MB. The trigger above was also
+  > unobservable in both halves, as this block's own correction of 2026-08-21 says. **What replaces it is an
+  > obligation rather than a trigger:** every spatial read names a container, enforced by a required argument
+  > on the published selector and by a catalogue case, and `btree_gist` is left with nothing needing it
+  > (MAP-52). ADR-0013 decisions 2, 4 and 7 hold this.
 
 - **The feature table deliberately carries no `UNIQUE (tenant_id, id)`**, and this is an answer rather than
   the silence a review found. That composite is what ADR-0005 section 5 requires of a table something else

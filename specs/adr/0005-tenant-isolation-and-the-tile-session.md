@@ -118,6 +118,15 @@ The tile server choice stays its own ADR, gated where ADR-0001 section 8 left it
 2. the tenant reaches the session **inside the same transaction that serves the tile**, from a claim **the database verifies**, never from a raw identifier a client put in a URL;
 3. an absent, expired or unverifiable claim **raises**, and never returns an empty tile, because an empty tile is a wrong answer and a wrong answer presented as data is the silent-discard sin wearing a different hat (N12).
 
+> **Added 2026-08-25 by ADR-0013, as a fourth clause of the contract above.** 4. the function source's read
+> **names a container** (a layer, a layer set or a project) as well as carrying the verified tenant, because
+> the tile path performs the spatial read of ADR-0013 decision 2 under this same policy and takes the same
+> plan. Without the container the read is correct and scales with everything the tenant owns rather than with
+> the layer being drawn, which is a defect with a performance symptom under foundation section 10 and sits
+> directly underneath I6's per-tile budget. This constrains the tile server choice the way clauses 1 to 3 do:
+> a candidate whose source cannot carry a container is refused on the same footing as one that cannot carry a
+> tenant.
+
 **The mechanism that satisfies it today**, recorded against Martin's documentation as read on 2026-08-04 rather than from memory: a Martin function source receives `z`, `x`, `y` and a `query_params json`, **and nothing else**, with no headers, no token and no identity of its own. So the claim travels in the query string as a **short-lived signed capability** that the API tier mints after it has authenticated the user and resolved the tenant. The tile function is `SECURITY INVOKER`; its first act is to call the verifier owned by `mapsift_tokens`, which checks the signature and the expiry and returns the tenant or raises; it then binds the tenant with the transaction-scoped `set_config` of decision 3 and only afterwards touches a table, where the policies apply exactly as they do for the API.
 
 Two alternatives were considered and are recorded with their reason. **A connection pool per tenant** dies on the tenant population M1 describes, where most tenants are personal accounts, so connections would grow with the customer count. **An authenticating proxy in front of the tile server** cannot help, because there is no way to carry a session variable over HTTP into somebody else's pooled connection; the claim has to reach the database as data, which is what mechanism 2 does.
@@ -135,6 +144,19 @@ The test PRD N2 requires is **by construction rather than by diligence**, and it
 3. a query with no binding in force returns nothing **and** the application guard raises;
 4. a write bound to one tenant cannot create, read, update or delete a row of another, including through a foreign key to a row it cannot see;
 5. the tile path is exercised as the tile role with a forged and with an expired claim, and both are refused rather than served an empty tile.
+
+> **Case 4's unique-key half is satisfiable by a schema that violates it, found 2026-08-25 and owned by
+> MAP-59.** The gate written for it reads an index's leading column by joining `pg_attribute` on
+> `x.indkey[0]`. **For an expression index `indkey[0]` is `0`**, no attribute carries `attnum = 0`, the inner
+> join drops the row, and the index is never examined. Measured on a table carrying both forms:
+> `UNIQUE (name, slug)` is flagged and `UNIQUE ((lower(name) || slug))` is **missed in silence**, while the
+> second is exactly the globally-unique natural key decision 5 exists to forbid, because a uniqueness
+> violation is raised beneath row security and reports the existence of a row the writer cannot see. The
+> failure mode is a **false pass**. The remedy is to read key columns through
+> `pg_get_indexdef(indexrelid, k, false)` over `generate_series(1, indnkeyatts)`, which renders an expression
+> key as its text instead of dropping it, in **one helper** every catalogue gate calls: ADR-0013 decision 5's
+> container case had independently grown a second copy of the same defective join, which is what says the
+> reading belongs in one place rather than in each case.
 
 **Which tables are inside the wall.** Every row that belongs to a tenant, per M1, which includes `tenant` itself, `membership`, `workspace`, `project`, `layer` and `feature`. The **global user** record is deliberately outside it, because a user spans tenants by design (M1) and its confidentiality is the permission layer's job rather than a second wall.
 
@@ -185,6 +207,19 @@ Permissive policies on one table combine with `OR`, PostgreSQL's own rule, so th
 >   policy bypassed is a Bitmap Index Scan at 1.4 ms. What the policy disqualifies is the **spatial** half of
 >   the index condition, so leading with the tenant narrows nothing. **This is MAP-51**, and it reaches
 >   decision 6, whose tile path performs exactly this read as `mapsift_tile` with the policy applied.
+>
+>   **Corrected again 2026-08-25 by ADR-0013, which closed MAP-51: the note above is right that the spatial
+>   half of the index condition is disqualified, and wrong in the conclusion it drew from that.** "Leading
+>   with the tenant narrows nothing" holds only for a read that names **nothing below the tenant**, and the
+>   shape it evaluated, the composite `(tenant_id, geometry)`, is not the shape that works. A read naming a
+>   **container** (a layer, a layer set or a project) as well as the tenant builds its index condition
+>   entirely out of `uuid_eq`, which is leakproof in core, so it takes a plain btree, keeps the geometry
+>   predicate behind the policy as a heap filter, and visits **zero index entries belonging to a tenant the
+>   reader cannot see**. Measured across 2,088,000 rows on 2026-08-24, the cost is linear in the container
+>   prefix and **independent of the box**, at 0.035 buffers per prefix row. So the tenant-leading rule of
+>   decision 5 is not defeated here, it is carried one column further; ADR-0013 is where that lives, along
+>   with the four conditions the result depends on and the refusal to mark anything `LEAKPROOF`. The
+>   experiment is at `specs/spikes/map-51-spatial-read-under-the-policy/`.
 
 - **The application role cannot run migrations**, so two connection profiles exist and the deployment has to keep them straight.
 

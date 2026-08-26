@@ -676,7 +676,17 @@ Each of these is a decision that this survey must feed before it can be made wit
     fixture data, deliberately, because a silently ignored fixture is a suite that passes on one machine and
     fails on another.
 
-18. **The spatial read under the isolation policy** (added 2026-08-24, MAP-51). Row-level security refuses a
+18. ~~**The spatial read under the isolation policy**~~ **CLOSED 2026-08-25 by ADR-0013**, on a 2,088,000-row
+    sweep against the pinned container (PostgreSQL 18.6, PostGIS 3.6.4, GEOS 3.14.1) rather than on reading,
+    with the experiment kept at `specs/spikes/map-51-spatial-read-under-the-policy/`. **The marking is
+    refused**, on four grounds of which the first alone suffices: the assertion is formally false against
+    `CREATE FUNCTION`'s own definition, its conditional form was demonstrated to leak a hidden row's geometry
+    type once the cost model stops hiding it, upstream excluded both candidate surfaces by name (below), and
+    it does not survive a restore. **And it is not needed:** a read naming a container as well as the tenant
+    builds its index condition out of `uuid_eq` alone, visits zero foreign index entries, and costs 0.035
+    buffers per prefix row independent of the box. The original entry follows, kept because its upstream and
+    operational findings are what this survey exists to hold and they are unchanged by the decision.
+    (added 2026-08-24, MAP-51). Row-level security refuses a
     qual as an **index condition** unless that qual's functions are `leakproof`, and no PostGIS spatial
     predicate is one: measured on the running container 2026-08-24, all three `st_intersects` overloads
     (`(geometry,geometry)`, `(geography,geography)` and `(text,text)`) and `geometry_overlaps` report
@@ -696,7 +706,12 @@ Each of these is a decision that this survey must feed before it can be made wit
     "serialized-value compare/hash functions, avoiding GEOS, GDAL, accessor, and **bbox predicate surfaces**",
     with the broader review left open for "GEOS/GDAL/error-producing functions **and bbox operators**". Both
     candidate surfaces are therefore excluded by name upstream. It lands in **3.7 and not in the pinned 3.6.4**:
-    `LEAKPROOF` appears 0 times in `postgis/postgis.sql.in` at tag 3.6.4 and 8 times at 3.7.0rc1, and the change
+    `LEAKPROOF` appears 0 times in `postgis/postgis.sql.in` at tag 3.6.4 and 8 times at 3.7.0rc1 (*corrected
+    2026-08-25: that is a single-file count of a two-file surface, and `postgis/geography.sql.in` marks a
+    further 5, so the upgrade presents **13**; measured on a scratch database, those markings do let a
+    geometry range qual become an index condition ahead of the policy, matching 2,001 entries of which 1,001
+    belong to a tenant the reader cannot see, so a catalogue gate going red on 3.7 is correct and must not be
+    narrowed away*), and the change
     was not back-patched. **A separate measured particularity of the same class:** the marking is superuser-only
     (`mapsift_owner`, which runs migrations, is refused with `must be owner of function`), an extension upgrade
     re-emits `CREATE OR REPLACE` for every function and silently resets it, and a non-binary `pg_dump` drops it

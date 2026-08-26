@@ -145,6 +145,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     the request body. Its evidence block carries the probe that shows Django's default test client hiding the
     CSRF check, and its out-of-scope block is deliberately long, because a missing line in a sibling's is what
     caused the round it exists to fix.
+  - **`tasks/MAP-51-the-container-scoped-spatial-read.md`** — the round that turns ADR-0013's refusal into
+    something the tree can express: the `(tenant_id, project_id, layer_id)` btree the ADR rests on and that
+    the tree does not carry, the published selector whose container argument is required, and decision 5's two
+    cases over both. **The first spec here whose own requirement had to be corrected at the pickup**, twice:
+    the live state called the remaining work a test half when the catalogue case is red against `main`, and
+    called the two cases seamless when they share the very index that is missing. Its evidence block hands
+    over a committed baseline showing one btree serving all three container shapes and then **refuses the
+    mechanism**, because why the middle column may be omitted was measured by nobody.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
@@ -155,7 +163,25 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     parameterised fixture, the compared queries, the known-wrong variant and the negative control that grades
     it. Kept because a decision resting on a measurement should be re-runnable, which SP-1's throwaway-harness
     rule covers for the code and not for the result; ADR-0004 promised result files that exist nowhere, and
-    MAP-54 is where that gap is settled for the canon rather than per ADR.
+    MAP-54 is where that gap is settled for the canon rather than per ADR. **Its `sweep.sh` invokes
+    `sweep_index.sql` and `sweep_shape.sql`, neither of which is in the directory** (found 2026-08-25 by the
+    round that built the MAP-51 experiment against it as a precedent), so the sweep half cannot be run as
+    committed while the headline comparison, which goes through `run.sh`, can. That belongs to MAP-54.
+  - **`spikes/map-51-spatial-read-under-the-policy/`** — the experiment behind ADR-0013, kept for the same
+    reason: the fixture, the sweep, the leak probe, the covering-index and vertex-limit probes, and the
+    nearest-neighbour probe that found the ordering-path exception. Two things it has that the MAP-50 one does
+    not, both earned at review. A **committed baseline** of 252 cells carrying buffers, index entries, plan
+    shape and the index condition per cell, so a fresh run is graded by `report.py check` rather than against
+    prose; keeping the condition per cell is what makes the checker notice a plan that stopped building it out
+    of `uuid_eq`, which is the security property the ADR rests on. And a **fixture guard**: the result key is
+    not unique across fixture generations, sixteen cells of the round's own pre-v2 files collide with this
+    baseline while describing a fixture five times smaller, so `check` compares the largest prefix first and
+    refuses with exit 2 rather than reporting sixteen differences that are the wrong fixture.
+    **It gained `version-and-order/` on 2026-08-25**, the sweep that corrected the ADR's own condition 2: the
+    same fixture and the same queries run against PostgreSQL **17.11** and **18.6** and against three index
+    shapes, 28 cells each. It is what establishes that the security half of decision 2 is version-independent
+    while its performance half was not, that the buried container key depended on PostgreSQL 18's nbtree skip
+    scan, and that the skip pays nothing once a tenant holds a few hundred projects.
 - **`testing.md`** — the canonical method document: Red/Green/Refactor in two clean-context windows, behaviour over
   implementation, the decision-versus-effect split that makes it possible, the kinds of test in this project
   (including the shared cross-runtime golden corpus and why measurements are not CI gates), where tests live,
@@ -267,4 +293,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     measured with the isolation policy bypassed or against a log shaped differently from this one, which is
     why the experiment is kept beside it rather than described. It also says twice what it does *not* fix:
     M15's reproducibility clause does not discriminate between the two strategies, and the projection read
-    takes no spatial index under the policy (MAP-51).
+    takes no spatial index under the policy (MAP-51). *That second one was closed on 2026-08-25 by ADR-0013
+    and is narrower than this line said: an unqualified read takes none, a container-scoped one does.*
+  - **`adr/0013-the-spatial-read-under-the-isolation-policy.md`** — the first decision in this canon that is a
+    **refusal** at length: no PostGIS predicate is marked `LEAKPROOF` by this product, on any connection and
+    through any path, and the container-scoped spatial read is the sanctioned shape instead. Row security will
+    not take a non-`leakproof` qual as an index condition, so a bounding-box read under the wall takes no
+    spatial index; naming a layer, a layer set or a project as well as the tenant builds the condition out of
+    `uuid_eq` alone, visits **zero entries belonging to a tenant the reader cannot see**, and costs 0.035
+    buffers per prefix row independent of the box. It carries the four conditions the result depends on, says
+    which have an owner and which do not, and points at foundation section 6's tiling gate rather than closing
+    it. Extends ADR-0005 decision 5 and corrects that ADR's own Consequences note of 2026-08-21.
