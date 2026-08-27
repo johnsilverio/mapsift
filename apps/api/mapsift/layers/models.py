@@ -87,5 +87,9 @@ class Feature(models.Model):
     class Meta:
         indexes: ClassVar[list[models.Index]] = [
             # The column order is not interchangeable: the tenant leads (ADR-0005 section 5).
-            models.Index(fields=["tenant", "layer"], name="feature_layer_by_tenant")
+            models.Index(fields=["tenant", "layer"], name="feature_layer_by_tenant"),
+            # Two btrees rather than one (tenant, project, layer), which reads as the tidier
+            # shape and costs the tenant's whole index prefix on PostgreSQL 17 for a read that
+            # names the layer (ADR-0013 condition 2, corrected 2026-08-25).
+            models.Index(fields=["tenant", "project"], name="feature_project_by_tenant"),
         ]
