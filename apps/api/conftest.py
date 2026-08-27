@@ -161,9 +161,13 @@ def tenant_owned_tables(transactional_db: None) -> frozenset[str]:
 # and poisons every gate reading it, in either module (measured 2026-08-26, both directions).
 SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE = "scratch_table_of_the_unique_key_gate"
 SCRATCH_TABLE_OF_THE_IDENTIFIER_GATES = "scratch_table_of_the_identifier_gates"
+SCRATCH_GEOMETRY_TABLE_NAMING_A_CONTAINER = "scratch_geometry_table_naming_a_container"
+SCRATCH_GEOMETRY_TABLE_NAMING_NO_CONTAINER = "scratch_geometry_table_naming_no_container"
 EVERY_SCRATCH_TABLE = (
     SCRATCH_TABLE_OF_THE_UNIQUE_KEY_GATE,
     SCRATCH_TABLE_OF_THE_IDENTIFIER_GATES,
+    SCRATCH_GEOMETRY_TABLE_NAMING_A_CONTAINER,
+    SCRATCH_GEOMETRY_TABLE_NAMING_NO_CONTAINER,
 )
 
 
