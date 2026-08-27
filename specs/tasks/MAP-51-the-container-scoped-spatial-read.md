@@ -27,8 +27,9 @@ not closed by this round, and its third mechanism is out of scope below.
 
 ## Out of scope
 
-- **The merged unique-key gate carrying the same catalogue defect. MAP-59**, which also owns the **shared
-  helper** both gates read an index's key columns through. This task consumes that helper; it does not own it.
+- **The merged unique-key gate carrying the same catalogue defect. MAP-59**, **merged 2026-08-26**, which
+  published the shared reading this task consumes and does not own: `THE_KEY_COLUMNS_OF_EVERY_INDEX` in
+  `apps/api/conftest.py`, a `WITH` prefix exposing a CTE `index_key_columns` as `(indexrelid, ord, key_column)`.
 - **The tile server's function source naming the container.** ADR-0013 decision 2 called that clause owed;
   this round's fan-out already **paid** it, and ADR-0005 decision 6 carries it dated 2026-08-25. What is out
   of scope is satisfying it, which is **MAP-55**'s.
@@ -99,6 +100,13 @@ marks and rolls back is impossible. The mutant for that arm is a statement again
 own, under `--reuse-db`; `--create-db` rebuilds from migrations and takes it with it. ADR-0002 section 5,
 amended 2026-08-25, carries the rule.
 
+**Measured 2026-08-26, and it is why the reading is consumed rather than re-implemented.** The first draft of
+this task's own catalogue case grew a second copy of the defective join, and against an index
+`(lower(name), tenant_id, project_id)` that copy renders the key columns as `{tenant_id, project_id}`: the
+expression entry is dropped and the tuple silently shortens, so the case would declare ADR-0013 **condition 2**
+satisfied by an index that leads on `lower(name)` and serves no such prefix lookup. **A false green in the
+direction the ADR cares about.** That draft was discarded rather than adapted.
+
 **Operational, cost three runs at MAP-39's Window B (2026-08-20).** `apps/api/pyproject.toml`'s `addopts`
 already carries `-q`, so `pytest -q` is effectively `-qq` and swallows the final count line. Run `pytest`
 bare or with `--tb=short`.
@@ -115,8 +123,11 @@ The requirement is **ADR-0013 decision 5, cases 7 and 8, as corrected 2026-08-25
 - **Case 7's leakproof arm is green on a clean install**, so its red is defined against a database mutant and
   the exit is a run the orchestrator performs, in the shape MAP-43 established. Its **positive** arm and its
   index arm are red.
-- **Case 7 reads key columns through the MAP-59 helper.** If that helper does not exist when this window runs,
-  that is a finding reported back, not a licence to hand-roll the join the correction exists to remove.
+- **Case 7 reads key columns through the MAP-59 reading**, which now exists and is named in the Out of scope
+  block. Hand-rolling a second `pg_attribute` join is the defect that round was opened to remove. One property
+  comes with its shape: it is a `WITH` prefix rather than a subquery, so a consumer needing a CTE of its own
+  folds into the same `WITH` instead of concatenating a second one, and getting that wrong is a loud syntax
+  error rather than a silent pass.
 - **Case 8 carries the limitation registered in ADR-0013 decision 5**: it witnesses the shape of the index
   path when taken, and neither that the planner takes it nor any timing. The node type is not part of the
   assertion, and `Index Name` is.
