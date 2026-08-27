@@ -17,7 +17,7 @@ def features_of_a_layer_intersecting(layer_id: UUID, box: Polygon) -> QuerySet[F
 
     Requires a tenant binding and opens none (ADR-0005 sections 3 and 4).
     """
-    raise NotImplementedError
+    return Feature.objects.filter(layer_id=layer_id, geometry__intersects=box)
 
 
 def features_of_a_project_intersecting(project_id: UUID, box: Polygon) -> QuerySet[Feature]:
@@ -25,4 +25,4 @@ def features_of_a_project_intersecting(project_id: UUID, box: Polygon) -> QueryS
 
     Requires a tenant binding and opens none (ADR-0005 sections 3 and 4).
     """
-    raise NotImplementedError
+    return Feature.objects.filter(project_id=project_id, geometry__intersects=box)
