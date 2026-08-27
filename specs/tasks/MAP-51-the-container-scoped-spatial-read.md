@@ -1,6 +1,7 @@
 # MAP-51: A spatial read in this product names a container, and cannot be written without one
 
-> **Rewritten 2026-08-25, after a research round corrected the requirement this file assembles.** The first
+> **Rewritten 2026-08-25 after a research round corrected the requirement this file assembles, and amended
+> 2026-08-26 and 2026-08-27.** The first
 > version sized the migration from an index shape ADR-0013 has since retracted, and its Acceptance ratified
 > two cases that were then measured passing on a schema violating the property they exist to prove. Both
 > corrections are in ADR-0013, dated; this file points at them rather than carrying them.
@@ -27,9 +28,15 @@ not closed by this round, and its third mechanism is out of scope below.
 
 ## Out of scope
 
-- **The merged unique-key gate carrying the same catalogue defect. MAP-59**, **merged 2026-08-26**, which
-  published the shared reading this task consumes and does not own: `THE_KEY_COLUMNS_OF_EVERY_INDEX` in
-  `apps/api/conftest.py`, a `WITH` prefix exposing a CTE `index_key_columns` as `(indexrelid, ord, key_column)`.
+- **The unique-key gate carrying the same catalogue defect. MAP-59**, whose commits are **on this branch and
+  nowhere else** as of 2026-08-27 (`origin/main` is still `185cc86`), which published the shared reading this
+  task consumes and does not own: `THE_KEY_COLUMNS_OF_EVERY_INDEX` in `apps/api/conftest.py`, a `WITH` prefix
+  exposing a CTE `index_key_columns` as `(indexrelid, ord, key_column)`.
+
+  **Branch from this branch, never from `main`.** Both halves of the requirement are true only here: the index
+  arm is red against this tree, and the reading it must consume does not exist on `main`. A window that
+  follows `dev-workflow` and branches from `main` gets the red case, loses the helper, and hand-rolls the join
+  the last round was opened to remove.
 - **The tile server's function source naming the container.** ADR-0013 decision 2 called that clause owed;
   this round's fan-out already **paid** it, and ADR-0005 decision 6 carries it dated 2026-08-25. What is out
   of scope is satisfying it, which is **MAP-55**'s.
@@ -56,9 +63,9 @@ Closed 2026-08-25 at the pickup, then **re-opened and re-closed the same day** a
 1. **One window pair, not two.** The migration, the catalogue case and the plan case rest on one object.
 2. **The published selector is built in this round.** Registered where it already lived: ADR-0013 decision 4.
 3. **The plan case forces the index path rather than growing the fixture.** Registered as a dated note on
-   ADR-0013 decision 5, whose stated reason was then **retracted and replaced** in the same note when three
-   parties measured the planner already taking an index path unforced. Forcing stays; the mechanism is
-   Window A's.
+   ADR-0013 decision 5, whose stated reason was then **retracted and replaced** in the same note: measured at
+   90 rows on the real table and on two nine-row fixtures, the planner already takes an index path unforced.
+   Forcing stays on a better reason, and the mechanism is Window A's.
 4. **The fan-out commits before dispatch.**
 5. **Two containers are modelled and one is not.** ADR-0013 decision 2's note.
 6. **The index is two btrees and the migration is additive**, not one three-column btree replacing what the
@@ -116,13 +123,18 @@ bare or with `--tb=short`.
 The requirement is **ADR-0013 decision 5, cases 7 and 8, as corrected 2026-08-25**, read there. The delta:
 
 - **MAP-51's acceptance clause 1 as originally written is retired** and the issue body says so; clause 2 was
-  delivered by ADR-0013. Neither is this round's.
+  delivered by ADR-0013. Neither of those two **as written** is this round's work; what replaces clause 1 is
+  decision 5's two cases, and those **are** this round.
 - **The migration is additive.** `layers_feature` already carries the btree for one of the two containers, so
   what is red is the other one. Size it from **condition 2**, never from case 7's sentence, which an index
   already present can be read as satisfying.
-- **Case 7's leakproof arm is green on a clean install**, so its red is defined against a database mutant and
-  the exit is a run the orchestrator performs, in the shape MAP-43 established. Its **positive** arm and its
-  index arm are red.
+- **Two of case 7's three arms are green on a clean install, and only the index arm is red.** The absence arm
+  (nothing marked) and the **positive** arm (`uuid_eq` **is** leakproof, measured `t` on 2026-08-27) are both
+  regression guards, and a regression guard passes the day it is written. *(Corrected 2026-08-27: this bullet
+  called the positive arm red, which would have had a window contrive a failing form of a true assertion.)*
+  **So case 7 owes the exit two mutants, not one**, both superuser-issued against a database of the run's own
+  under `--reuse-db`: one **marking** a PostGIS function, one **unmarking** `uuid_eq`. The evidence block's
+  superuser-only-in-both-directions measurement is what makes the second one possible.
 - **Case 7 reads key columns through the MAP-59 reading**, which now exists and is named in the Out of scope
   block. Hand-rolling a second `pg_attribute` join is the defect that round was opened to remove. One property
   comes with its shape: it is a `WITH` prefix rather than a subquery, so a consumer needing a CTE of its own

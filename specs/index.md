@@ -146,13 +146,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     CSRF check, and its out-of-scope block is deliberately long, because a missing line in a sibling's is what
     caused the round it exists to fix.
   - **`tasks/MAP-51-the-container-scoped-spatial-read.md`** — the round that turns ADR-0013's refusal into
-    something the tree can express: the `(tenant_id, project_id, layer_id)` btree the ADR rests on and that
-    the tree does not carry, the published selector whose container argument is required, and decision 5's two
-    cases over both. **The first spec here whose own requirement had to be corrected at the pickup**, twice:
-    the live state called the remaining work a test half when the catalogue case is red against `main`, and
-    called the two cases seamless when they share the very index that is missing. Its evidence block hands
-    over a committed baseline showing one btree serving all three container shapes and then **refuses the
-    mechanism**, because why the middle column may be omitted was measured by nobody.
+    something the tree can express: the container btrees the ADR rests on, the published selector whose
+    container argument is required, and decision 5's two cases over both. **The most corrected file in this
+    folder, and each correction is dated in it.** Its first version sized the migration from an index shape the
+    ADR has since retracted; its Acceptance then ratified two cases that were measured passing on a schema
+    violating the property they exist to prove; and a third pass called a regression guard red. **Every one of
+    the three was found by a reader who had not written it**, twice by the pre-dispatch read and once by a
+    research round, which is the argument for both mechanisms in one file.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
