@@ -120,8 +120,11 @@ Both halves of that are one rule: no ceremony around the ORM, and no domain logi
   buried column and pays nothing once there are a few hundred of them.
 - DO give every **spatial** read a container as well as the tenant, a layer, a layer set or a project, so the
   index condition is built from `uuid_eq` alone (**ADR-0013** decision 2). The published selector takes that
-  container as a **required argument**, so the unqualified form is not expressible rather than merely
-  discouraged.
+  container as a **required argument**, so the unqualified form is not expressible **through the seam**.
+  *(Narrowed 2026-08-27: this said "not expressible rather than merely discouraged" full stop, and that is
+  untrue of this tree. `Feature.objects.filter(geometry__intersects=box)` is expressible by anyone today;
+  what would stop it anywhere else is the source gate of ADR-0013 decision 4's third mechanism, which is
+  **MAP-58** and is not built. The seam is the first of three mechanisms, not all three.)*
 - DON'T write a spatial lookup outside that selector module, `__intersects`, `__within`, `__bboverlaps` and
   their siblings included. One word added to a `filter()` is how the unqualified shape arrives, and it arrives
   by accident rather than by decision.
