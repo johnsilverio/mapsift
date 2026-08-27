@@ -40,8 +40,10 @@ not closed by this round, and its third mechanism is out of scope below.
 - **The tile server's function source naming the container.** ADR-0013 decision 2 called that clause owed;
   this round's fan-out already **paid** it, and ADR-0005 decision 6 carries it dated 2026-08-25. What is out
   of scope is satisfying it, which is **MAP-55**'s.
-- **Dropping `btree_gist`**, which the refusal left with nothing needing it. **MAP-52**. Note that case 7's
-  enumeration now **covers** its 212 functions, so the two touch and do not conflict.
+- **Dropping `btree_gist`**, which the refusal left with nothing needing it. **MAP-52**. Case 7's enumeration covers its 212
+  functions **wherever the extension exists**, which is the developer's database and **not** the suite's:
+  `template_postgis`, which the test database is cloned from, does not carry it (measured 2026-08-27). The two
+  touch and do not conflict.
 - **The ordering path.** ADR-0013's Consequences record a nearest-neighbour ordering visiting entries a
   reader cannot see, and say plainly that whether it wants an answer of its own is a later round's question.
   It has **no owner** and this task does not give it one; it only refuses to let that path arrive disguised
