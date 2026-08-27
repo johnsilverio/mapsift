@@ -129,9 +129,22 @@ The decision is here. The enforceable restatement is in `.claude/rules/*.md` wit
 > `infra/.env` has none, so Docker drops the unset passthrough and `infra/compose.yaml`'s own `api`
 > `environment:` block stands, and the run lands on the shared database the paragraph above exists to keep it
 > out of, with no error and no warning. What works is **an env file written for the run**, carrying that
-> run's own database name and passed with `--env-file`, or the value **exported in the calling shell** and
-> picked up by the bare `-e DATABASE_URL` passthrough. Verify what actually reached the container before
-> trusting the run.
+> run's own database name, or the value **exported in the calling shell** and picked up by the bare
+> `-e DATABASE_URL` passthrough. Verify what actually reached the container before trusting the run.
+>
+> **The command is written here rather than described, because this clause has now been imprecise three
+> times** (2026-08-26 twice, 2026-08-27 once) and each time an agent followed the prose into something that
+> did not work. `--env-file` is a **top-level** compose option: after the subcommand it answers
+> `unknown flag: --env-file`, and without `-f` compose finds no configuration file from the repository root.
+>
+> ```
+> export DATABASE_URL=postgresql://mapsift_owner:mapsift_owner@db:5432/<your_db>
+> docker compose -f infra/compose.yaml --env-file infra/.env run --rm --no-deps \
+>   -e CI=1 -e DATABASE_URL api pytest --reuse-db
+> ```
+>
+> **A command that can be pasted is a fact; a description of one is a memory.** Prefer the first in any clause
+> that tells an agent how to run something.
 >
 > **And it is never written inline.** `-e DATABASE_URL=postgresql://user:password@...` puts a credential on
 > the command line and is refused by the permission classifier (measured 2026-08-26 at a review axis; this is
