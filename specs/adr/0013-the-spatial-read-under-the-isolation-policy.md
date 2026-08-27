@@ -261,6 +261,19 @@ Cases 1 to 6 stand unchanged. Both new cases are **by construction rather than b
 > class, which is this decision's "built entirely from `uuid_eq`" written in the catalogue rather than in
 > prose.
 >
+> **The enumeration is by namespace rather than by the two arms described just above** (amended 2026-08-27,
+> at the implementation round): every function whose schema is neither `pg_catalog` nor `information_schema`,
+> rather than "PostGIS extensions plus this product's own" filtered on `deptype = 'e'`. The two sets coincide,
+> since a non-core function either belongs to an extension or does not, and the namespace form **has no arm
+> for a function to fall out of**, which is exactly what the `deptype` clause was added to prevent. It keeps
+> core's `uuid_eq` out, which is the exclusion this case insists on. One behavioural difference, accepted
+> rather than overlooked: an upstream extension that ever ships its own marking fails this build, and that is
+> revisit trigger 1 firing rather than a false red. And a note on reach, because the `btree_gist` count above
+> describes the developer's database and not the suite's: that extension is installed in `mapsift` and **is
+> not in `template_postgis`**, which the test database is cloned from (measured 2026-08-27), so its 212
+> functions are covered by construction wherever it exists and are simply absent in CI. **MAP-52** removing it
+> makes that permanent.
+>
 > **And case 7 gains a positive arm and two widenings.** It asserts that `uuid_eq` **is** `leakproof`, because
 > decision 2's entire plan rests on that and a core marking is revocable, PostgreSQL having unmarked
 > `gen_random_uuid()` in 2024. Its enumeration covers **`btree_gist`**, whose 212 functions this ADR's own
