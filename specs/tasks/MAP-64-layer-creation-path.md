@@ -105,8 +105,10 @@ by `test_a_layer_cannot_reference_a_project_of_another_tenant` through `FOREIGN_
 (`layers/tests/test_layers_and_features.py:230`); whether the nowhere-at-all direction needs a case of its
 own is the window's to decide.
 
-**Measured, in this repository.** `mapsift/layers/` carries `models.py`, `rules.py` and `selectors.py` and no
-`services.py`, so the package has no writer at all. `Layer.objects.create` appears at exactly five sites and
+**Measured, in this repository, at the commit this file was written in and not at whatever `HEAD` now is**
+(the distinction added 2026-08-28, because Window A has since created the seam and a window reading the next
+sentence against a later tree measures a contradiction on its first `ls`). `mapsift/layers/` carried
+`models.py`, `rules.py` and `selectors.py` and no `services.py`, so the package had no writer at all. `Layer.objects.create` appears at exactly five sites and
 every one is under `mapsift/layers/tests/`: a module-local helper at `test_layers_and_features.py:43`, a
 second at `test_the_container_scoped_spatial_read.py:187`, and three deliberate refusal cases inside
 `refused_with(...)` at `test_layers_and_features.py:199`, `:230` and `:313`. `Layer.id` carries no default
@@ -131,7 +133,10 @@ because it is the one that mints it.
 
 **What is still open and belongs to the window:** the spelling of the service and its parameters, in the
 idiom the sibling services already use and under ADR-0007 section 3, which says what `services.py` holds and
-nothing about signatures; what it returns; whether the two declared properties cross the boundary as their
+nothing about signatures. **Take that sibling's shape and never its reasoning**, added 2026-08-28: this
+pointer is how MAP-47's false claim about a single-column reference reached a second package, so a sentence
+copied from there is re-derived against the schema it describes or it is not copied (`specs/log.md`,
+2026-08-28; the committed twins are MAP-67). Also open: what it returns; whether the two declared properties cross the boundary as their
 `StrEnum` members or as their values; and how a case shows the row is unreachable from another tenant
 without asserting the wall's silence as though it were the guard (ADR-0005 section 4).
 
@@ -141,7 +146,7 @@ The criteria are PRD C1's, M2's, M3's and M1's, and the window reads them there.
 differently:
 
 - **C1's acceptance splits three ways rather than two.** "Defines attribute fields" is M6 and is deferred.
-  "The user names a layer and picks point, line or polygon" keeps its runtime here and loses only its actor:
+  "the user names a layer, picks point/line/polygon" keeps its runtime here and loses only its actor:
   the surface is MAP-20's, and what is asserted is that the service stores both the name and the declared
   kind it was given. **Both are asserted rather than assumed**, because a mutant dropping `name=name` from
   the two services MAP-47 published left all ten of its cases green, a `CharField` with no default landing
@@ -152,9 +157,13 @@ differently:
   a feature not changing path leaves by two doors of its own, and Out of scope names both: its promotion half
   is OQ-6's and its reclassification half is asked by no requirement. The **import pair** waits on the
   element budget, a PRD 10.5 measurement with nothing built to import yet, and MAP-66's own Not in scope
-  block says that pair is not its either. What this task takes from M2 is its **Shape**, narrowed to the two
-  declared properties: the layer carries a geometry kind and a storage class as properties of the layer
-  rather than of any feature in it. **The persisted shape is otherwise unchanged and no column is added**, so
+  block says that pair is not its either. What this task takes from M2 is its **Shape**, narrowed to the
+  project and the two declared properties: the layer carries the project it sits in, a geometry kind and a
+  storage class as properties of the layer rather than of any feature in it. *(The project joined this
+  sentence on 2026-08-28: the Trace above already named it while this one said "the two declared
+  properties", so the two halves of this file disagreed on whether a layer's project came from M2 or from
+  M1, and Window A resolved it the wrong way before the correction round repointed it.)* **The persisted
+  shape is otherwise unchanged and no column is added**, so
   the rest of what that Shape names is not this task's to create.
 - **M3's upstream here is its Requirement sentence and not its acceptance list**, which is the correction
   **MAP-10** earned on 2026-08-10 and MAP-11 records, and which MAP-47's equivalent bullet already respects.
