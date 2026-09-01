@@ -11,7 +11,13 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from conftest import FOREIGN_KEY_VIOLATION, POLICY_VIOLATION, Party, refused_with
+from conftest import (
+    FOREIGN_KEY_VIOLATION,
+    POLICY_VIOLATION,
+    Party,
+    refused_with,
+    second_project_of,
+)
 from mapsift.common.binding import TenantNotBound, tenant_scope
 from mapsift.layers.models import Feature, Layer
 from mapsift.layers.rules import GeometryKind, StorageClass
@@ -119,15 +125,28 @@ def test_a_feature_can_be_drawn_into_the_layer_this_path_created(alice: Party) -
         assert Feature.objects.filter(pk=feature_id).exists()
 
 
-def test_a_layer_holds_the_project_it_was_created_in(alice: Party) -> None:
-    """M2's Shape: the project is part of the layer's persisted shape, so the row carries the one
-    its caller named."""
-    minted = uuid4()
+def test_each_layer_holds_the_project_it_was_created_in(alice: Party) -> None:
+    """M2's Shape: the project is a property of the layer, so two layers of one tenant created in
+    two of its projects carry two different projects. Two rather than one, for the reason the two
+    cases above are two: a single member cannot tell a project the service stored from one it
+    resolved for itself. The second call is direct, because its subject is a project other than the
+    party's."""
+    elsewhere = second_project_of(alice)
+    a_layer_here, a_layer_elsewhere = uuid4(), uuid4()
 
     with tenant_scope(alice.tenant_id):
-        _a_layer_created_by_the_service(alice, layer_id=minted)
+        _a_layer_created_by_the_service(alice, layer_id=a_layer_here)
+        create_layer(
+            layer_id=a_layer_elsewhere,
+            tenant_id=alice.tenant_id,
+            project_id=elsewhere,
+            name="vegetation cover",
+            geometry_kind=GeometryKind.POLYGON,
+            storage_class=StorageClass.ELEMENT,
+        )
 
-        assert Layer.objects.get(pk=minted).project_id == alice.project_id
+        assert Layer.objects.get(pk=a_layer_here).project_id == alice.project_id
+        assert Layer.objects.get(pk=a_layer_elsewhere).project_id == elsewhere
 
 
 def test_a_layer_belongs_to_exactly_the_tenant_it_was_created_under(
