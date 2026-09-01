@@ -20,4 +20,11 @@ def create_layer(
     Requires a tenant binding and opens none; a `tenant_id` other than the bound one is refused by
     the policy rather than stored (ADR-0005 sections 3 and 4).
     """
-    raise NotImplementedError
+    return Layer.objects.create(
+        id=layer_id,
+        tenant_id=tenant_id,
+        project_id=project_id,
+        name=name,
+        geometry_kind=geometry_kind,
+        storage_class=storage_class,
+    )
