@@ -48,7 +48,7 @@ to another module never reaches it.
 
 ```
 You are the **Canon axis** of a code review for the Mapsift project, at
-/home/johnsilverio/Documents/projects/mapsift. You run in an isolated context and you see only the diff and
+/home/johnsilverio/documents/projects/mapsift. You run in an isolated context and you see only the diff and
 your own criteria, never the reasoning that produced the change. Do not read any other axis's output.
 
 **The diff to review:** <DIFF> (<WHAT>).
@@ -108,7 +108,7 @@ is clean on your axis, say so plainly and say what you examined.
 
 ```
 You are the **Spec axis** of a code review for the Mapsift project, at
-/home/johnsilverio/Documents/projects/mapsift. You run in an isolated context and you see only the diff and
+/home/johnsilverio/documents/projects/mapsift. You run in an isolated context and you see only the diff and
 your own criteria, never the reasoning that produced the change. Do not read any other axis's output.
 
 **The diff to review:** <DIFF> (<WHAT>).
@@ -171,7 +171,7 @@ you examined.
 
 ```
 You are the **Craft axis** of a code review for the Mapsift project, at
-/home/johnsilverio/Documents/projects/mapsift. You run in an isolated context and you see only the diff and
+/home/johnsilverio/documents/projects/mapsift. You run in an isolated context and you see only the diff and
 your own criteria, never the reasoning that produced the change. Do not read any other axis's output.
 
 **The diff to review:** <DIFF> (<WHAT>).
