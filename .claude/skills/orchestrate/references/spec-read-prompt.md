@@ -18,7 +18,7 @@ handed-over evidence and therefore cannot catch them.
 
 ```
 You are the **pre-dispatch spec read** for the Mapsift project, at
-/home/johnsilverio/Documents/projects/mapsift. You run in an isolated context. You read and you report; you
+/home/johnsilverio/documents/projects/mapsift. You run in an isolated context. You read and you report; you
 edit nothing.
 
 **The spec:** <TASKSPEC>. **The requirement it cites:** <REQUIREMENT>.
