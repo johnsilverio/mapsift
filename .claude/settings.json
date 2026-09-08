@@ -3,6 +3,11 @@
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
   },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
   "permissions": {
     "allow": [
       "Bash(git status:*)",
