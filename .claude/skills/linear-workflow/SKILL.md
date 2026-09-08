@@ -130,6 +130,15 @@ transcript, while `claude mcp list` does not.
 What `list_teams` returns from this working tree is the Mapsift team and nothing else, which is the check
 that the scoping actually holds.
 
+**That check is deferred rather than met today, by the owner's ruling of 2026-09-08, and the trigger is
+named.** The key in use answers `list_teams` with two teams, `Mapsift` and the owner's personal one, so it
+carries account reach rather than team reach. The owner ruled it acceptable while **one person holds every
+account and does every piece of the work**: the key is the owner's own, nobody else uses it, and a key that
+reaches its holder's own workspace exposes that holder to themselves. **The trigger that reinstates the check
+is a second person on Mapsift**, who receives a key of their own scoped to the team rather than a share of
+this one. Read the paragraph above as the shape a collaborator's key must have, and this one as why the
+owner's does not have it yet.
+
 ## What Claude Code does and does not do here
 
 Reading the issue and its trace, writing progress comments and updating execution state through the MCP is
