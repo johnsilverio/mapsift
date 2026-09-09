@@ -8,12 +8,16 @@ projection of the log, and the reproducibility clause that makes the chain evide
 the projection consistent; the acceptance list under T2.2 is about dropped notifications and resync and is
 not this task's, which is the distinction MAP-10's review earned and MAP-11's spec recorded. **PRD M9** for
 the target path and the whole-geometry rule that decides what a replay is. **PRD M2** for the storage class
-sitting on the layer. **PRD T2.3** for the half of its acceptance that only the projection can carry, the
-final state being identical with no duplicated feature and no lost edit, which had no runtime while the log
-was the only thing a flush produced. *Added 2026-09-09, at the Window A review: the Spec axis found a case
-tracing to a requirement this block did not name, and the block was short rather than the case invented.*
+sitting on the layer. **PRD T2.3**, whose first acceptance clause is **already witnessed over the log** by
+MAP-12 (`test_a_queue_resent_whole_after_a_partial_flush_lands_only_what_was_missing`, which names that clause
+in its own docstring); what this task adds is the **feature-state** reading of the same clause, no duplicated
+feature meaning no second row in the projection. **PRD N9** for the record every refusal owes, which is what
+the new refusal reaches. *Added 2026-09-09 at the Window A review and corrected the same day at the re-read:
+the first form claimed T2.3 had no runtime, which is false of the clause and true only of its feature-state
+half, and it named N9 nowhere while a case in the diff already cited it.*
 
-Invariants **I2** and **I10**. Constraints **C9**, **C4** and **C12**.
+Invariants **I2** and **I10**. Constraints **C9**, **C4** and **C12**. **ADR-0011 section 4** for the record
+shape that refusal takes.
 
 **ADR-0012 decisions 1, 2, 3 and 6** (the whole of the strategy: the maintained table, the table it is, the
 placement and the ordering, the grant). **ADR-0004 decision 2** for where this write sits in the flush order.
@@ -88,6 +92,22 @@ the sorted array, so the three figures are read there and not paired here); the 
 strategy at all (**ADR-0012**, What was measured). Read them there. None of the three is this task's to
 re-derive.
 
+**No existing flush test arranges a layer, so the suite already authors batches this task's refusal will
+start refusing.** *Measured 2026-09-09 across the whole suite:* **thirteen modules reach the flush route and
+exactly one arranges a layer**, which is this task's own new module. `grep -rn "Layer\b"` over `conftest.py`,
+`mapsift/sync/tests/` and `tests/test_authenticated_request.py` returns nothing at all, and both shared
+arrangers default `layer_id` to a fresh `uuid4()`. This was inert while nothing consulted the layer. *Measured
+by implementing the refusal in a read-only scratch copy at the ADR-0012 decision 3 position:* the suite goes
+to **52 failed, 248 passed** against a 12/288 baseline, **44 green cases across nine modules going red**.
+
+**What that means for this window, with the conclusion deliberately refused.** One of the cases that turns red
+is MAP-12's `test_a_queue_resent_whole_after_a_partial_flush_lands_only_what_was_missing`, the existing witness
+of the T2.3 clause the Trace above names, so a window meeting it red has to be able to tell an expected
+consequence from a defect, and that is why this is handed over rather than discovered. **Which shape closes it
+is the window's:** the shared fixture carrying a layer, the arrangers creating the one they address, or
+something neither of those. What is not the window's is editing an existing case to accommodate it
+(`specs/testing.md` section 1), so the remedy lives in the arrangement rather than in any `def test`.
+
 **One thing that is already true on disk and shortens the work:** `layers_feature` already carries the grant
 ADR-0012 decision 6 requires, from `layers/migrations/0001_initial.py`, and no column of this task's is new.
 Whether that leaves this task with no migration at all is the window's finding to report, not this file's
@@ -120,7 +140,11 @@ transactionality of the flush, which is what makes the append and the projection
 that lives in the requirement sentence. This is the correction MAP-10's review produced and MAP-11's spec
 recorded; it is repeated as a pointer because the same mis-citation is available here.
 
-**The typed refusal has no upstream PRD criterion, and that is stated rather than hidden.** It is created by
-ADR-0010 decision 6's addition of 2026-09-08 and is cited there. Nothing in the PRD carries it, because
-nothing in the PRD anticipated a constraint that only becomes reachable when the projection exists. A window
-looking for it upstream will not find it and should not invent one.
+**The typed refusal's *shape* has no upstream PRD criterion, and its *record* does.** No PRD requirement names
+an unknown-layer refusal, its `409` or its reason code: that is created by ADR-0010 decision 6's addition of
+2026-09-08 and is cited there, and a window will not find it upstream and should not invent one. **But N9's
+acceptance carries the record half** ("every user-visible refusal has a matching record and the reverse; a
+failure with no user-visible signal and no record fails review"), which is why this refusal owes a
+`request.refused` in the shape of ADR-0011 section 4 exactly as the two existing reasons do. *Corrected
+2026-09-09 at the re-read: the first form said "nothing in the PRD carries it" without qualification, which
+told a window not to look for the one upstream that does exist and would have lost the record N9 requires.*
