@@ -95,6 +95,9 @@ JSON = "application/json"
 # object's key, and the two contracts agreeing on a spelling is not the same as being one contract.
 THE_REASON_IN_THE_BODY = "reason"
 A_GAP_ABOVE_THE_CURSOR = "gap_above_cursor"
+# The third member of that closed set, which the projection is what makes reachable (ADR-0010
+# decision 6's addition of 2026-09-08).
+NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
 
 # The four event names ADR-0011 section 4 closes, as a record spells them. The first two are the
 # flush's own decisions and the last two are separate names on purpose (that section's addition of
@@ -488,6 +491,44 @@ def test_a_stream_the_server_could_not_continue_is_recorded_with_the_reason_the_
     assert refused.status_code == HTTPStatus.CONFLICT
     assert refused.json()[THE_REASON_IN_THE_BODY] == A_GAP_ABOVE_THE_CURSOR
     assert _the_reasons_recorded(recorded) == [A_GAP_ABOVE_THE_CURSOR]
+
+
+def test_a_batch_refused_for_a_layer_this_project_lacks_is_recorded_as_a_refusal(
+    alice: Party,
+) -> None:
+    """N9's every-refusal clause on the third member this status carries (ADR-0010 decision 6's
+    addition of 2026-09-08), and the sibling above's argument one member wider: a support desk
+    reading one status for three reasons is deciding between telling a client to resend from a
+    number, to rehandshake, and to create a layer, and a record that collapses them answers the
+    wrong one.
+
+    **What this refusal exists against is a record of the other kind.** Until the flush writes the
+    projection an operation addressing an unknown layer is inert; once it does, the composite
+    reference is consulted and an unknown layer raises, so the two available shapes are a typed
+    refusal and an `IntegrityError` escaping as a `500`. ADR-0011 section 4 separates
+    `request.refused` from `request.failed` precisely because the second is a decision nobody took,
+    and this case is what says which of the two this path emits.
+
+    The reason is pinned to the literal ADR-0010 fixes rather than read off the enum that carries
+    it, on this module's own rule for `A_GAP_ABOVE_THE_CURSOR`: it is a wire value, and a case
+    comparing an enum against itself cannot notice a member being renamed."""
+    browser = a_browser(authenticated_as=alice.user_id)
+    on_a_layer_that_never_existed = {
+        "operations": [
+            a_feature_create_claiming(
+                alice.tenant_id, project_id=alice.project_id, layer_id=uuid4()
+            )
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        refused = browser.post(OPERATIONS_PATH, on_a_layer_that_never_existed, JSON)
+
+    recorded = _the_records_of(REQUEST_REFUSED, the_documents_of(emitted))
+
+    assert refused.status_code == HTTPStatus.CONFLICT
+    assert refused.json()[THE_REASON_IN_THE_BODY] == NO_LAYER_IN_THIS_PROJECT
+    assert _the_reasons_recorded(recorded) == [NO_LAYER_IN_THIS_PROJECT]
 
 
 def test_a_batch_refused_before_any_handler_is_entered_still_leaves_a_record(alice: Party) -> None:
