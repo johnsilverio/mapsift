@@ -130,6 +130,43 @@ after the cursor write. Building them earlier is the shape ADR-0004's correction
 and "not required here", so adopting it is sanctioned, but it is a refactor rather than a description of what
 is already there.
 
+> **Addition (2026-09-09), at MAP-65's Window B review: an operation that carries no geometry leaves the
+> projected geometry alone, and the write says so rather than the fold saying it.** The batch is folded per
+> feature, so a feature whose fresh operations carry no geometry at all reaches the write with nothing to
+> store. **The upsert must then leave that column as it found it**, and never write the absence over what is
+> stored.
+>
+> **What forced this is a measured defect rather than a preference.** An implementation upserting with the
+> geometry column always in its update set answered `200` to a `feature.create` for a feature the projection
+> already held and **wrote NULL over its geometry**, with the log intact and the chain still replaying to the
+> point that was lost. Measured 2026-09-09 through the route: `before=SRID=4674;POINT (-47.6 -15.9)`,
+> `after=None`. That is silent loss of a stored edit with a success on the wire, which is the shape foundation
+> section 9.6.7 calls the preserve-not-discard sin in the read direction, reached here from the write side.
+>
+> **The flush shape that reaches it is one the canon requires the route to accept**, which is why this is not
+> closed by refusing the operation instead. PRD T2.3's acceptance, addition of 2026-08-11, says an operation
+> the server already holds, resent and surviving the dedup filter because it arrived under a different
+> mutation number, is answered as applied rather than refused, and
+> `test_an_operation_the_server_already_holds_is_answered_as_applied_rather_than_refused` has been green over
+> that shape since MAP-12, staying green only because it never asserted geometry.
+>
+> **The rule follows from M9 rather than from the measurement.** A create's payload carries nothing beyond the
+> address it creates, and everything the feature then holds arrives as the operations that address it, so an
+> implementation writing a geometry on behalf of a create is inventing a statement the operation did not make.
+> **The tell that this was a defect and not a decision is an asymmetry inside the fold itself:** a create
+> following a geometry set *within one batch* already left the geometry alone, and only the cross-flush path
+> cleared it, so one path implemented the rule and the other did not.
+>
+> **The same holds for every column a future operation may leave unspoken**, the container among them: an
+> implementation that never updates the layer of a conflicting row is making the opposite mistake in the same
+> place, and the write's update set is where both are decided. Measured beside the above: a create for an
+> existing feature naming a different layer of the same project logged the new layer and left the projection
+> filing it under the old one.
+>
+> **What this deliberately does not answer:** whether a create addressing a feature that already exists is
+> legitimate at all, which is a catalog question in the family of the two refusals a layer's declarations make
+> (MAP-66) rather than a projection question, and is owned by the issue opened for it on 2026-09-09.
+
 ### 4. The per-feature version is a column on `layers_feature`, and the mechanism is MAP-38's
 
 **Where it lives is this ADR's**, and was from MAP-50's creation. It is a column on the projection row, not a
