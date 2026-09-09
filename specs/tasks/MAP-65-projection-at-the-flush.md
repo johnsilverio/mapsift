@@ -8,9 +8,12 @@ projection of the log, and the reproducibility clause that makes the chain evide
 the projection consistent; the acceptance list under T2.2 is about dropped notifications and resync and is
 not this task's, which is the distinction MAP-10's review earned and MAP-11's spec recorded. **PRD M9** for
 the target path and the whole-geometry rule that decides what a replay is. **PRD M2** for the storage class
-sitting on the layer.
+sitting on the layer. **PRD T2.3** for the half of its acceptance that only the projection can carry, the
+final state being identical with no duplicated feature and no lost edit, which had no runtime while the log
+was the only thing a flush produced. *Added 2026-09-09, at the Window A review: the Spec axis found a case
+tracing to a requirement this block did not name, and the block was short rather than the case invented.*
 
-Invariants **I2** and **I10**. Constraints **C9** and **C4**.
+Invariants **I2** and **I10**. Constraints **C9**, **C4** and **C12**.
 
 **ADR-0012 decisions 1, 2, 3 and 6** (the whole of the strategy: the maintained table, the table it is, the
 placement and the ordering, the grant). **ADR-0004 decision 2** for where this write sits in the flush order.
