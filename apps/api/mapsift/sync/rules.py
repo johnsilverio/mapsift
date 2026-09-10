@@ -4,9 +4,17 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import pairwise
+from typing import assert_never
 from uuid import UUID
 
-from mapsift.sync.envelope import ClientHalf, FeatureAddress, PropertyAddress
+from mapsift.layers.rules import TheCurrentStateOfAFeature
+from mapsift.sync.envelope import (
+    ClientHalf,
+    FeatureAddress,
+    FeatureCreateOperation,
+    FeatureGeometrySetOperation,
+    PropertyAddress,
+)
 
 THE_FIRST_MUTATION_NUMBER = 0
 
@@ -43,11 +51,12 @@ class OperationsAreNotOneContiguousStream(MalformedBatch):
 
 
 class WhyAStreamCannotBeContinued(StrEnum):
-    """The closed set of two a refusal names, whose remedies differ (ADR-0010 decision 6's
-    addition of 2026-08-13)."""
+    """The closed set a refusal names, whose remedies differ (ADR-0010 decision 6's addition of
+    2026-08-13, and its addition of 2026-09-08 for the third)."""
 
     GAP_ABOVE_CURSOR = "gap_above_cursor"
     NO_CURSOR_IN_THIS_DOMAIN = "no_cursor_in_this_domain"
+    NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
 
 
 class ThisStreamCannotBeContinued(Exception):
@@ -256,3 +265,55 @@ def the_address_of(operation: ClientHalf) -> FeatureAddress | PropertyAddress:
 def the_mutation_number_of(operation: ClientHalf) -> int:
     """The per-client axis an operation carries, past the wrappers the generator writes (M10)."""
     return operation.root.mutation_number.root
+
+
+def the_layers_this_batch_addresses(operations: Sequence[ClientHalf]) -> frozenset[UUID]:
+    """Every layer a batch's operations name (M2, M9).
+
+    Read from the operations and never from the state they fold to, because that fold is one row
+    per feature and a guard fed from it inherits every loss (ADR-0012 decision 3).
+    """
+    return frozenset(the_address_of(operation).layer_id for operation in operations)
+
+
+def the_current_state_this_batch_leaves(
+    operations: Sequence[ClientHalf],
+) -> list[TheCurrentStateOfAFeature]:
+    """The current state a batch leaves behind it, one row per feature its operations address.
+
+    The latest row per target path rather than a fold over deltas, which is what M9's
+    whole-geometry rule makes correct (M15, ADR-0012 decision 1). A feature the batch spoke no
+    geometry for says so and carries none, leaving the write to decide what that means for a
+    column already holding one (that decision's addition of 2026-09-09).
+    """
+    addressed: dict[UUID, FeatureAddress | PropertyAddress] = {}
+    spoken: dict[UUID, object | None] = {}
+
+    for operation in operations:
+        address = the_address_of(operation)
+        addressed[address.feature_id] = address
+        authored = operation.root
+        match authored:
+            case FeatureCreateOperation():
+                # Not an oversight and not a null to record: a create's payload carries nothing
+                # beyond the address, so it makes no statement about the geometry at all, while a
+                # set carrying null states there is none (ADR-0012 3's addition of 2026-09-09).
+                pass
+            case FeatureGeometrySetOperation():
+                spoken[address.feature_id] = authored.payload.geometry
+            case _:
+                # A catalog member added later lands here and fails the type check until somebody
+                # decides what it leaves in the projection, which a fallback would decide for them.
+                assert_never(authored)
+
+    return [
+        TheCurrentStateOfAFeature(
+            tenant_id=address.tenant_id,
+            project_id=address.project_id,
+            layer_id=address.layer_id,
+            feature_id=feature_id,
+            geometry=spoken.get(feature_id),
+            the_batch_spoke_of_its_geometry=feature_id in spoken,
+        )
+        for feature_id, address in addressed.items()
+    ]
