@@ -39,6 +39,13 @@ layer that does not exist.
   rules already sit unwired in `layers/rules.py`: **MAP-66**, which this blocks.
 - **The rebuild path** for the projection. ADR-0012's Consequences says why M15's acceptance is not the test
   of it and names no owner; this task does not open one.
+- **The frame a wire geometry declares for itself**: **MAP-69**. The write stamps the storage frame on the
+  parsed payload, which is a relabel and not a transformation, and a payload carrying its own `crs` member has
+  that declaration overwritten rather than refused. *Added 2026-09-11 at the final review, where the Spec axis
+  found this deferral recorded in no document on the branch while `specs/log.md` lists the defect beside two
+  this task did close, so a reader would conclude all three were fixed.*
+- **A geometry payload the parser or the column cannot take**: **MAP-70**. The projection makes a
+  client-supplied payload reach GEOS and PostGIS for the first time, and four wire-legal shapes answer `500`.
 - **Any read of the projection.** The container-scoped selectors have existed since MAP-51 and gain **no
   caller here**. The one read this task does perform is inside a test, and the evidence block below is about
   exactly that read.

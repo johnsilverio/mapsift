@@ -130,11 +130,22 @@ after the cursor write. Building them earlier is the shape ADR-0004's correction
 and "not required here", so adopting it is sanctioned, but it is a refactor rather than a description of what
 is already there.
 
-> **Addition (2026-09-09), at MAP-65's Window B review: an operation that carries no geometry leaves the
-> projected geometry alone, and the write says so rather than the fold saying it.** The batch is folded per
-> feature, so a feature whose fresh operations carry no geometry at all reaches the write with nothing to
-> store. **The upsert must then leave that column as it found it**, and never write the absence over what is
-> stored.
+> **Addition (2026-09-09), at MAP-65's Window B review: an operation that says nothing about a column leaves
+> that column alone, and the write says so rather than the fold saying it.** The batch is folded per feature,
+> so a feature whose fresh operations say nothing about its geometry reaches the write with nothing to store.
+> **The upsert must then leave that column as it found it**, and never write that silence over what is stored.
+>
+> **Saying nothing and saying null are different statements, and the bucket is the operation type rather than
+> the payload's value.** A `feature.create` says nothing about geometry, because M9 gives its payload nothing
+> beyond the address. A `feature.geometry.set` **speaks about the geometry whatever its payload carries**, so
+> one carrying null states that the feature holds none and the write stores that. *Corrected 2026-09-11, at
+> MAP-65's final review, and the correction is the reason this paragraph exists rather than a clarification of
+> it: the first form said "an operation that carries no geometry leaves the projected geometry alone", which a
+> plain reading applies to a set carrying null, so this addition mandated the opposite of what the round
+> implemented. The refined rule had been measured and written into `specs/log.md` and into three code comments
+> the day before, and `specs/log.md` is explicitly not a source of truth, so the authority on the update set
+> said one thing while every other copy said another. Found by a review axis reading the addition against the
+> code, not by the fan-out that wrote it.*
 >
 > **What forced this is a measured defect rather than a preference.** An implementation upserting with the
 > geometry column always in its update set answered `200` to a `feature.create` for a feature the projection
