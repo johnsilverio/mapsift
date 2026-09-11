@@ -50,10 +50,15 @@ is why every layer arranged here is an element layer of the family its features 
 test M15's acceptance explicitly is not; every **read** of the projection, the container-scoped
 selectors of MAP-51 gaining no caller here; and the **sorted batched statement** of ADR-0012
 decision 3, whose property is a deadlock count under four concurrent writers rather than anything
-one flush can show, and which that ADR spends its own measurement on rather than handing over; and
-whether a **create for a feature that already exists** is legitimate at all (MAP-68), which the two
-cases over that shape leave exactly where the ADR left it, pinning what the projection does with a
-flush the route accepts today and never that it should.
+one flush can show, and which that ADR spends its own measurement on rather than handing over; the
+**frame a wire geometry declares for itself** (MAP-69), the write stamping the storage frame on a
+parsed payload being a relabel rather than a transformation, so no payload below carries a `crs`
+member of its own and every geometry here is written in the frame it is read back in; a **geometry
+payload the parser or the column cannot take** (MAP-70), which this write makes reachable for the
+first time by carrying a client's payload to GEOS and PostGIS, so every payload below is one they
+take; and whether a **create for a feature that already exists** is legitimate at all (MAP-68),
+which the two cases over that shape leave exactly where the ADR left it, pinning what the projection
+does with a flush the route accepts today and never that it should.
 
 **One shape nothing here arranges, because nobody has decided it:** a `feature.geometry.set` for a
 feature no operation ever created. Every geometry below follows a create for its own feature, in an
@@ -259,12 +264,12 @@ def _as_the_storage_frame_holds_it(place: tuple[float, float]) -> Point:
 def _a_wire_geometry_in_the_storage_frame(geometry: JsonObject) -> GEOSGeometry:
     """A wire geometry as the frame it was declared in holds it (M5 rule 1).
 
-    The frame is assigned after parsing rather than passed to the constructor, and both halves of
-    that are measured (2026-09-08, Django 5.2.16 in this project's container). GeoJSON carries no
-    frame, so this constructor answers **EPSG:4326** of its own accord; and handing it `srid=`
-    beside a GeoJSON input raises `ValueError: Input geometry already has SRID: 4326` rather than
-    overriding. Dropping the assignment leaves a value that compares unequal to the same coordinates
-    in the storage frame, because GEOS equality compares the frame as well as the coordinates.
+    The frame is assigned after parsing rather than passed to the constructor, and what Django
+    measurement forces that order has one home, the comment on `_as_the_storage_column_takes_it`,
+    which writes the same two lines. What is this reading's own is why the assignment is not
+    optional here: dropped, it leaves a value that compares unequal to the same coordinates in the
+    storage frame, because GEOS equality compares the frame as well as the coordinates, so every
+    geometry assertion below would be comparing two frames rather than two places.
     """
     read = GEOSGeometry(json.dumps(geometry))
     read.srid = STORAGE_FRAME_SRID
@@ -768,6 +773,56 @@ def test_a_layer_of_another_project_is_refused_exactly_as_one_that_never_existed
         on_a_layer_that_never_existed.status_code,
         on_a_layer_that_never_existed.content,
     )
+
+
+def test_a_batch_naming_an_absent_layer_first_is_refused_though_its_feature_ends_under_a_held_one(
+    alice: Party,
+) -> None:
+    """ADR-0012 decision 3 on the **guard** rather than on the write: the set a refusal is decided
+    over is the operations, never the state they fold to. That fold is one row per feature and is
+    lawfully lossy, keeping the last address each feature was given, so a check fed from its output
+    inherits every loss as a blind spot, which is why `the_layers_this_batch_addresses` reads the
+    operations and says so in its own docstring.
+
+    **One feature and two operations, the absent layer named first**, which is the only shape that
+    tells the two readings apart: the refusal cases beside this one each give the absent layer a
+    feature of its own, where it survives any fold and the guard answers alike either way. Here the
+    second operation replaces the address the fold keeps, so a guard reading the folded state never
+    sees the absent layer at all, the batch is applied, and the row lands under the layer this
+    project does hold with no `IntegrityError` to raise the alarm (M2, M9).
+
+    **The reason is named beside the status rather than the whole body compared**, because what this
+    case adds is that the refusal is reached and not what its object carries: the two cursor
+    refusals answer `409` too, so a status alone would not say which mechanism refused."""
+    a_layer_that_never_existed, the_layer_its_feature_ends_under = uuid4(), uuid4()
+    feature_id, installation = uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _an_element_layer_of(alice, layer_id=the_layer_its_feature_ends_under)
+
+    refused = browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(
+                alice,
+                layer_id=a_layer_that_never_existed,
+                feature_id=feature_id,
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            _a_geometry_set(
+                alice,
+                layer_id=the_layer_its_feature_ends_under,
+                feature_id=feature_id,
+                at=A_PLACE_IN_THE_FIELD,
+                from_installation=installation,
+                mutation_number=1,
+            ),
+        ),
+        JSON,
+    )
+
+    assert refused.status_code == HTTPStatus.CONFLICT
+    assert refused.json()[THE_REASON] == NO_LAYER_IN_THIS_PROJECT
 
 
 def test_a_batch_refused_for_an_unknown_layer_leaves_nothing_in_the_log(alice: Party) -> None:
