@@ -9,9 +9,13 @@ operation, and a geometry operation carrying the whole geometry, which is what m
 latest-row-per-target-path read rather than a fold); PRD M2 (the layer is where the storage class
 sits, so every layer arranged here is an element layer); PRD M3 and M5 rule 1 for the identifier the
 row is stored under and the frame its geometry is held in; **ADR-0010 decision 6's addition of
-2026-09-08** for the typed refusal this write makes reachable; ADR-0004 decision 2 for where the
-projection write sits in the flush order; ADR-0005 sections 3 and 4 for the binding every read and
-write here happens inside. Invariants I2 and I10; constraints C4, C9, C12.
+2026-09-08** for the typed refusal this write makes reachable, and **that decision's addition of
+2026-09-09** for what an operation leaves alone by saying nothing about it; PRD T6.5 with **ADR-0010
+decision 6's addition of 2026-08-07** for the comparative form a cross-tenant answer is tested in,
+which a feature identifier reaches because it is minted by the client rather than allocated per
+tenant (M3, ADR-0006); ADR-0004 decision 2 for where the projection write sits in the flush order;
+ADR-0005 sections 3 and 4 for the binding every read and write here happens inside. Invariants I2
+and I10; constraints C4, C9, C12.
 
 **Here rather than under either package, and the reason is a gate rather than a preference.** The
 subject spans two packages: the flush is `sync`'s and the projection is `layers`', and the
@@ -46,7 +50,10 @@ is why every layer arranged here is an element layer of the family its features 
 test M15's acceptance explicitly is not; every **read** of the projection, the container-scoped
 selectors of MAP-51 gaining no caller here; and the **sorted batched statement** of ADR-0012
 decision 3, whose property is a deadlock count under four concurrent writers rather than anything
-one flush can show, and which that ADR spends its own measurement on rather than handing over.
+one flush can show, and which that ADR spends its own measurement on rather than handing over; and
+whether a **create for a feature that already exists** is legitimate at all (MAP-68), which the two
+cases over that shape leave exactly where the ADR left it, pinning what the projection does with a
+flush the route accepts today and never that it should.
 
 **One shape nothing here arranges, because nobody has decided it:** a `feature.geometry.set` for a
 feature no operation ever created. Every geometry below follows a create for its own feature, in an
@@ -55,6 +62,7 @@ earlier flush or in the same batch.
 
 import json
 from collections.abc import Sequence
+from dataclasses import dataclass
 from http import HTTPStatus
 from uuid import UUID, uuid4
 
@@ -177,6 +185,35 @@ def _a_geometry_set(
     )
 
 
+def _a_geometry_set_stating_there_is_none(
+    party: Party,
+    *,
+    layer_id: UUID,
+    feature_id: UUID,
+    from_installation: UUID,
+    mutation_number: int,
+) -> JsonObject:
+    """The catalog's geometry set stating that this feature holds no geometry (M9).
+
+    A payload carrying null rather than a payload carrying nothing: the two are different
+    statements and only this one reaches the stored column (ADR-0012 decision 3's addition of
+    2026-09-09). The place the shared arranger builds is replaced whole rather than made optional
+    there, because `at=None` in that file's own vocabulary reads as a caller with no interest in
+    the field, which is the opposite of what this operation says.
+    """
+    return {
+        **_a_geometry_set(
+            party,
+            layer_id=layer_id,
+            feature_id=feature_id,
+            at=A_PLACE_IN_THE_FIELD,
+            from_installation=from_installation,
+            mutation_number=mutation_number,
+        ),
+        "payload": {"geometry": None},
+    }
+
+
 def _drawing_a_feature_at(
     party: Party,
     *,
@@ -246,6 +283,32 @@ def _the_geometry_the_projection_holds(party: Party, feature_id: UUID) -> GEOSGe
         return Feature.objects.get(pk=feature_id).geometry
 
 
+@dataclass(frozen=True, slots=True)
+class AProjectedFeature:
+    """One projected row in the four columns a write reaching it could move it through.
+
+    Three of them are the update set of ADR-0012 decision 3 and the fourth is what the wall reads
+    on (ADR-0005 section 3), so a row compared whole here is a row nothing touched.
+    """
+
+    tenant_id: UUID
+    project_id: UUID
+    layer_id: UUID
+    geometry: GEOSGeometry | None
+
+
+def _the_feature_the_projection_holds(party: Party, feature_id: UUID) -> AProjectedFeature:
+    """One projected feature, read whole rather than column by column (M15, C4)."""
+    with tenant_scope(party.tenant_id):
+        held = Feature.objects.get(pk=feature_id)
+        return AProjectedFeature(
+            tenant_id=held.tenant_id,
+            project_id=held.project_id,
+            layer_id=held.layer_id,
+            geometry=held.geometry,
+        )
+
+
 def _the_layer_the_projection_files(party: Party, feature_id: UUID) -> UUID:
     """The layer one projected feature belongs to (M2, M9)."""
     with tenant_scope(party.tenant_id):
@@ -279,17 +342,25 @@ def _the_identifiers_along(chain: Sequence[JsonObject]) -> list[UUID]:
     return [UUID(entry["operation_id"]) for entry in chain]
 
 
-def _the_geometry_a_chain_replays_to(chain: Sequence[JsonObject]) -> GEOSGeometry:
+def _the_geometry_a_chain_replays_to(chain: Sequence[JsonObject]) -> GEOSGeometry | None:
     """The geometry an ordered chain of one feature's operations reproduces (M15).
 
     The last whole geometry the chain carries, rather than a fold over deltas: M9 forbids a vertex
     delta and makes a geometry operation carry the whole geometry, which is what makes a replay a
     latest-row-per-target-path read (ADR-0012 decision 1).
+
+    A chain whose last geometry operation carried **null** replays to no geometry, which is a
+    statement that chain makes rather than an absence in the reading of it (ADR-0012 decision 3's
+    addition of 2026-09-09). The two are told apart by the index below, which raises on a chain
+    that came back empty instead of answering the same nothing.
     """
     setting_a_geometry = [
         entry for entry in chain if entry["operation_type"] == THE_OPERATION_THAT_SETS_A_GEOMETRY
     ]
-    return _a_wire_geometry_in_the_storage_frame(setting_a_geometry[-1]["payload"]["geometry"])
+    spoken = setting_a_geometry[-1]["payload"]["geometry"]
+    if spoken is None:
+        return None
+    return _a_wire_geometry_in_the_storage_frame(spoken)
 
 
 def test_a_flush_lands_the_feature_its_operation_created_under_the_identifier_the_client_minted(
@@ -464,6 +535,105 @@ def test_a_later_flush_replaces_the_geometry_an_earlier_flush_left(alice: Party)
     assert _the_geometry_the_projection_holds(alice, feature_id) == _as_the_storage_frame_holds_it(
         ANOTHER_PLACE_IN_THE_FIELD
     )
+
+
+def test_a_create_for_a_feature_that_already_exists_leaves_the_stored_geometry_it_says_nothing_of(
+    alice: Party,
+) -> None:
+    """ADR-0012 decision 3's addition of 2026-09-09, on the arm that was found as a defect: a
+    create's payload carries nothing beyond the address it creates (M9), so it makes no statement
+    about the geometry at all, and a write that carried that silence into its update set cleared a
+    surveyed point while answering the client that the flush was applied.
+
+    **Across two flushes rather than inside one**, which is why the defect survived a green suite:
+    a create following a geometry set within one batch is folded per feature and already leaves the
+    geometry alone, so the only reachable loss is a projection row an earlier flush left behind.
+
+    **The shape is one the canon requires the route to accept rather than one this case invents.**
+    PRD T2.3's acceptance, addition of 2026-08-11, has an operation the server already holds,
+    resent above the cursor, answered as applied rather than refused; whether a re-create is
+    legitimate at all is MAP-68's and is not decided here."""
+    layer_id, feature_id, installation = uuid4(), uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _an_element_layer_of(alice, layer_id=layer_id)
+
+    browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            *_drawing_a_feature_at(
+                alice,
+                layer_id=layer_id,
+                feature_id=feature_id,
+                at=A_PLACE_IN_THE_FIELD,
+                from_installation=installation,
+            )
+        ),
+        JSON,
+    )
+    browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(
+                alice,
+                layer_id=layer_id,
+                feature_id=feature_id,
+                from_installation=installation,
+                mutation_number=2,
+            )
+        ),
+        JSON,
+    )
+
+    assert _the_geometry_the_projection_holds(alice, feature_id) == _as_the_storage_frame_holds_it(
+        A_PLACE_IN_THE_FIELD
+    )
+
+
+def test_a_create_for_a_feature_that_already_exists_files_it_under_the_layer_it_names(
+    alice: Party,
+) -> None:
+    """ADR-0012 decision 3's addition of 2026-09-09, on the opposite mistake in the same place: a
+    column an operation **did** speak of moves, and a write that left the container of a conflicting
+    row as it found it logged the new layer while the projection went on filing the feature under
+    the old one (M2, M9).
+
+    **Two layers of one project**, because the composite reference only asks that the layer exist
+    in the project the batch addresses, so a feature that never moves is indistinguishable from one
+    refiled correctly where there is a single layer to name."""
+    the_layer_it_was_drawn_in, the_layer_it_is_moved_to = uuid4(), uuid4()
+    feature_id, installation = uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _an_element_layer_of(alice, layer_id=the_layer_it_was_drawn_in)
+    _an_element_layer_of(alice, layer_id=the_layer_it_is_moved_to)
+
+    browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            *_drawing_a_feature_at(
+                alice,
+                layer_id=the_layer_it_was_drawn_in,
+                feature_id=feature_id,
+                at=A_PLACE_IN_THE_FIELD,
+                from_installation=installation,
+            )
+        ),
+        JSON,
+    )
+    browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(
+                alice,
+                layer_id=the_layer_it_is_moved_to,
+                feature_id=feature_id,
+                from_installation=installation,
+                mutation_number=2,
+            )
+        ),
+        JSON,
+    )
+
+    assert _the_layer_the_projection_files(alice, feature_id) == the_layer_it_is_moved_to
 
 
 def test_a_resent_batch_the_cursor_had_already_seen_does_not_move_the_geometry_back(
@@ -768,3 +938,228 @@ def test_replaying_a_features_chain_in_server_order_reproduces_the_geometry_the_
 
     assert replayed == _as_the_storage_frame_holds_it(ANOTHER_PLACE_IN_THE_FIELD)
     assert _the_geometry_the_projection_holds(alice, feature_id) == replayed
+
+
+def test_the_projection_a_geometry_set_carrying_none_leaves_is_what_that_chain_replays_to(
+    alice: Party,
+) -> None:
+    """M15's reproducibility mechanism at the statement the case above cannot make: a
+    `feature.geometry.set` whose payload carries **null** states that this feature has no geometry,
+    which ADR-0012 decision 3's addition of 2026-09-09 distinguishes from a create saying nothing at
+    all, and only one of those two reaches the stored column.
+
+    **The place set before it is what makes the emptying observable.** A column that was already
+    null is left null both by an implementation that reads the statement and by one that ignores it,
+    so the feature is surveyed first and emptied second, and the projection's answer then tells the
+    two apart.
+
+    **Neither side of the comparison may reach nothing by absence.** The row is read by identifier,
+    so a projection that dropped the feature raises rather than answering the emptiness this case is
+    about; and the replay indexes the chain's last geometry operation, so a chain read back empty
+    raises rather than agreeing."""
+    layer_id, feature_id, installation = uuid4(), uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _an_element_layer_of(alice, layer_id=layer_id)
+
+    browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            *_drawing_a_feature_at(
+                alice,
+                layer_id=layer_id,
+                feature_id=feature_id,
+                at=A_PLACE_IN_THE_FIELD,
+                from_installation=installation,
+            )
+        ),
+        JSON,
+    )
+    browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_geometry_set_stating_there_is_none(
+                alice,
+                layer_id=layer_id,
+                feature_id=feature_id,
+                from_installation=installation,
+                mutation_number=2,
+            )
+        ),
+        JSON,
+    )
+
+    replayed = _the_geometry_a_chain_replays_to(_the_chain_the_log_holds_for(alice, feature_id))
+
+    assert replayed is None
+    assert _the_geometry_the_projection_holds(alice, feature_id) == replayed
+
+
+def test_a_feature_identifier_another_tenant_holds_is_answered_exactly_as_a_fresh_one(
+    alice: Party, bob: Party
+) -> None:
+    """T6.5's cross-tenant half, on the one column of this table that is a **global** key: the
+    feature identifier is minted by the client that draws the feature offline (M3, ADR-0006), so two
+    tenants can mint the same one, and the second must not learn from its answer that the first
+    exists.
+
+    **The comparison is over the status and the body together**, which is the testable form
+    ADR-0010 decision 6's addition of 2026-08-07 fixes for this question: a body naming the reason
+    leaks the row while the status line still reads like every other applied flush.
+
+    **The flush on a fresh identifier is the positive control and it is load-bearing.** A route that
+    refused both requests answers them alike, so without an accepted flush beside it the comparison
+    is green against a server that stopped applying anything at all.
+
+    **Two installations rather than one stream of two**, so both requests are the same shape: one
+    operation opening a stream against no cursor, whose acknowledgement carries the same number, and
+    a difference between the bodies is then the leak rather than the axis (M4, C12)."""
+    the_identifier_alice_holds = uuid4()
+    alices_layer, bobs_layer = uuid4(), uuid4()
+    _an_element_layer_of(alice, layer_id=alices_layer)
+    _an_element_layer_of(bob, layer_id=bobs_layer)
+    a_browser(authenticated_as=alice.user_id).post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(alice, layer_id=alices_layer, feature_id=the_identifier_alice_holds)
+        ),
+        JSON,
+    )
+
+    bobs_browser = a_browser(authenticated_as=bob.user_id)
+    on_the_identifier_alice_holds = bobs_browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(
+                bob,
+                layer_id=bobs_layer,
+                feature_id=the_identifier_alice_holds,
+                from_installation=uuid4(),
+            )
+        ),
+        JSON,
+    )
+    on_an_identifier_nobody_holds = bobs_browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(
+                bob, layer_id=bobs_layer, feature_id=uuid4(), from_installation=uuid4()
+            )
+        ),
+        JSON,
+    )
+
+    assert on_an_identifier_nobody_holds.status_code == HTTPStatus.OK
+    assert (on_the_identifier_alice_holds.status_code, on_the_identifier_alice_holds.content) == (
+        on_an_identifier_nobody_holds.status_code,
+        on_an_identifier_nobody_holds.content,
+    )
+
+
+def test_the_feature_a_colliding_identifier_reaches_is_left_to_the_tenant_that_holds_it(
+    alice: Party, bob: Party
+) -> None:
+    """C4 with T6.5: the answer above is indistinguishable, and this is the half of that sentence
+    the answer cannot show. A write that moved Alice's feature into Bob's project, refiled it under
+    Bob's layer or cleared the point she surveyed answers Bob exactly as a fresh identifier does, so
+    the case above passes over a row that was overwritten.
+
+    **All four columns rather than the geometry alone**, because three of them are the update set of
+    ADR-0012 decision 3 and the fourth is what the wall reads on (ADR-0005 section 3), so a row
+    compared whole is a row nothing reached.
+
+    **Bob draws rather than only creates, and that is what puts the geometry at risk.** A create
+    makes no statement about the geometry (that decision's addition of 2026-09-09), so a write that
+    overwrote everything else would still leave Alice's point where it was and the column would be
+    green for a reason this case is not about. He surveys the other place, so all four columns of
+    his row differ from all four of hers."""
+    the_identifier_both_tenants_mint = uuid4()
+    alices_layer, bobs_layer = uuid4(), uuid4()
+    _an_element_layer_of(alice, layer_id=alices_layer)
+    _an_element_layer_of(bob, layer_id=bobs_layer)
+    a_browser(authenticated_as=alice.user_id).post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            *_drawing_a_feature_at(
+                alice,
+                layer_id=alices_layer,
+                feature_id=the_identifier_both_tenants_mint,
+                at=A_PLACE_IN_THE_FIELD,
+                from_installation=uuid4(),
+            )
+        ),
+        JSON,
+    )
+
+    a_browser(authenticated_as=bob.user_id).post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            *_drawing_a_feature_at(
+                bob,
+                layer_id=bobs_layer,
+                feature_id=the_identifier_both_tenants_mint,
+                at=ANOTHER_PLACE_IN_THE_FIELD,
+                from_installation=uuid4(),
+            )
+        ),
+        JSON,
+    )
+
+    assert _the_feature_the_projection_holds(
+        alice, the_identifier_both_tenants_mint
+    ) == AProjectedFeature(
+        tenant_id=alice.tenant_id,
+        project_id=alice.project_id,
+        layer_id=alices_layer,
+        geometry=_as_the_storage_frame_holds_it(A_PLACE_IN_THE_FIELD),
+    )
+
+
+def test_the_log_keeps_the_operation_whose_feature_the_projection_could_not_take(
+    alice: Party, bob: Party
+) -> None:
+    """M15 at the one place the log and its projection are allowed to disagree, and the disagreement
+    sits inside Bob's own tenant rather than across the wall: the operation he authored is his and
+    is appended, while the row it would have produced carries an identifier another tenant already
+    holds and is left to that tenant (T6.5, C4).
+
+    **The operation beside it is what makes both halves say anything.** A projection holding one
+    feature rather than none says this flush was applied rather than refused, and a log holding two
+    operations rather than one says the colliding operation was appended rather than dropped."""
+    the_identifier_alice_holds, bobs_own_feature = uuid4(), uuid4()
+    alices_layer, bobs_layer, installation = uuid4(), uuid4(), uuid4()
+    drawn_by_bob, colliding_with_alice = uuid4(), uuid4()
+    _an_element_layer_of(alice, layer_id=alices_layer)
+    _an_element_layer_of(bob, layer_id=bobs_layer)
+    a_browser(authenticated_as=alice.user_id).post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(alice, layer_id=alices_layer, feature_id=the_identifier_alice_holds)
+        ),
+        JSON,
+    )
+
+    a_browser(authenticated_as=bob.user_id).post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(
+                bob,
+                layer_id=bobs_layer,
+                feature_id=bobs_own_feature,
+                operation_id=drawn_by_bob,
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            _a_feature_create(
+                bob,
+                layer_id=bobs_layer,
+                feature_id=the_identifier_alice_holds,
+                operation_id=colliding_with_alice,
+                from_installation=installation,
+                mutation_number=1,
+            ),
+        ),
+        JSON,
+    )
+
+    assert _the_operations_the_log_holds(bob) == {drawn_by_bob, colliding_with_alice}
+    assert _the_features_the_projection_holds(bob) == {bobs_own_feature}
