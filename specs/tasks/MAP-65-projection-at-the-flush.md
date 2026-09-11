@@ -155,3 +155,12 @@ failure with no user-visible signal and no record fails review"), which is why t
 `request.refused` in the shape of ADR-0011 section 4 exactly as the two existing reasons do. *Corrected
 2026-09-09 at the re-read: the first form said "nothing in the PRD carries it" without qualification, which
 told a window not to look for the one upstream that does exist and would have lost the record N9 requires.*
+
+**M15's "the current state is a projection of the log" carries one sanctioned exception here, and it is a
+delta rather than a silent narrowing.** An operation naming a feature identifier another tenant holds is
+appended to the log and never projected, permanently, because the write skips a conflicting row of another
+tenant rather than raising on it. The exception exists to close a measured cross-tenant leak, is decided in
+**ADR-0012 decision 3's addition of 2026-09-11**, and is unreachable for an honest client under I3 and M3.
+Nothing is lost, the log being the authority that holds it. *Added 2026-09-11 at the closing review, where
+the Spec axis found the behaviour shipped with its permission living only in a comment and two test
+docstrings.*
