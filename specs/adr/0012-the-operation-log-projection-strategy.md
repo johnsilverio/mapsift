@@ -178,6 +178,35 @@ is already there.
 > legitimate at all, which is a catalog question in the family of the two refusals a layer's declarations make
 > (MAP-66) rather than a projection question, and is owned by the issue opened for it on 2026-09-09.
 
+> **Addition (2026-09-11), at MAP-65's closing review: the write skips a conflicting row of another tenant,
+> and that is the one sanctioned exception to M15's "the current state is a projection of the log".** The
+> update set above decides which columns a write touches; this decides which **rows** it touches at all. A
+> conflict is arbitrated by `layers_feature`'s primary key, which is global, so an operation naming a feature
+> identifier another tenant holds reaches `DO UPDATE` on a row the wall hides. The statement therefore carries
+> `WHERE projected.tenant_id = EXCLUDED.tenant_id`, and the row is **skipped** rather than written.
+>
+> **Skipping is chosen over raising because the alternative is a leak, measured rather than argued.** Without
+> the clause the conflict check refuses with SQLSTATE 42501 and the flush answers `500`, while a feature
+> identifier nobody holds answers `200`; the answer then differs as a function of a row behind the wall, which
+> is PRD T6.5 and the clause ADR-0010 decision 6's addition of 2026-08-07 states as "anything that differs
+> between those two is the leak". Measured 2026-09-10 through the route, with a control against the tree
+> before this projection existed, where the same probe answered 200 to both.
+>
+> **The consequence is a permanent, silent divergence, and it is recorded here because nothing else may.** The
+> operation is appended to the log and no row is ever projected for it, on that flush or any later one, since
+> every subsequent write on that identifier meets the same skip. Nothing is lost, because the log is the
+> authority and holds it (C7 is untouched), and the shape is unreachable for an honest client: ADR-0005
+> section 4 records that this collision oracle is not reachable in practice against a 128-bit identifier
+> (I3, M3). **What makes it worth an addition rather than a comment is the next reader**: MAP-38's column,
+> MAP-66's refusals and any rebuild path will read this decision as the authority on the write, and removing
+> the clause to tidy the statement reintroduces the leak in full.
+>
+> *Written 2026-09-11 after a review axis asked what the permission rested on. The behaviour shipped with the
+> round and its only home was an inline comment and two test docstrings, one of which called it "the one place
+> the log and its projection are allowed to disagree" while no document allowed it. That is the same defect
+> this decision's previous addition was corrected for two days earlier, met a second time in the same task:
+> the record went to the cheapest place rather than to the document that owns the decision.*
+
 ### 4. The per-feature version is a column on `layers_feature`, and the mechanism is MAP-38's
 
 **Where it lives is this ADR's**, and was from MAP-50's creation. It is a column on the projection row, not a
