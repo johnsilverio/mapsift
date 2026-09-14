@@ -145,6 +145,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     the request body. Its evidence block carries the probe that shows Django's default test client hiding the
     CSRF check, and its out-of-scope block is deliberately long, because a missing line in a sibling's is what
     caused the round it exists to fix.
+  - **`tasks/MAP-59-the-index-key-columns-one-gate-reads-wrong.md`** — one reading of an index's key columns
+    for every catalogue gate, published as a helper because two hand-rolled joins failing the same way are one
+    defect with two copies rather than two fixes. It converts four call sites and not the two that are unsafe
+    today, on the argument that each of the other two is safe for a reason a later edit removes without anyone
+    noticing. Runs **before** MAP-51, which consumes the helper, so that round's window does not publish it as
+    a side effect. Its own Window B is the worked example of a window **declining to convert a fifth call site
+    and asking instead**, which corrected this file's count from five to four.
   - **`tasks/MAP-51-the-container-scoped-spatial-read.md`** — the round that turns ADR-0013's refusal into
     something the tree can express: the container btrees the ADR rests on, the published selector whose
     container argument is required, and decision 5's two cases over both. **The most corrected file in this
@@ -153,6 +160,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     violating the property they exist to prove; and a third pass called a regression guard red. **Every one of
     the three was found by a reader who had not written it**, twice by the pre-dispatch read and once by a
     research round, which is the argument for both mechanisms in one file.
+  - **`tasks/MAP-64-layer-creation-path.md`** — the sanctioned path that creates a layer, inside the wall and
+    under the identifier the client minted, so the flush, the web client and the fixtures stand on a service
+    instead of building the row by hand. It publishes the path and moves nothing onto it: its first caller is
+    MAP-65's. Its Out of scope block is where **both refusals a layer's declarations make** are handed to
+    MAP-66 by name, the two pure rules being already on disk with no caller, and its Trace carries a
+    correction dated 2026-08-28 in which the requirement line credited M1 with a layer's project while the
+    Acceptance credited M1 with the isolation clause alone; M2's Shape was the upstream and the Acceptance was
+    the half that was right.
   - **`tasks/MAP-65-projection-at-the-flush.md`** — the centre of ADR-0012 reaching code: the flush stops
     producing only a log and starts leaving the current state behind it, in the same transaction. Its
     Acceptance is the folder's cleanest worked example of the delta rule in **three** directions at once, one
