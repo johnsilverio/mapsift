@@ -153,6 +153,16 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     violating the property they exist to prove; and a third pass called a regression guard red. **Every one of
     the three was found by a reader who had not written it**, twice by the pre-dispatch read and once by a
     research round, which is the argument for both mechanisms in one file.
+  - **`tasks/MAP-65-projection-at-the-flush.md`** — the centre of ADR-0012 reaching code: the flush stops
+    producing only a log and starts leaving the current state behind it, in the same transaction. Its
+    Acceptance is the folder's cleanest worked example of the delta rule in **three** directions at once, one
+    per failure the rule exists to catch: a clause **split** because two of its qualifiers have no runtime
+    (M15's legal-weight and attributed halves, owned by OQ-8, MAP-53 and MAP-37), a clause **removed** because
+    it is already green and belongs to a different table (M15's grant, witnessed by five cases in
+    `test_append_only_log.py`), and a requirement cited at its **requirement sentence** rather than its
+    acceptance list (T2.2, the correction MAP-10 earned). It also carries the first behaviour in this folder
+    with **no upstream PRD criterion at all**, the unknown-layer refusal, which exists because the projection
+    write makes a constraint reachable that was inert before it, and says so rather than inventing one.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the

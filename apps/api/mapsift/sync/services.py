@@ -12,13 +12,19 @@ from mapsift.common.decision_trail import (
     correlated_by,
     record_the_decision,
 )
+from mapsift.layers.selectors import the_layers_a_project_holds_among
+from mapsift.layers.services import project_the_current_state
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 from mapsift.sync.rules import (
     OneUnbrokenStream,
+    ThisStreamCannotBeContinued,
+    WhyAStreamCannotBeContinued,
     refuse_a_stream_this_cursor_cannot_continue,
     the_address_of,
+    the_current_state_this_batch_leaves,
     the_last_applied_this_flush_leaves,
+    the_layers_this_batch_addresses,
     the_one_unbroken_stream_this_batch_carries,
     the_operation_identifiers_in,
     the_operations_this_cursor_has_already_seen,
@@ -57,7 +63,9 @@ def apply_the_flush(operations: list[ClientHalf]) -> int:
     mutation number, which is the only thing a client advances its cursor from (T2.3, C12).
 
     Refuses the whole batch with `ThisStreamCannotBeContinued` and applies nothing at all where
-    its stream does not carry on from the cursor this installation left behind (M10, M4).
+    its stream does not carry on from the cursor this installation left behind (M10, M4), and
+    where it files a feature under a layer its project does not hold (ADR-0010 decision 6's
+    addition of 2026-09-08).
     """
     stream = the_one_unbroken_stream_this_batch_carries(operations)
 
@@ -71,6 +79,7 @@ def apply_the_flush(operations: list[ClientHalf]) -> int:
     if not fresh:
         return last_applied
 
+    _project_what_this_flush_leaves(fresh, stream.project_id)
     # Before the append and not after, though "beside the allocation" reads the other way: the
     # order is a contention trade ADR-0004 decision 2 settles in its extension of 2026-08-11.
     _advance_the_cursor_of(stream, last_applied)
@@ -126,6 +135,35 @@ def _record_what_this_flush_applied(fresh: Sequence[ClientHalf]) -> None:
     """One record for the decision, naming the operations it covers (ADR-0011 section 4)."""
     with correlated_by(operation_ids=the_operation_identifiers_in(fresh)):
         record_the_decision(TheDecisionARecordNames.FLUSH_APPLIED)
+
+
+def _project_what_this_flush_leaves(operations: list[ClientHalf], project_id: UUID) -> None:
+    """Leave the current state beside the log this flush appends, in the same transaction (M15).
+
+    Immediately before the cursor write, which is where ADR-0012 decision 3 puts it in the order
+    ADR-0004 decision 2 owns.
+    """
+    _refuse_a_layer_this_project_does_not_hold(operations, project_id)
+    project_the_current_state(the_current_state_this_batch_leaves(operations))
+
+
+def _refuse_a_layer_this_project_does_not_hold(
+    operations: Sequence[ClientHalf], project_id: UUID
+) -> None:
+    """Refuse the whole batch where it files a feature under a layer this project does not hold.
+
+    Taken here rather than left to the composite reference, whose refusal is an `IntegrityError`
+    escaping as a 500 (ADR-0010 decision 6's addition of 2026-09-08). The restart point is null
+    because resending reproduces this refusal: the remedy is the layer, not the stream.
+    """
+    addressed = the_layers_this_batch_addresses(operations)
+    if addressed <= the_layers_a_project_holds_among(project_id, addressed):
+        return
+
+    raise ThisStreamCannotBeContinued(
+        WhyAStreamCannotBeContinued.NO_LAYER_IN_THIS_PROJECT,
+        resend_from_mutation_number=None,
+    )
 
 
 def _advance_the_cursor_of(stream: OneUnbrokenStream, last_applied: int) -> None:
