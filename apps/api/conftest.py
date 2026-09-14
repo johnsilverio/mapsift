@@ -20,7 +20,7 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, cast
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 import pytest
 from django.conf import settings
@@ -31,6 +31,8 @@ from django.test import Client, RequestFactory
 from mapsift.accounts.models import User
 from mapsift.accounts.services import create_personal_account, create_project, create_workspace
 from mapsift.common.binding import tenant_scope
+from mapsift.layers.rules import GeometryKind, StorageClass
+from mapsift.layers.services import create_layer
 
 # ADR-0005 section 3: every policy keys on this column, so carrying it is what puts a table inside
 # the wall. The enumeration below reads it from the catalogue rather than from a list somebody
@@ -78,6 +80,34 @@ class Party:
     email: str
 
 
+def the_element_layer_of(project_id: UUID) -> UUID:
+    """The one element layer every project this file arranges holds (M2, M3).
+
+    Derived from the project rather than minted, and that is the load-bearing half. An arranger
+    below has to name this layer while holding nothing but the project it addresses, so a lookup
+    would put a database read inside a document builder; and `Layer.id` is a global primary key,
+    so one constant shared by two tenants collides on insert rather than being hidden by the wall.
+    """
+    return uuid5(project_id, "the element layer every arranged project holds")
+
+
+def _give_the_project_its_element_layer(project_id: UUID, *, tenant_id: UUID, named: str) -> None:
+    """The layer a project is arranged with, of the family the arrangers' geometry carries (M2).
+
+    Element rather than served, because a served layer's features never enter the operation queue
+    at all, and point rather than polygon, because `a_geometry_set_claiming` carries a point.
+    Requires a tenant binding and opens none.
+    """
+    create_layer(
+        layer_id=the_element_layer_of(project_id),
+        tenant_id=tenant_id,
+        project_id=project_id,
+        name=named,
+        geometry_kind=GeometryKind.POINT,
+        storage_class=StorageClass.ELEMENT,
+    )
+
+
 def a_project_under_a_new_workspace_of(tenant_id: UUID, *, named: str) -> tuple[UUID, UUID]:
     """A fresh workspace and one project inside it, through the services that publish them (M1).
 
@@ -85,6 +115,11 @@ def a_project_under_a_new_workspace_of(tenant_id: UUID, *, named: str) -> tuple[
     A tenant built through the account services holds nothing below its membership, and a batch a
     flush is meant to accept has to name a project the verified tenant really holds (ADR-0010
     decision 6's addition of 2026-08-20), so a suite that builds a tenant inline runs this too.
+
+    **The layer joins the workspace and the project on that same rule, 2026-09-09 at MAP-65.** A
+    batch a flush is meant to accept also has to name a layer the project really holds, and while
+    nothing on the server read the layer a fresh identifier was what every arranger wanted; the
+    moment one is consulted, a project arranged without one authors batches the route refuses.
     """
     workspace_id, project_id = uuid4(), uuid4()
 
@@ -93,6 +128,7 @@ def a_project_under_a_new_workspace_of(tenant_id: UUID, *, named: str) -> tuple[
         create_project(
             project_id=project_id, tenant_id=tenant_id, workspace_id=workspace_id, name=named
         )
+        _give_the_project_its_element_layer(project_id, tenant_id=tenant_id, named=named)
 
     return workspace_id, project_id
 
@@ -111,7 +147,11 @@ def _party(email: str, name: str) -> Party:
 
 
 def second_project_of(party: Party) -> UUID:
-    """A second project inside one tenant, for the invariants that need two of them to show."""
+    """A second project inside one tenant, for the invariants that need two of them to show.
+
+    Arranged with its own element layer for the reason the first project is, so the two projects
+    of one tenant differ in nothing a flush consults.
+    """
     project_id = uuid4()
 
     with tenant_scope(party.tenant_id):
@@ -120,6 +160,9 @@ def second_project_of(party: Party) -> UUID:
             tenant_id=party.tenant_id,
             workspace_id=party.workspace_id,
             name="the other project",
+        )
+        _give_the_project_its_element_layer(
+            project_id, tenant_id=party.tenant_id, named="the other project"
         )
 
     return project_id
@@ -421,6 +464,12 @@ def _a_csrf_pair() -> tuple[str, str]:
     return minted.META["CSRF_COOKIE"], token
 
 
+# `tests/test_the_logging_path.py` reads this longitude as a literal, because a coordinate
+# reaching `django.db.backends` inside the operation-log insert is what its redaction case is
+# about (measured there 2026-08-14), so moving this value moves that case's subject with it.
+A_PLACE_A_GEOMETRY_PAYLOAD_CARRIES = (-47.9, -15.8)
+
+
 def a_feature_create_claiming(
     tenant_id: UUID,
     *,
@@ -428,6 +477,8 @@ def a_feature_create_claiming(
     client_id: UUID | None = None,
     mutation_number: int = 0,
     project_id: UUID | None = None,
+    layer_id: UUID | None = None,
+    feature_id: UUID | None = None,
 ) -> JsonObject:
     """One catalog operation as the client authored it, addressed at a tenant (M8, M9).
 
@@ -437,12 +488,25 @@ def a_feature_create_claiming(
     the same reason on the other axis: a flush addresses exactly one project too (ADR-0010
     decision 6's addition of 2026-08-10), so a suite about that axis has to be able to say which.
 
+    **The layer and the feature join them on the same rule, 2026-09-08 at MAP-65.** Until the
+    projection existed nothing on the server read either one, so a fresh identifier was what every
+    caller wanted; a suite about the projection has to name the layer its operation addresses,
+    because that layer has to be one the project holds, and has to name the feature, because two
+    operations of one batch reaching the same feature is the ordinary shape of a flush.
+
+    **The layer defaults to the one the addressed project was arranged with, corrected 2026-09-09.**
+    A fresh identifier was the default for one day, and it addressed a layer that exists nowhere,
+    which every caller with no interest in the layer inherited. That is the same defect the
+    mutation number's paragraph below records, on a third axis, and it is why the default is a
+    function of the project rather than a mint.
+
     **The mutation number defaults to zero because zero is the first one** (M10's Shape, settled
     2026-08-11). It read 1 until then, which every caller that does not care about the axis
     inherited, so the whole suite minted streams beginning one above their own start; MAP-13's
     contiguity rule would refuse those as a gap from an absent cursor, and the modules meeting
     that refusal would be the ones with no interest in the axis at all.
     """
+    addressed_project = project_id or uuid4()
     return {
         "operation_id": str(operation_id or uuid4()),
         "client_id": str(client_id or uuid4()),
@@ -453,9 +517,9 @@ def a_feature_create_claiming(
         "target": {
             "kind": "feature",
             "tenant_id": str(tenant_id),
-            "project_id": str(project_id or uuid4()),
-            "layer_id": str(uuid4()),
-            "feature_id": str(uuid4()),
+            "project_id": str(addressed_project),
+            "layer_id": str(layer_id or the_element_layer_of(addressed_project)),
+            "feature_id": str(feature_id or uuid4()),
         },
         "payload": {},
         "author_session_material": {"proof": "opaque-to-the-core"},
@@ -464,34 +528,55 @@ def a_feature_create_claiming(
     }
 
 
-def a_geometry_set_claiming(tenant_id: UUID, *, project_id: UUID | None = None) -> JsonObject:
+def a_geometry_set_claiming(
+    tenant_id: UUID,
+    *,
+    operation_id: UUID | None = None,
+    client_id: UUID | None = None,
+    mutation_number: int = 0,
+    project_id: UUID | None = None,
+    layer_id: UUID | None = None,
+    feature_id: UUID | None = None,
+    at: tuple[float, float] = A_PLACE_A_GEOMETRY_PAYLOAD_CARRIES,
+) -> JsonObject:
     """The catalog's other member, whose target is a property rather than a feature (M9).
 
     The variant matters to this suite rather than being decoration: the two members carry
     structurally different target types, so a rule that reads the tenant off one of them is green
     against a batch of the other, and the same holds of a rule that reads the project.
 
+    **The five fields the sibling above already took are settable here too, and the place the
+    payload carries joins them, 2026-09-08 at MAP-65.** Each was a literal rather than a default,
+    which is the shape that docstring's own last paragraph records as how a stale value outlives
+    the round that retired it; a suite about what the projection ends up holding has to be able to
+    say which place a geometry moved to, because otherwise every operation it authors sets the
+    same one and no case can tell the last write from the first.
+
+    **The layer defaults to the addressed project's own, corrected 2026-09-09**, for the reason
+    the sibling above carries.
+
     **The mutation number is zero here for the reason it defaults to zero above** (M10's Shape,
     settled 2026-08-11). It read 2, minted before the first value of the axis was decided and
     surviving the correction of its sibling because it is a literal rather than a default, which is
     how a stale value outlives the round that retired it.
     """
+    addressed_project = project_id or uuid4()
     return {
-        "operation_id": str(uuid4()),
-        "client_id": str(uuid4()),
-        "mutation_number": 0,
+        "operation_id": str(operation_id or uuid4()),
+        "client_id": str(client_id or uuid4()),
+        "mutation_number": mutation_number,
         "operation_type": "feature.geometry.set",
         "operation_schema_version": 1,
         "conflict_rule_version": 1,
         "target": {
             "kind": "property",
             "tenant_id": str(tenant_id),
-            "project_id": str(project_id or uuid4()),
-            "layer_id": str(uuid4()),
-            "feature_id": str(uuid4()),
+            "project_id": str(addressed_project),
+            "layer_id": str(layer_id or the_element_layer_of(addressed_project)),
+            "feature_id": str(feature_id or uuid4()),
             "property": "geometry",
         },
-        "payload": {"geometry": {"type": "Point", "coordinates": [-47.9, -15.8]}},
+        "payload": {"geometry": {"type": "Point", "coordinates": [*at]}},
         "author_session_material": {"proof": "opaque-to-the-core"},
         "created_at": "2026-08-07T12:00:00Z",
         "mediation": None,

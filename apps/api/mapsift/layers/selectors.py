@@ -4,12 +4,13 @@ Every spatial read here takes its container as a required argument, which is the
 three mechanisms ADR-0013 decision 4 weighs and is the only claim this module can make on its own.
 """
 
+from collections.abc import Collection
 from uuid import UUID
 
 from django.contrib.gis.geos import Polygon
 from django.db.models import QuerySet
 
-from mapsift.layers.models import Feature
+from mapsift.layers.models import Feature, Layer
 
 
 def features_of_a_layer_intersecting(layer_id: UUID, box: Polygon) -> QuerySet[Feature]:
@@ -26,3 +27,16 @@ def features_of_a_project_intersecting(project_id: UUID, box: Polygon) -> QueryS
     Requires a tenant binding and opens none (ADR-0005 sections 3 and 4).
     """
     return Feature.objects.filter(project_id=project_id, geometry__intersects=box)
+
+
+def the_layers_a_project_holds_among(
+    project_id: UUID, layer_ids: Collection[UUID]
+) -> frozenset[UUID]:
+    """Which of the given layers this project of the tenant in force actually holds (M2).
+
+    Requires a tenant binding and opens none (ADR-0005 sections 3 and 4). It answers a set rather
+    than a queryset, so its rows are read inside the binding that authorised them.
+    """
+    return frozenset(
+        Layer.objects.filter(project_id=project_id, id__in=layer_ids).values_list("id", flat=True)
+    )
