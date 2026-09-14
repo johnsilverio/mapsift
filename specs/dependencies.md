@@ -631,6 +631,52 @@ changed.
   without this entry and the `api` image, which bakes `uv.lock` at build time, ran a gate on the old lock
   until `just build api` was run on 2026-08-18; a lockfile bump is followed by a rebuild before the next gate.
 
+
+- **`@angular/common` information leak via `HttpTransferCache` bypass (GHSA-p297-fm68-3q8c, CVE-2026-88059,
+  medium, `>= 22.0.0, < 22.1.1`, patched in 22.1.1), raised by Dependabot as pull request 52 and assessed
+  2026-09-14. The verdict is the pair, and this time the two halves point opposite ways: the exposure is
+  nothing and every remedy on offer is worse than it.** The alert is real and the scope is `runtime`, so this
+  is not the development-only shape the `hono` entries rest on. **Exposure is nevertheless zero, measured
+  against the tree rather than argued:** the vulnerable path is the server-side-rendering transfer cache, and
+  `grep` over `apps/` and `libs/` finds no `withRequestsMadeViaParent`, no `HttpTransferCache`, no
+  `provideClientHydration`, and no `@angular/ssr` or `platform-server` at all. This product renders in the
+  browser; the vulnerable code has no caller and cannot acquire one without SSR being adopted, which is a
+  decision no document has taken.
+- **The remedy Dependabot offered does not install, which is why pull request 52 was closed rather than
+  merged.** The Angular packages declare **exact** peers on each other, so `@angular/common@22.1.1` requires
+  `@angular/core@22.1.1`, and a pull request moving `common` alone produces an `ERESOLVE` on every `npm ci`.
+  It failed CI on every run it was given. **A lockstep family is bumped as a family or not at all.**
+- **The remedy a from-scratch resolution produces is worse than the exposure, and it was measured before it
+  was refused.** Raising the seven runtime and three build Angular floors to 22.1.6 and 22.1.8 in
+  `package.json` and regenerating the lockfile resolves cleanly and npm reports zero vulnerabilities, but the
+  diff is **211 packages changing version**, 1151 insertions against 1101 deletions. It carries
+  `@hono/node-server` **1.19.17 to 2.1.1, across a major**, which is the precise remedy the first entry in
+  this section refused on the record as *"a compatibility gamble taken to fix something that cannot fire"*;
+  it regresses `lightningcss` from 1.33.0 to 1.32.0; and it moves `eslint`, `listr2`, `keyv`, `log-update`
+  and `flat-cache` across majors or minors nobody asked for. **A targeted security fix that rewrites a fifth
+  of the tree is not a targeted fix.**
+- **Why npm forces that choice, recorded because it cost an afternoon and will cost it again.** `npm update`
+  leaves a lockstep family where it found it, and `npm install <the family>` and `npm install
+  --package-lock-only` both resolve *against the existing lockfile* and report the conflict as though it were
+  upstream. Only deleting the lockfile resolves the family, and deleting the lockfile is what produces the
+  211-package churn. **A further trap beside it:** the repository root carries a host `node_modules`, mounted
+  into the `web` container, so a resolution run there reconciles against a stale installed tree and reports a
+  conflict that is an artifact of the mount. An isolated container with only the manifest is what answers
+  truthfully.
+- **The remedy this points at, and it is a configuration rather than a bump.** There is no
+  `.github/dependabot.yml` anywhere in the repository, only `ci.yml`, so nothing groups the Angular packages
+  and every Angular patch release will reproduce pull request 52 exactly. A `groups` entry for the Angular
+  family makes Dependabot open the minimal correct bump, which is the artifact neither hand path above can
+  produce. **This is not taken here**, because adding a config file where none exists can narrow what
+  Dependabot watches, and Python bumps are demonstrably arriving today (the `sqlparse` entry above), so the
+  file has to cover every ecosystem already being watched or it silently switches one off. It is the owner's
+  and it has no issue yet.
+- **Re-check trigger, so this is deferred rather than forgotten:** the Angular family is taken to 22.1.1 or
+  above by whatever produces a minimal grouped bump, at which point the alert closes on its own. Until then
+  the alert stands, and this entry is the record of why a standing alert was accepted against this section's
+  own rule that standing alerts are the noise hiding the next real one. **That tension is deliberate and is
+  the narrowest reading available:** the noise argument bought a free remedy in the `hono` case and buys
+  nothing here, because no free remedy exists yet.
 ## 6. Not chosen yet: the dependency-gated ADR agenda
 
 Each of these is a decision that this survey must feed before it can be made without guessing. They are listed so the agenda is visible in one place.
