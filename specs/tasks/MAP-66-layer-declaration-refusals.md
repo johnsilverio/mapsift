@@ -29,13 +29,16 @@ before it becomes current state.
 - **A feature changing path.** Its promotion half is **OQ-6**, which M2's Open/ADR scopes to where a
   promoted analysis result lives. Its layer-changing-class half is **M2 Acceptance clause 4**, a requirement
   rather than an open question, and it is out of scope here because nothing changes a layer's class today.
-- **A server-side flag on the refused operation.** That is T5.2's shape, **MAP-37** owns it, and ADR-0010
-  decision 6's addition of 2026-09-15 says in writing that this task makes the operation locatable rather
-  than storing a verdict about it.
+- **A flag on the refused operation, and a refusal that does not stall the stream.** That is T5.2's shape
+  and it is **MAP-72**, which MAP-37 depends on. ADR-0010 decision 6's correction of 2026-09-16 records that
+  the whole-batch refusal this task ships does not yet meet the foundation's retryable-refusal requirement,
+  and why it is accepted until MAP-72 lands.
 - **What a valid geometry payload is on the wire.** **MAP-70** owns the four shapes that answer `500` and
   **MAP-69** the relabelled frame; **MAP-33** owns the encoding both feed. A payload whose `type` is absent
   or is not a string is theirs, not this task's refusal.
-- **A create addressing a feature that already exists**, and its mirror. **MAP-68**.
+- **A create addressing a feature that already exists**, and its mirror. **MAP-68**. That create is not the
+  no-op its issue once described: it moves the feature to the layer it names and keeps the stored geometry,
+  so a geometry of one family can end up under a layer that declares another. Measured 2026-09-16, below.
 - **The per-feature version.** **MAP-38**, whose column ADR-0012 decision 4 already placed.
 - **Who may create or classify a layer.** The permission model, deferred by the Open/ADR of **T6.3, T6.4
   and T6.5**, which PRD **10.6** records as pointing at themselves and as a decision the PRD still owes; and
@@ -147,13 +150,17 @@ looked for here before dispatch, and the read still found this block reporting a
 
 ## Acceptance
 
-**M2**, two clauses of its Acceptance list, and **neither carries a delta**. They are named because they
-are the two this task proves, not because anything about them is modified:
+**M2**, two clauses of its Acceptance list:
 
 - the served-versus-element clause is taken **whole**. It has no import half: M2's import clauses are
   separate members of the same list and are deferred above, so there is no delta on this one.
-- the geometry-family clause is **whole**, including the multipart and enclave cases it names, which the
-  family rule already admits.
+- the geometry-family clause is **split**. *(Corrected 2026-09-16 at the MAP-66 review, where this line said
+  whole. Two review axes reproduced a polygon stored under a point layer through the route, answering `200`,
+  and the orchestrator re-ran it.)* **This task's half:** a geometry an operation carries is refused when it
+  is outside the family of the layer that operation addresses, including the multipart and enclave cases the
+  clause names. **Not this task's half:** a `feature.create` addressing a feature that already exists moves
+  it under another layer while keeping its stored geometry, and no operation in that path carries a geometry,
+  so the refusal is never consulted. That path is **MAP-68**'s, whose create semantics decide it.
 
 **M9**, its final Acceptance clause, **split**:
 
@@ -161,7 +168,10 @@ are the two this task proves, not because anything about them is modified:
 - the **flagged-and-retained** half has no runtime for the word *flagged* in T5.2's sense, since nothing
   marks an operation today. What is provable here is that nothing is discarded, the batch being refused
   whole and rolled back, and that the refused operation is **locatable** by the key ADR-0010 decision 6's
-  addition of 2026-09-15 adds. The rest is **MAP-37's**.
+  addition of 2026-09-15 adds. **What is not true here, and is recorded rather than implied:** retention by
+  refusing the whole batch stalls every later operation of that installation, so it meets *never discarded*
+  and misses I2. The flag and the non-stalling refusal are **MAP-72's**. *(Corrected 2026-09-16: this named
+  MAP-37, which carries the flag only for an author who lost authorization.)*
 
 **Nothing here is an acceptance criterion that does not appear upstream.** The `refused_operation_id` key is
 a wire contract, decided in ADR-0010 and not invented here.
