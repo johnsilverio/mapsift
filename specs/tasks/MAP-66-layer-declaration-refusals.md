@@ -5,7 +5,7 @@
 **Requirement:** PRD **M2** for the storage-class clause and the geometry-family clause of its Acceptance;
 PRD **M9** for the shape of the refusal, which is where "flagged and retained for inspection" is law.
 
-**Invariants and constraints:** **I1**, **I9**; **C1**, **C7**.
+**Invariants and constraints:** **I1**, **I2**, **I9**; **C1**, **C7**.
 
 **Code shape:** **ADR-0010 decision 6**, whose addition of 2026-09-15 fixes both reason values, the new
 `refused_operation_id` key and the rule for when it is populated, and whose addition of 2026-09-08 fixes the
@@ -34,14 +34,18 @@ before it becomes current state.
   the whole-batch refusal this task ships does not yet meet the foundation's retryable-refusal requirement,
   and why it is accepted until MAP-72 lands.
 - **What a valid geometry payload is on the wire.** **MAP-70** owns the four shapes that answer `500` and
-  **MAP-69** the relabelled frame; **MAP-33** owns the encoding both feed. A payload whose `type` is absent
-  or is not a string is theirs, not this task's refusal.
+  **MAP-69** the relabelled frame; **MAP-33** owns the encoding both feed. This task reads a payload's
+  declared `type` and parses nothing, so a geometry that is not a mapping, or whose `type` is absent or is
+  not a string, is not checked for family at all. A payload whose `type` it can read **is** checked for
+  family whatever its coordinates carry; what that payload does when something later parses it is MAP-70's.
 - **A create addressing a feature that already exists**, and its mirror. **MAP-68**. That create is not the
   no-op its issue once described: it moves the feature to the layer it names and keeps the stored geometry,
-  so a geometry of one family can end up under a layer that declares another. Measured 2026-09-16, below.
+  so a geometry of one family can end up under a layer that declares another. Measured 2026-09-16; the
+  shapes and their output are in MAP-68's issue.
 - **The per-feature version.** **MAP-38**, whose column ADR-0012 decision 4 already placed.
-- **Who may create or classify a layer.** The permission model, deferred by the Open/ADR of **T6.3, T6.4
-  and T6.5**, which PRD **10.6** records as pointing at themselves and as a decision the PRD still owes; and
+- **Who may create or classify a layer.** The permission model, deferred by the Open/ADR of **T6.3 and
+  T6.4**, which PRD **10.6** records as pointing at themselves and as a decision the PRD still owes (10.6
+  lists T6.5 beside them, but T6.5's Open/ADR sends its mechanism to an ADR rather than to that model); and
   the licence tiers **T6.2** rests on, which are foundation **OQ-7**. OQ-7 is market, pricing and licensing
   and does not itself own who may create a layer.
 
@@ -71,7 +75,9 @@ Closed 2026-09-14 and 2026-09-15. Each is recorded in the document that owns it;
 
 **Measured 2026-09-15 on `main` at `85ed416`, by grep over all of `apps/api` outside `mapsift/layers/`.**
 Every claim below is a grep result. Where a claim is about a suite passing rather than about a file's
-contents, it says so.
+contents, it says so. **This block is the pickup snapshot at `85ed416` and is dated, not current**: the
+served-layer and polygon-layer arrangements it says had to be built exist since `0493704`, and line numbers cited below in
+`test_the_projection_at_the_flush.py` have since moved, by different amounts.
 *(Corrected 2026-09-15 at the pre-dispatch read, which re-ran both greps and found this block claiming a
 wider scope than the greps behind it had covered. The first version searched `mapsift/sync/tests/` and
 `conftest.py` and reported its result as though it had searched everything outside `mapsift/layers/`.
@@ -89,7 +95,8 @@ in the very suite this task extends.
 **No test outside `mapsift/layers/` arranges a served layer or any family other than point.** That grep is
 whole and the served-layer conclusion rests on it.
 
-**A `feature.geometry.set` carrying a null payload reaches the route today and is green.**
+**A `feature.geometry.set` carrying a null payload reaches the route today and is green**, the green being a
+run rather than a grep: the third pre-dispatch read ran it, 1 passed.
 `_a_geometry_set_stating_there_is_none` (line 193) builds `{"geometry": None}` (line 218) and
 `test_the_projection_a_geometry_set_carrying_none_leaves_is_what_that_chain_replays_to` (line 998) posts it
 to `OPERATIONS_PATH` at line 1032. It is deliberate: ADR-0012 decision 3's addition of 2026-09-09 makes
@@ -140,8 +147,8 @@ accepted. **The pre-correction shape left the whole suite green**, which is the 
 generalisation. *(Who found it is recorded two ways: `log.md` says the Craft axis, confirmed by the
 orchestrator through the route; `session-handoff.md` section 0 says two axes independently. Neither is a
 source of truth and the difference does not bear on this task, so it is named rather than resolved here.)*
-**The storage-class refusal has that same shape**, since a batch can name a served layer and an element
-layer for one feature. **What to do with it is not decided here**, and nothing about where a check reads
+**Both refusals have that same shape**: a batch can name a served layer and an element layer for one
+feature, and can carry two geometries for one feature, and the fold keeps one of each. **What to do with it is not decided here**, and nothing about where a check reads
 from is handed over as an instruction.
 
 **Why this block exists at all:** MAP-65's pre-dispatch read cleared a spec whose every citation was true
@@ -152,15 +159,24 @@ looked for here before dispatch, and the read still found this block reporting a
 
 **M2**, two clauses of its Acceptance list:
 
-- the served-versus-element clause is taken **whole**. It has no import half: M2's import clauses are
-  separate members of the same list and are deferred above, so there is no delta on this one.
+- the served-versus-element clause is **split**. *(Corrected 2026-09-16 at the fourth pre-dispatch read,
+  where this line said whole.)* Its import clauses are separate members of the list and deferred above; the
+  split is inside this clause. **This task's half:** the server's log never holds an operation naming a
+  served layer. **Not this task's
+  half:** the client's own queue never holding one. PRD T1.2 makes the operation queue a local one and
+  `libs/core` has no queue, so that half has no runtime until MAP-15 and MAP-19.
 - the geometry-family clause is **split**. *(Corrected 2026-09-16 at the MAP-66 review, where this line said
   whole. Two review axes reproduced a polygon stored under a point layer through the route, answering `200`,
-  and the orchestrator re-ran it.)* **This task's half:** a geometry an operation carries is refused when it
-  is outside the family of the layer that operation addresses, including the multipart and enclave cases the
-  clause names. **Not this task's half:** a `feature.create` addressing a feature that already exists moves
-  it under another layer while keeping its stored geometry, and no operation in that path carries a geometry,
-  so the refusal is never consulted. That path is **MAP-68**'s, whose create semantics decide it.
+  and the orchestrator re-ran it.)* **This task's half:** a geometry an operation carries is **stored** when it
+  is inside the family of the layer that operation addresses, multipart and enclave cases included, and
+  **refused** when it is outside it. **Not this task's half:** the stored row can pair a layer and a geometry
+  that no single operation carried, because the check reads each operation against its own layer while the
+  write keeps the last layer a feature is filed under and the last geometry it was given. Two shapes, both
+  measured. **Across flushes**, a later `feature.create` files the feature under another layer and carries no
+  geometry, so nothing is checked. **Within one batch**, a `feature.geometry.set` is checked against the
+  layer it addresses and passes, and a `feature.create` after it re-files the feature under a layer of
+  another family. Both run through a create addressing a feature that already exists, which is **MAP-68**'s
+  to decide.
 
 **M9**, its final Acceptance clause, **split**:
 
