@@ -67,9 +67,12 @@ THE_ECHO = "last_applied_mutation_number"
 
 # The closed object a refusal answers with, and the closed set of two its reason comes from
 # (ADR-0010 decision 6, addition of 2026-08-13). The restart point names its axis because M10
-# carries five and forbids any code path reading one as another.
+# carries five and forbids any code path reading one as another. The refused operation joined the
+# object at that decision's addition of 2026-09-15 and is null for both reasons here, because each
+# of them is about this installation's cursor rather than about one operation of the batch.
 THE_REASON = "reason"
 THE_RESTART_POINT = "resend_from_mutation_number"
+THE_REFUSED_OPERATION = "refused_operation_id"
 A_GAP_ABOVE_THE_CURSOR = "gap_above_cursor"
 NO_CURSOR_IN_THIS_DOMAIN = "no_cursor_in_this_domain"
 
@@ -173,7 +176,11 @@ def test_a_flush_starting_above_the_cursor_is_answered_with_the_number_the_serve
     )
 
     assert refused.status_code == HTTPStatus.CONFLICT
-    assert refused.json() == {THE_REASON: A_GAP_ABOVE_THE_CURSOR, THE_RESTART_POINT: 2}
+    assert refused.json() == {
+        THE_REASON: A_GAP_ABOVE_THE_CURSOR,
+        THE_RESTART_POINT: 2,
+        THE_REFUSED_OPERATION: None,
+    }
 
 
 def test_a_flush_starting_above_the_cursor_applies_nothing_at_all(alice: Party) -> None:
@@ -291,7 +298,11 @@ def test_a_flush_above_the_first_mutation_number_from_an_installation_with_no_cu
     )
 
     assert refused.status_code == HTTPStatus.CONFLICT
-    assert refused.json() == {THE_REASON: NO_CURSOR_IN_THIS_DOMAIN, THE_RESTART_POINT: None}
+    assert refused.json() == {
+        THE_REASON: NO_CURSOR_IN_THIS_DOMAIN,
+        THE_RESTART_POINT: None,
+        THE_REFUSED_OPERATION: None,
+    }
 
 
 def test_a_flush_from_an_installation_with_no_cursor_is_never_applied_optimistically(

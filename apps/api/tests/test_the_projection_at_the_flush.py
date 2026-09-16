@@ -99,9 +99,12 @@ STORAGE_FRAME_SRID = 4674
 # The closed object this route's second answer carries and the member the projection makes
 # reachable (ADR-0010 decision 6's addition of 2026-09-08). Spelled as literals rather than read
 # off `WhyAStreamCannotBeContinued`, because these are the wire values that decision fixes and a
-# case comparing the enum against itself cannot notice a member being renamed.
+# case comparing the enum against itself cannot notice a member being renamed. The refused
+# operation joined the object at that decision's addition of 2026-09-15 and is null for this
+# reason, the layer being the unit of the fault rather than any one operation naming it.
 THE_REASON = "reason"
 THE_RESTART_POINT = "resend_from_mutation_number"
+THE_REFUSED_OPERATION = "refused_operation_id"
 NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
 
 # The catalog member that carries a geometry (M9), as the envelope spells its type.
@@ -730,7 +733,11 @@ def test_an_operation_addressing_a_layer_this_project_lacks_is_refused_as_a_type
     )
 
     assert refused.status_code == HTTPStatus.CONFLICT
-    assert refused.json() == {THE_REASON: NO_LAYER_IN_THIS_PROJECT, THE_RESTART_POINT: None}
+    assert refused.json() == {
+        THE_REASON: NO_LAYER_IN_THIS_PROJECT,
+        THE_RESTART_POINT: None,
+        THE_REFUSED_OPERATION: None,
+    }
 
 
 def test_a_layer_of_another_project_is_refused_exactly_as_one_that_never_existed(
