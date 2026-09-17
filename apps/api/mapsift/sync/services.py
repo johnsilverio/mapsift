@@ -12,14 +12,13 @@ from mapsift.common.decision_trail import (
     correlated_by,
     record_the_decision,
 )
-from mapsift.layers.selectors import the_layers_a_project_holds_among
+from mapsift.layers.selectors import what_the_layers_a_project_holds_declare
 from mapsift.layers.services import project_the_current_state
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 from mapsift.sync.rules import (
     OneUnbrokenStream,
-    ThisStreamCannotBeContinued,
-    WhyAStreamCannotBeContinued,
+    refuse_a_batch_its_layers_do_not_admit,
     refuse_a_stream_this_cursor_cannot_continue,
     the_address_of,
     the_current_state_this_batch_leaves,
@@ -64,8 +63,8 @@ def apply_the_flush(operations: list[ClientHalf]) -> int:
 
     Refuses the whole batch with `ThisStreamCannotBeContinued` and applies nothing at all where
     its stream does not carry on from the cursor this installation left behind (M10, M4), and
-    where it files a feature under a layer its project does not hold (ADR-0010 decision 6's
-    addition of 2026-09-08).
+    where the layers it names do not admit its operations (ADR-0010 decision 6's additions of
+    2026-09-08 and 2026-09-15).
     """
     stream = the_one_unbroken_stream_this_batch_carries(operations)
 
@@ -143,27 +142,11 @@ def _project_what_this_flush_leaves(operations: list[ClientHalf], project_id: UU
     Immediately before the cursor write, which is where ADR-0012 decision 3 puts it in the order
     ADR-0004 decision 2 owns.
     """
-    _refuse_a_layer_this_project_does_not_hold(operations, project_id)
-    project_the_current_state(the_current_state_this_batch_leaves(operations))
-
-
-def _refuse_a_layer_this_project_does_not_hold(
-    operations: Sequence[ClientHalf], project_id: UUID
-) -> None:
-    """Refuse the whole batch where it files a feature under a layer this project does not hold.
-
-    Taken here rather than left to the composite reference, whose refusal is an `IntegrityError`
-    escaping as a 500 (ADR-0010 decision 6's addition of 2026-09-08). The restart point is null
-    because resending reproduces this refusal: the remedy is the layer, not the stream.
-    """
-    addressed = the_layers_this_batch_addresses(operations)
-    if addressed <= the_layers_a_project_holds_among(project_id, addressed):
-        return
-
-    raise ThisStreamCannotBeContinued(
-        WhyAStreamCannotBeContinued.NO_LAYER_IN_THIS_PROJECT,
-        resend_from_mutation_number=None,
+    declared = what_the_layers_a_project_holds_declare(
+        project_id, the_layers_this_batch_addresses(operations)
     )
+    refuse_a_batch_its_layers_do_not_admit(operations, declared)
+    project_the_current_state(the_current_state_this_batch_leaves(operations))
 
 
 def _advance_the_cursor_of(stream: OneUnbrokenStream, last_applied: int) -> None:

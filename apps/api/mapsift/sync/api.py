@@ -82,12 +82,13 @@ class FlushAcknowledgement(Schema):
 
 
 class FlushRefusal(Schema):
-    """Why a stream was not continued and the mutation number its client resends from, the
-    closed object this route's second answer carries (ADR-0010 decision 6's addition of
-    2026-08-13; M10, M4)."""
+    """Why a stream was not continued, the mutation number its client resends from and the
+    operation the refusal is about, the closed object this route's second answer carries
+    (ADR-0010 decision 6's additions of 2026-08-13 and 2026-09-15; M10, M4, M9)."""
 
     reason: WhyAStreamCannotBeContinued
     resend_from_mutation_number: int | None
+    refused_operation_id: UUID | None
 
 
 @router.post(
@@ -127,6 +128,7 @@ def flush_operations(
                 FlushRefusal(
                     reason=refusal.reason,
                     resend_from_mutation_number=refusal.resend_from_mutation_number,
+                    refused_operation_id=refusal.refused_operation_id,
                 ),
             )
         return Status(HTTPStatus.OK, FlushAcknowledgement(last_applied_mutation_number=applied))

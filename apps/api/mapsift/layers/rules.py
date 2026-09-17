@@ -26,6 +26,18 @@ class GeometryKind(StrEnum):
     POLYGON = "polygon"
 
 
+@dataclass(frozen=True, slots=True)
+class WhatALayerDeclares:
+    """The two declarations a layer makes about its features, in plain data (M2).
+
+    Both rather than either alone, because the flush path takes a decision on each of them about
+    the same layer and one read of that row answers both.
+    """
+
+    geometry_kind: GeometryKind
+    storage_class: StorageClass
+
+
 def enters_the_operation_queue(storage_class: StorageClass) -> bool:
     """Whether a feature of a layer of this class is carried by the operation queue (M2, C1)."""
     match storage_class:

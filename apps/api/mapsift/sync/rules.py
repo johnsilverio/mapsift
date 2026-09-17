@@ -1,13 +1,18 @@
 """Pure decisions over a batch of operations, taken on plain envelope data (ADR-0007 section 3)."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import pairwise
 from typing import assert_never
 from uuid import UUID
 
-from mapsift.layers.rules import TheCurrentStateOfAFeature
+from mapsift.layers.rules import (
+    TheCurrentStateOfAFeature,
+    WhatALayerDeclares,
+    enters_the_operation_queue,
+    geometry_is_admissible,
+)
 from mapsift.sync.envelope import (
     ClientHalf,
     FeatureAddress,
@@ -52,11 +57,14 @@ class OperationsAreNotOneContiguousStream(MalformedBatch):
 
 class WhyAStreamCannotBeContinued(StrEnum):
     """The closed set a refusal names, whose remedies differ (ADR-0010 decision 6's addition of
-    2026-08-13, and its addition of 2026-09-08 for the third)."""
+    2026-08-13, its addition of 2026-09-08 for the third and that of 2026-09-15 for the fourth
+    and fifth)."""
 
     GAP_ABOVE_CURSOR = "gap_above_cursor"
     NO_CURSOR_IN_THIS_DOMAIN = "no_cursor_in_this_domain"
     NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
+    SERVED_LAYER_TAKES_NO_OPERATIONS = "served_layer_takes_no_operations"
+    GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY = "geometry_outside_the_layers_family"
 
 
 class ThisStreamCannotBeContinued(Exception):
@@ -65,6 +73,9 @@ class ThisStreamCannotBeContinued(Exception):
     Not a `MalformedBatch`: the batch satisfies the contract the boundary declares, and the cursor
     it is measured against needs the tenant bound, so this refusal is taken after the binding and
     the route answers it differently from those (ADR-0010 decision 6's addition of 2026-08-13).
+
+    It names the operation it refused where the operation is the unit of the fault, and names none
+    where the container is (that decision's addition of 2026-09-15).
     """
 
     def __init__(
@@ -72,14 +83,17 @@ class ThisStreamCannotBeContinued(Exception):
         reason: WhyAStreamCannotBeContinued,
         *,
         resend_from_mutation_number: int | None,
+        refused_operation_id: UUID | None,
     ) -> None:
         super().__init__(
-            f"This installation's stream cannot be continued here ({reason}), and the mutation "
-            f"number it must resend from is {resend_from_mutation_number} (ADR-0010 decision 6's "
-            f"addition of 2026-08-13)."
+            f"This installation's stream cannot be continued here ({reason}), the mutation "
+            f"number it must resend from is {resend_from_mutation_number} and the operation "
+            f"refused is {refused_operation_id} (ADR-0010 decision 6's additions of 2026-08-13 "
+            f"and 2026-09-15)."
         )
         self.reason = reason
         self.resend_from_mutation_number = resend_from_mutation_number
+        self.refused_operation_id = refused_operation_id
 
 
 def the_tenant_every_operation_claims(operations: Sequence[ClientHalf]) -> UUID:
@@ -194,11 +208,13 @@ def refuse_a_stream_this_cursor_cannot_continue(
         raise ThisStreamCannotBeContinued(
             WhyAStreamCannotBeContinued.NO_CURSOR_IN_THIS_DOMAIN,
             resend_from_mutation_number=None,
+            refused_operation_id=None,
         )
     if already_applied is not None and starts_at > already_applied + 1:
         raise ThisStreamCannotBeContinued(
             WhyAStreamCannotBeContinued.GAP_ABOVE_CURSOR,
             resend_from_mutation_number=already_applied + 1,
+            refused_operation_id=None,
         )
 
 
@@ -274,6 +290,138 @@ def the_layers_this_batch_addresses(operations: Sequence[ClientHalf]) -> frozens
     per feature and a guard fed from it inherits every loss (ADR-0012 decision 3).
     """
     return frozenset(the_address_of(operation).layer_id for operation in operations)
+
+
+@dataclass(frozen=True, slots=True)
+class TheGeometryAnOperationCarries:
+    """One operation's declared geometry type beside the layer it files that geometry under."""
+
+    operation_id: UUID
+    layer_id: UUID
+    geometry_type: str
+
+
+def the_geometries_this_batch_carries(
+    operations: Sequence[ClientHalf],
+) -> list[TheGeometryAnOperationCarries]:
+    """Every operation of a batch whose payload declares a geometry type, as authored (M2, M9).
+
+    Read from the operations and never from the state they fold to, because that fold keeps one
+    geometry per feature and a guard fed from it never sees an earlier one (ADR-0012 decision 3).
+
+    The type is the payload's own declaration and the geometry is never parsed, and an operation
+    this cannot read a type out of is absent rather than present carrying nothing, which is what
+    scopes the refusal downstream to a payload it can read a family out of (ADR-0010 decision 6's
+    addition of 2026-09-15).
+    """
+    carried = []
+    for operation in operations:
+        declared = _the_geometry_type_declared_by(operation)
+        if declared is None:
+            continue
+        carried.append(
+            TheGeometryAnOperationCarries(
+                operation_id=operation.root.operation_id,
+                layer_id=the_address_of(operation).layer_id,
+                geometry_type=declared,
+            )
+        )
+    return carried
+
+
+def _the_geometry_type_declared_by(operation: ClientHalf) -> str | None:
+    authored = operation.root
+    match authored:
+        case FeatureCreateOperation():
+            return None
+        case FeatureGeometrySetOperation():
+            geometry = authored.payload.geometry
+        case _:
+            # A catalog member added later lands here and fails the type check until somebody
+            # decides whether it speaks of geometry, which a fallback would decide for them.
+            assert_never(authored)
+
+    if not isinstance(geometry, Mapping):
+        return None
+    declared = geometry.get("type")
+    return declared if isinstance(declared, str) else None
+
+
+def refuse_a_batch_its_layers_do_not_admit(
+    operations: Sequence[ClientHalf], declared: Mapping[UUID, WhatALayerDeclares]
+) -> None:
+    """Let a batch through only where the layers it names admit its operations (M2, M9).
+
+    `declared` answers for the layers this batch names, one its project does not hold being absent.
+    """
+    # Not three independent checks: the last indexes `declared` by layer and only the first proves
+    # every layer is in it. The order is ADR-0010 decision 6's addition of 2026-09-15.
+    _refuse_a_layer_this_project_does_not_hold(
+        the_layers_this_batch_addresses(operations), declared
+    )
+    _refuse_an_operation_naming_a_served_layer(declared)
+    _refuse_a_geometry_outside_the_family_its_layer_declares(operations, declared)
+
+
+def _refuse_a_layer_this_project_does_not_hold(
+    addressed: frozenset[UUID], declared: Mapping[UUID, WhatALayerDeclares]
+) -> None:
+    """Refuse the whole batch where it files a feature under a layer this project does not hold.
+
+    Taken here rather than left to the composite reference, whose refusal is an `IntegrityError`
+    escaping as a 500 (ADR-0010 decision 6's addition of 2026-09-08). The restart point is null
+    because resending reproduces this refusal: the remedy is the layer, not the stream.
+    """
+    if addressed <= declared.keys():
+        return
+
+    raise ThisStreamCannotBeContinued(
+        WhyAStreamCannotBeContinued.NO_LAYER_IN_THIS_PROJECT,
+        resend_from_mutation_number=None,
+        refused_operation_id=None,
+    )
+
+
+def _refuse_an_operation_naming_a_served_layer(
+    declared: Mapping[UUID, WhatALayerDeclares],
+) -> None:
+    """Refuse the whole batch where it names a layer whose features never enter the queue (M2).
+
+    It names no operation, the unit of the fault being the layer rather than any one operation
+    naming it (ADR-0010 decision 6's addition of 2026-09-15).
+    """
+    if all(enters_the_operation_queue(layer.storage_class) for layer in declared.values()):
+        return
+
+    raise ThisStreamCannotBeContinued(
+        WhyAStreamCannotBeContinued.SERVED_LAYER_TAKES_NO_OPERATIONS,
+        resend_from_mutation_number=None,
+        refused_operation_id=None,
+    )
+
+
+def _refuse_a_geometry_outside_the_family_its_layer_declares(
+    operations: Sequence[ClientHalf], declared: Mapping[UUID, WhatALayerDeclares]
+) -> None:
+    """Refuse the whole batch where one operation carries a geometry of a family its layer does
+    not declare, naming that operation (M2, M9).
+
+    The one refusal that names an operation, because M9's flag-and-retain clause needs a locus a
+    reason code cannot carry (ADR-0010 decision 6's addition of 2026-09-15). The batch is refused
+    whole all the same, so nothing is discarded (M10).
+    """
+    for carried in the_geometries_this_batch_carries(operations):
+        if geometry_is_admissible(
+            layer_kind=declared[carried.layer_id].geometry_kind,
+            geometry_type=carried.geometry_type,
+        ):
+            continue
+
+        raise ThisStreamCannotBeContinued(
+            WhyAStreamCannotBeContinued.GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY,
+            resend_from_mutation_number=None,
+            refused_operation_id=carried.operation_id,
+        )
 
 
 def the_current_state_this_batch_leaves(
