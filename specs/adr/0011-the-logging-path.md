@@ -260,6 +260,13 @@ key is a field.
 > mapping: the response answered `200`, so no status was the refusal's to give, and inventing one would say a
 > request was refused when an operation was. The reason **values** stay open exactly as the `409`'s are,
 > owned by the closed set in `mapsift/sync/rules.py` that ADR-0014 names.
+>
+> **A refused operation appears in no other record of that flush, and this sentence exists because a window
+> reached it as a reading and it was contract.** `flush.applied` carries the operations a decision covers, so
+> an identifier appearing in both would say the same operation was applied and refused in one transaction.
+> N9's reconstruction is a join from one operation identifier, and the first question that join answers is
+> whether anything decided anything at all; two records disagreeing about one operation answers it wrongly
+> and the trail stops being evidence. So the applied record names the applied operations and nothing else.
 
 > **`operation_ids` is a list and never a delimited string**, which reads as pedantry and is not: `in`
 > answers the same for `["a", "b"]` and for `"a,b"`, so the distinction is invisible to the obvious reader

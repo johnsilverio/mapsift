@@ -126,3 +126,12 @@ having reached `conftest.py` at MAP-12 (`63e9522`), with MAP-46 adding the write
   proving the gap still refuses the whole batch is what keeps the two apart.
 - **The projection clause is a narrowing of an existing green behaviour, not a new one.** ADR-0012 decision 3's
   fold is already tested; what changes is which operations it walks.
+- **Six cases on this branch pin the retired whole-batch refusal and are this task's rework** (found at
+  Window A's review, 2026-09-17, and named here because the first form of this file named only MAP-66's
+  parked cases). Five of them are in `apps/api/tests/test_the_projection_at_the_flush.py` and one in
+  `mapsift/sync/tests/test_the_flush_decision_trail.py`; each was green when this task started and each
+  becomes false under ADR-0014. **The rule that decides each, rather than a per-case instruction:** a case
+  whose subject is still a behaviour the canon holds is **re-subjected**, never deleted, even when its status
+  expectation moves; a case is **superseded** only when its whole subject is retired and a new case covers the
+  property it existed for. A case that inverts says so in its own name. Reworking them is the test author's,
+  which is why it is here and not in Window B's brief: Window B may not edit a test.
