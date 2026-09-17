@@ -176,10 +176,10 @@ sequenceDiagram
     C->>C: apply optimistically, persist to the local queue
     Note over C,S: reconnect and flush
     C->>S: send queued operations
-    S->>S: dedup by last-applied number, so a resend is idempotent
-    S->>S: validate the author's authorization, flag if revoked
+    S->>S: dedup by last-decided number, so a resend is idempotent
+    S->>S: validate the author's authorization, flag and keep the operation if revoked
     S->>S: order and resolve the conflict, authoritatively
-    S-->>C: acknowledge with the last-applied number and the real state
+    S-->>C: acknowledge with the last-decided number, any refusals, and the real state
     C->>C: advance the cursor from that echo, reconcile the preview
 ```
 

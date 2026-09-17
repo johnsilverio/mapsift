@@ -47,12 +47,18 @@ document exactly like a decision (foundation section 15).
 and let the tree tell you where it lives:
 
 ```bash
-grep -rn "C7\|M9\|OQ-8" specs/ CLAUDE.md .claude/ apps/ libs/
-grep -rln "the distinctive phrase the old decision used" specs/ CLAUDE.md .claude/ apps/ libs/
+grep -rn "C7\|M9\|OQ-8" specs/ CLAUDE.md README.md .claude/ apps/ libs/
+grep -rln "the distinctive phrase the old decision used" specs/ CLAUDE.md README.md .claude/ apps/ libs/
 ```
 
 The second grep is the one people skip and it is the one that finds the stale copy, because a document
 that paraphrased the decision does not cite its identifier.
+
+**`README.md` is in that list since 2026-09-17, and it is the third time this sweep has been found blind to a
+file it never wrote to.** The v0.19 round revised the foundation's sync sequence diagram and left the
+repository's own README carrying the superseded one, in a file that is tracked, public and the first thing a
+new reader opens; it was found by an adversarial read and not by this sweep. The shape is exactly the one
+`specs/index.md` was added for on 2026-09-14: a document a procedure reads but never writes to rots silently.
 
 **`apps/` and `libs/` are in that list since 2026-08-17, and their absence was a hole rather than a
 scoping choice** (ADR-0008 section 9, change 5). This canon **requires** code to cite decisions by
@@ -79,6 +85,7 @@ foundation or an ADR first, stop and put it there before touching anything below
 | `specs/dependencies.md` | **any measurement pinned to a version**: what the installed source does, a particularity that bites, a probe against the lockfile. A dated subsection, naming the version read and the ADR it fed | the decision touched no external dependency. **Added 2026-08-14, after this file had no row for it at all** and two django-ninja 1.6.2 measurements were made in one round, cited in an ADR, and never reached the survey the external-dependency rule calls their home. The next window opens this file first, by its path rule, and finds nothing |
 | `specs/session-handoff.md` **section 0** | the live state, and section 6 if a settled objection was reversed | never. Section 0 always moves |
 | `specs/index.md` | **a catalog line** for any document the round created, and a correction to a line the round made false. The `tasks/` block is the one that rots, because a task spec is written at pickup and the round is over before anybody re-reads this file. **Added 2026-09-14, after this table had no row for it at all** and three task specs reached the disk unlisted: MAP-39, caught late and back-dated at MAP-46's round in a line this file still carries, then MAP-59 and MAP-64, both still missing on 2026-09-14 though both rounds wrote their code, their tests and their `log.md` line. The index is what `CLAUDE.md`'s canon rule sends a reader to so a citation resolves without opening the document, so a spec it does not list is a spec the cheap path cannot reach | the round created no document and falsified no line here |
+| `README.md` | the repository's own front page, which carries a **sync sequence diagram** and a short architecture summary, both of which restate decisions and neither of which cites an identifier. **Added 2026-09-17**, after the v0.19 round revised the foundation's diagram and left this one showing the superseded protocol | the decision touches neither the architecture summary nor the diagram, which the greps answer rather than your memory |
 | `specs/log.md` | **one grep-able line**, oldest first, in the format the file's header states | never |
 | `apps/`, `libs/` | the **citations** in docstrings and test names, which this canon requires rather than tolerates, and which go stale exactly like a document. **You do not edit code here**: a stale citation in a test is a finding returned to the window that owns it, and a stale one in production code is the same. What the fan-out owes is finding it | the decision is named nowhere in code, which the grep answers rather than your memory |
 
@@ -142,8 +149,8 @@ it converts an obvious gap into a false assurance.
 ## 5. Verify, then report
 
 ```bash
-grep -rn "<the old wording>" specs/ CLAUDE.md .claude/ apps/ libs/    # must return nothing
-grep -rn "—\|–" specs/ CLAUDE.md .claude/ docs/                  # must return nothing
+grep -rn "<the old wording>" specs/ CLAUDE.md README.md .claude/ apps/ libs/    # must return nothing
+grep -rn "—\|–" specs/ CLAUDE.md README.md .claude/               # must return nothing
 ```
 
 Report: which kind of change it was, every file touched and what each got, every target you **skipped**
