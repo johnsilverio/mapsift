@@ -1,11 +1,8 @@
 """A layer's own declarations refuse two kinds of operation, and the flush path is where they do it.
 
-Trace: PRD **M2** for the two clauses of its Acceptance this module proves, the served-versus-
-element clause (a served layer's features never appear in the operation queue and an element
-layer's do) and the geometry-family clause taken whole, the multipart geometry and the ring
-carrying an enclave included (D3); PRD **M9** for the shape of the refusal, where a geometry
-outside its layer's declared family is a typed error whose operation is flagged and retained for
-inspection rather than discarded; **ADR-0010 decision 6's addition of 2026-09-15** for the two
+Trace: PRD **M2** and PRD **M9**, for the halves of their Acceptance clauses that the Acceptance
+block of `specs/tasks/MAP-66-layer-declaration-refusals.md` assigns this task, which is where each
+split is recorded; **ADR-0010 decision 6's addition of 2026-09-15** for the two
 reason values, the `refused_operation_id` key and the rule that populates it, and that decision's
 addition of 2026-09-08 for the member these two follow; **ADR-0012 decision 3** for the write these
 refusals stand in front of; ADR-0005 sections 3 and 4 for the binding every read and write here
@@ -35,13 +32,12 @@ exception, so nothing below answers with a queryset.
 What is deliberately not here, each with the issue that owns it: the **element budget** and the
 **import classification**, M2's other Acceptance clauses, which no code reaches; a **feature
 changing path**, whose promotion half is OQ-6 and whose layer-changing-class half needs a layer to
-change class, which nothing does; a **server-side flag** on the refused operation, which is T5.2's
-shape and **MAP-37**'s, this addition making the refused operation locatable rather than storing a
-verdict about it; **what a valid geometry payload is on the wire** (MAP-70 for the shapes that
-answer `500`, MAP-69 for the frame a payload declares, MAP-33 for the encoding), so every payload
-below is one the parser and the column already take and no case here asks what happens to one they
-do not; a **create addressing a feature that already exists** (MAP-68); and the **per-feature
-version** (MAP-38).
+change class, which nothing does; a **server-side flag** on the refused operation (T5.2; **MAP-72**
+per ADR-0010 decision 6's correction of 2026-09-16); **what a valid geometry payload is on the
+wire** (MAP-70 for the shapes that answer `500`, MAP-69 for the frame a payload declares, MAP-33
+for the encoding), so every payload below is one the parser and the column already take and no
+case here asks what happens to one they do not; a **create addressing a feature that already
+exists** (MAP-68); and the **per-feature version** (MAP-38).
 
 **One shape nothing here arranges, on the convention the projection module states:** a
 `feature.geometry.set` for a feature no operation ever created. Every geometry below follows a
@@ -75,13 +71,15 @@ JSON = "application/json"
 # M5 rule 1: SIRGAS 2000, the one frame stored geometry is in.
 STORAGE_FRAME_SRID = 4674
 
-# The closed object this route's second answer carries and the two members a layer's declarations
-# add to its reason set (ADR-0010 decision 6's addition of 2026-09-15). Spelled as literals rather
-# than read off `WhyAStreamCannotBeContinued`, because these are the wire values that decision fixes
-# and a case comparing the enum against itself cannot notice a member being renamed.
+# The closed object this route's second answer carries, the two members a layer's declarations add
+# to its reason set (ADR-0010 decision 6's addition of 2026-09-15) and the member they follow (its
+# addition of 2026-09-08). Spelled as literals rather than read off `WhyAStreamCannotBeContinued`,
+# because these are the wire values that decision fixes and a case comparing the enum against
+# itself cannot notice a member being renamed.
 THE_REASON = "reason"
 THE_RESTART_POINT = "resend_from_mutation_number"
 THE_REFUSED_OPERATION = "refused_operation_id"
+NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
 SERVED_LAYER_TAKES_NO_OPERATIONS = "served_layer_takes_no_operations"
 GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY = "geometry_outside_the_layers_family"
 
@@ -289,8 +287,8 @@ def test_a_batch_naming_a_served_layer_first_is_refused_though_its_feature_ends_
     feature under a layer whose features never enter the queue at all (M2).
 
     **The reason is named beside the status rather than the whole body compared**, because what this
-    case adds is that the refusal is reached and not what its object carries: four other reasons
-    answer `409` too, so a status alone would not say which mechanism refused."""
+    case adds is that the refusal is reached and not what its object carries: every other reason in
+    its set answers `409` too, so a status alone would not say which mechanism refused."""
     a_served_layer, an_element_layer = uuid4(), uuid4()
     feature_id, installation = uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
@@ -415,9 +413,9 @@ def test_a_geometry_outside_the_family_its_layer_declares_is_refused_as_a_typed_
     than stored, and M9 makes that refusal a typed error whose operation is flagged and retained for
     inspection rather than discarded.
 
-    **The whole body is compared**, and the key that separates this refusal from the four beside it
-    is `refused_operation_id`, carried here and null for all four of them. Why M9 forces that key,
-    and why the restart point is null, are ADR-0010 decision 6's addition of 2026-09-15."""
+    **The whole body is compared**, and the key that separates this refusal from every other reason
+    in its set is `refused_operation_id`, carried here and null for each of them. Why M9 forces that
+    key, and why the restart point is null, are ADR-0010 decision 6's addition of 2026-09-15."""
     a_point_layer = uuid4()
     feature_id, installation = uuid4(), uuid4()
     carrying_a_parcel = uuid4()
@@ -712,6 +710,68 @@ def test_a_served_layer_carrying_a_geometry_of_another_family_is_refused_for_its
     assert refused.json()[THE_REASON] == SERVED_LAYER_TAKES_NO_OPERATIONS
 
 
+def test_a_batch_naming_a_layer_this_project_lacks_is_refused_for_it_ahead_of_any_declaration(
+    alice: Party,
+) -> None:
+    """ADR-0010 decision 6's addition of 2026-09-15 on the order it calls forced rather than chosen:
+    a layer's declarations cannot be read until the layer is known to exist, so
+    `no_layer_in_this_project` is taken ahead of both refusals a layer's declarations make.
+
+    **A served layer this project holds, then a geometry filed under a layer it lacks**, because
+    each is what one wrong order answers for instead. Taking the storage class first refuses the
+    batch for the served layer. Taking the family first asks the family of a layer that does not
+    exist, and the batch answers the untyped `500` the addition of 2026-09-08 exists to forbid
+    rather than any refusal at all. The served layer is named first, so an order decided operation
+    by operation meets it ahead of the absent one as well.
+
+    **The reason is named beside the status rather than the whole body compared**, as in the case
+    above: which refusal is reached is what this case adds, and the whole body this reason carries
+    is compared where that refusal is witnessed on its own, in
+    `tests/test_the_projection_at_the_flush.py`."""
+    a_served_layer, a_layer_this_project_lacks = uuid4(), uuid4()
+    feature_under_the_served_layer, feature_under_the_absent_layer = uuid4(), uuid4()
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _a_layer_of(
+        alice,
+        layer_id=a_served_layer,
+        geometry_kind=GeometryKind.POINT,
+        storage_class=StorageClass.SERVED,
+    )
+
+    refused = browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_feature_create(
+                alice,
+                layer_id=a_served_layer,
+                feature_id=feature_under_the_served_layer,
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            _a_feature_create(
+                alice,
+                layer_id=a_layer_this_project_lacks,
+                feature_id=feature_under_the_absent_layer,
+                from_installation=installation,
+                mutation_number=1,
+            ),
+            _a_geometry_set_carrying(
+                alice,
+                layer_id=a_layer_this_project_lacks,
+                feature_id=feature_under_the_absent_layer,
+                geometry=A_POINT_SURVEYED_IN_THE_FIELD,
+                from_installation=installation,
+                mutation_number=2,
+            ),
+        ),
+        JSON,
+    )
+
+    assert refused.status_code == HTTPStatus.CONFLICT
+    assert refused.json()[THE_REASON] == NO_LAYER_IN_THIS_PROJECT
+
+
 def test_a_multipart_geometry_is_stored_in_the_layer_whose_family_declares_its_type(
     alice: Party,
 ) -> None:
@@ -770,10 +830,11 @@ def test_a_ring_carrying_an_enclave_is_stored_in_the_polygon_layer_whose_family_
     is inside the polygon family rather than outside it, which is what a preservation area with a
     clearing inside it actually is.
 
-    **It also pins that the family is read from the payload's declared type rather than by parsing
-    the geometry**, which ADR-0010 decision 6's addition of 2026-09-15 makes contract: this payload
-    and a simple parcel declare the same type and differ only in what a parser would find, so a rule
-    that went looking inside is the only one this case can tell apart from a rule that did not.
+    **What it catches is whatever treats the enclave differently from a simple parcel declaring the
+    same `Polygon` type**: a family rule that reads inside the geometry and puts this ring outside
+    the family, or a write that stores it without its enclave or with that enclave's vertex order
+    changed, and not a rule matching the declared kind against the type by identity, since an
+    identity match and a family match agree on `Polygon`.
 
     **The quiet side of the rule again, and green before the refusal exists**, which is why the
     stored geometry is asserted and not the status alone: a route that stored nothing answers `200`

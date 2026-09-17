@@ -65,11 +65,12 @@ JSON = "application/json"
 # here only as the control that says a refusal did not quietly move what it refused to apply.
 THE_ECHO = "last_applied_mutation_number"
 
-# The closed object a refusal answers with, and the closed set of two its reason comes from
-# (ADR-0010 decision 6, addition of 2026-08-13). The restart point names its axis because M10
-# carries five and forbids any code path reading one as another. The refused operation joined the
-# object at that decision's addition of 2026-09-15 and is null for both reasons here, because each
-# of them is about this installation's cursor rather than about one operation of the batch.
+# The closed object a refusal answers with, and the members of the closed set its reason comes from
+# that this module is about (ADR-0010 decision 6, addition of 2026-08-13). The restart point names
+# its axis because M10 carries five and forbids any code path reading one as another. The refused
+# operation joined the object at that decision's addition of 2026-09-15 and is null for both reasons
+# here, because each of them is about this installation's cursor rather than about one operation of
+# the batch.
 THE_REASON = "reason"
 THE_RESTART_POINT = "resend_from_mutation_number"
 THE_REFUSED_OPERATION = "refused_operation_id"
