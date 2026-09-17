@@ -178,6 +178,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     acceptance list (T2.2, the correction MAP-10 earned). It also carries the first behaviour in this folder
     with **no upstream PRD criterion at all**, the unknown-layer refusal, which exists because the projection
     write makes a constraint reachable that was inert before it, and says so rather than inventing one.
+  - **`tasks/MAP-72-per-operation-verdict.md`** — the flush stops refusing whole batches for what one client
+    authored: the unknown-layer refusal becomes a verdict on its own operation, kept on the log, with the
+    cursor passing it. The first spec in this folder written **after** its round's canon was already closed,
+    read against the foundation and corrected, so its Boundary block points at seven decisions that all
+    predate it. Its Acceptance is a delta in three directions and **was one longer**: a bullet claiming the
+    resend-dedup clause had no upstream criterion was struck at the pre-dispatch read, which found that
+    clause in PRD M10's own Acceptance, added there hours earlier by the same fan-out. That is the third
+    finding in this folder's history against a claim the orchestrator made about a set.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
