@@ -280,6 +280,12 @@ key is a field.
 > is taken**, a refusal being true whether or not anything committed. This binds MAP-37, MAP-38 and MAP-39
 > as much as this task, each of them adding a decision that takes effect.
 >
+> *(Narrowed 2026-09-17 by ADR-0014 decision 8, which this rule's own sorting test predicted rather than
+> contradicted: a **per-operation** refusal is now a write that commits with the flush, so it would be false
+> about that retention if the transaction vanished, and it therefore waits for the commit like an
+> application. A refusal that decides nothing and writes nothing keeps this position. The addition of
+> 2026-09-17 above names the record and its fields; this is where its timing lands.)*
+>
 > **Corrected 2026-08-17, hours later, because the rule above named two categories over a set of three and a
 > window would have had to choose between two approved cases in the dark.** The third is **a record about
 > what a flush declined to write**, `flush.deduplicated` today, and it is emitted **where it is taken**,
