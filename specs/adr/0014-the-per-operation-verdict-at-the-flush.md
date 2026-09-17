@@ -62,6 +62,8 @@ The log entry is written exactly as an applied one is: the client half verbatim 
 
 **A refused entry is not part of the current state.** The projection fold of ADR-0012 decision 3 walks the applied operations only, so nothing refused reaches `layers_feature`, and the reproducibility clause of M15 replays the applied chain.
 
+**A refused entry has no applied-at, and the column says so rather than a window deciding it.** `applied_at` is the authoritative stamp T5.3 and M15 require of every entry in an attributed **chain**, and a chain is of applied operations; stamping a refusal with an apply time would put a lie in the one field M15 replays. So the column ADR-0012 decision 5 added becomes **nullable, and non-null exactly when the verdict is applied**, enforced as a check constraint rather than by whoever writes the next inserter. The three remaining server-half fields (the per-feature version, the applied rule version, and M7's legal weight in force) have no column to be null in, each still belonging to work with its own owner, so nothing here decides them. **`ServerHalf` stays the shape of an applied operation** and a refused entry assembles none: the server half is assembled at the read boundary (ADR-0004 decision 4), and the read it is assembled for is the resync, which filters to applied by the clause above.
+
 **It consumes a per-project version anyway**, because the allocation is one statement for the whole flush (ADR-0004 decision 2) and a nullable ordering column would buy a hole in exchange for a second code path. The consequence is named rather than left to be discovered: **the resync read must filter on the verdict**, since a resync stream is a stream of applied operations (ADR-0004 decision 4, M8). MAP-22 inherits that clause.
 
 ### 4. The verdict is a member of the envelope's closed verdict set, and its name is `refused`
@@ -70,7 +72,7 @@ PRD M8 already puts a **resolution verdict** on the envelope's server half, and 
 
 **The name is `refused` and not `flagged`, because M13 already owns a `flag and preserve both`** for a conflict, where two whole versions are retained and a human chooses between them. A refusal applies nothing at all. Two outcomes under one word in one enum is the confusion M10 refuses between version axes, arriving in a different field. "Flagged" stays the word the requirements use for the property the user sees, and this is the sentence that reconciles the two spellings.
 
-**The set therefore has two declarants and says so:** M13 declares the conflict-rule members, and this ADR declares the refusal member with its reason. The rustdoc naming M13 as the sole declarant is corrected in the same round.
+**The set therefore has two declarants and says so:** M13 declares the conflict-rule members, and this ADR declares the refusal member with its reason. The rustdoc in `libs/core/src/envelope.rs` names M13 as the sole declarant and is **wrong from the moment this decision is accepted**; correcting it is MAP-72's implementation, not this document's, because a decision that edits code is a decision the two-window protocol exists to keep out of the orchestrator's hands.
 
 ### 5. The cursor advances over a refused operation, and it is renamed to say what it now means
 
@@ -100,6 +102,8 @@ The verdicts are computed in mutation-number order, over the state the **applied
 
 ADR-0011 section 4 fixes one record per **decision** and says that where a decision is genuinely per operation it gets a record per operation, naming the dedup drop as that shape today. This is the second. The closed event set of that section gains **`flush.refused`**, carrying `operation_ids` with its one identifier, the four correlation keys, and `reason`. It carries **no `status`**, which is that section's own rule: the response answered `200`, so no status was the refusal's to give.
 
+**It is emitted after the commit, and that is this decision changing the category rather than an exception to ADR-0011's rule.** That section sorts a record by asking what it would be false about if the transaction vanished, and puts a refusal with the records that stay where they are taken, because a refusal was true whether or not anything committed. Decision 3 makes that false here: this refusal **is a write**, and a record emitted before the commit would assert a retention that may never exist, which is the failure the sorting test exists to catch. A refusal that decides nothing and writes nothing keeps the old position; this one moves with its write.
+
 ---
 
 ## Consequences
@@ -108,6 +112,7 @@ ADR-0011 section 4 fixes one record per **decision** and says that where a decis
 - **MAP-22 inherits a clause**: the resync read filters on the verdict, or it streams refused operations to every other client as if they had happened.
 - **MAP-37 inherits the mechanism** its flagged-at-flush clause needs, and adds a reason to the set rather than a new shape.
 - **A client learns of a refusal once.** A resent batch is deduplicated, so the refusal is not repeated; a client that discards the response loses the report and not the operation, which stays on the log. The local handling, and whether the client marks its own queue entry, is MAP-15 and MAP-16's.
+- **The client's optimistic preview of a refused operation is an I2 obligation, not a nicety.** The cursor passes the refusal, so nothing on the wire brings it up again; a client that keeps its preview holds a state the server will never hold, which is divergence with the sign reversed. MAP-15 and MAP-16 own it and this sentence is what names it as owed.
 - **What a human does with a refused operation is not answered here.** The resolution surface is a PRD decision T5.2 already holds open, and retention of the refused entry falls under OQ-20 with the rest of the log.
 - **The flush's write volume grows by the refused rows**, which is bounded by the batch bound N10 already declares and needs no new knob.
 - **One migration and one rename cross four ecosystems' worth of prose**, and the freshness gate regenerates the Python envelope from the Rust one, so the verdict member exists once.

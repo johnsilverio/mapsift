@@ -257,6 +257,13 @@ timestamp column of any kind**, so under T5.3 and M15 an applied operation's aut
 reconstructible from anything stored today. That is a defect this ADR closes rather than inherits, and
 **MAP-53 lands it**.
 
+> **Amended 2026-09-17 by ADR-0014: the column is nullable, and non-null exactly when the verdict is
+> applied.** The flush now writes a **refused** operation to the log as well, and a refusal has no apply time:
+> stamping one would put a false value in the field T5.3 calls authoritative and M15 replays. The clause above
+> is unchanged for an applied entry, which is every entry a chain contains. The pairing is a check constraint
+> rather than a convention, for the reason this ADR gives about the projection: a rule the next inserter has
+> to remember is a rule that holds until somebody writes the second inserter.
+
 **This amends ADR-0004 decision 4's addition in two places**, and that ADR needs the dated note: the set of
 columns it names a log entry as carrying gains a third, and its list of four undecided fields becomes three,
 decision 4 above having given the per-feature version an owner. The conditions the remaining three wait on

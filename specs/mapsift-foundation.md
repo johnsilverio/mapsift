@@ -551,7 +551,7 @@ sequenceDiagram
     Note over C,S: reconnect and flush
     C->>S: send queued ops with author and mutation number
     S->>S: dedup by last-decided mutation number, idempotent
-    S->>S: validate author authorization, refuse and keep the operation if revoked
+    S->>S: validate author authorization, flag and keep the operation if revoked
     S->>S: order by per-feature version and resolve conflict, authoritative
     S->>S: stamp applied-at
     S-->>C: ack with last-decided number, any refusals, and authoritative state
@@ -2370,7 +2370,8 @@ state, so the two never diverge. The procedure lives in the project's tracking s
     are in ADR-0014, which holds the mechanism.
   - **Fan-out:** ADR-0014 is written; ADR-0010 decision 6, ADR-0011 section 4, ADR-0004 decision 4 and
     ADR-0012 take dated notes; the PRD (M4, M8, M10, T2.3, T5.2, M9, M13, M15) and `CLAUDE.md` (C12) follow;
-    `index.md` and `log.md` get their lines. The implementation is MAP-72, and MAP-66 unparks behind it.
+    the `README` diagram, the `rust-core` rule and the `systematic-debugging` skill follow; `index.md` and
+    `log.md` get their lines. The implementation is MAP-72, and MAP-66 unparks behind it.
 - **2026-08-21, foundation v0.18.1 (patch: section 10's ordering sentence is corrected to the axis this
   document had already ratified).** Annotation only, on the v0.5.1, v0.8.1, v0.11.1 and v0.17.1 precedent: no
   decision, invariant intent, or open question moved, because the decision this corrects was already taken
