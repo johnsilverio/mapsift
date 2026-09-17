@@ -257,8 +257,8 @@ timestamp column of any kind**, so under T5.3 and M15 an applied operation's aut
 reconstructible from anything stored today. That is a defect this ADR closes rather than inherits, and
 **MAP-53 lands it**.
 
-> **Amended 2026-09-17 by ADR-0014: the column is nullable, and non-null exactly when the verdict is
-> applied.** The flush now writes a **refused** operation to the log as well, and a refusal has no apply time:
+> **Amended 2026-09-17 by ADR-0014: the column MAP-53 lands is nullable, and non-null exactly when the
+> verdict is applied.** The flush now writes a **refused** operation to the log as well, and a refusal has no apply time:
 > stamping one would put a false value in the field T5.3 calls authoritative and M15 replays. The clause above
 > is unchanged for an applied entry, which is every entry a chain contains. The pairing is a check constraint
 > rather than a convention, for the reason this ADR gives about the projection: a rule the next inserter has
