@@ -251,6 +251,16 @@ key is a field.
 > the implementing window's to choose, because inventing one here would be this ADR deciding a wire value it
 > has no requirement for. What is **not** open is that the field be present on a `request.refused` record.
 >
+> **Added 2026-09-17, at the MAP-72 round: the closed event set gains `flush.refused`, and it is the second
+> per-operation record this section predicted.** The paragraph above this addition already says that where a
+> decision is genuinely per operation it gets a record per operation, and names the dedup drop as that shape
+> "today, the conflict verdict later". ADR-0014 makes a **refusal** per operation as well, so a flush that
+> refuses two of fifty operations emits two `flush.refused` records, each carrying its one identifier in
+> `operation_ids`, the four correlation keys, and `reason`. **It carries no `status`**, by this section's own
+> mapping: the response answered `200`, so no status was the refusal's to give, and inventing one would say a
+> request was refused when an operation was. The reason **values** stay open exactly as the `409`'s are,
+> owned by the closed set in `mapsift/sync/rules.py` that ADR-0014 names.
+
 > **`operation_ids` is a list and never a delimited string**, which reads as pedantry and is not: `in`
 > answers the same for `["a", "b"]` and for `"a,b"`, so the distinction is invisible to the obvious reader
 > and the shape stops being enforced the moment one is written.

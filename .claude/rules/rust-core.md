@@ -74,7 +74,9 @@ from memory; `cargo add` writes what the registry actually resolves.
   (M10, both settled 2026-08-11). **The queue is keyed by that domain: DON'T mint one stream across projects
   or tenants.** A flush addresses exactly one of each, so a hole left by an operation that went elsewhere is
   indistinguishable on the server from one that was lost. The cursor advances only from the
-  server's echoed last-applied, never by assumption.
+  server's echoed last-decided, never by assumption; that echo covers the operations the server **refused**
+  as well as the ones it applied (foundation v0.19, ADR-0014), so a refusal never stalls this append-only
+  queue.
 - The queue is append-only and persistent; the sync engine is pure functions over the operation log, with the
   store behind one narrow storage interface. One sync engine, never two sync surfaces.
 

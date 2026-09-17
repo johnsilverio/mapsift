@@ -62,7 +62,8 @@ Generic Django advice does not fit here: `apps/api` is a django-ninja JSON API w
 templates, no Django Forms and no HTMX**. The recurring bugs are these.
 
 **Sync and idempotency.** A resent flush duplicating or losing operations (check the per-client mutation
-number and the last-applied cursor); a client advancing its cursor by assumption instead of from the server's
+number and the last-decided cursor, which counts refusals as well as applications since foundation v0.19); a
+client advancing its cursor by assumption instead of from the server's
 echo; a gap above the cursor silently skipped instead of returning a typed resend; two devices of one user
 colliding because the clientID was treated as the user.
 
