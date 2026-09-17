@@ -1,5 +1,7 @@
 # MAP-66: an operation the layer's own declarations reject is refused with a typed error, not stored
 
+> **Parked 2026-09-17, blocked by MAP-72, and not merged.** The final review blocked on a finding the owner ruled on: both refusals take the whole batch, which stalls a client's append-only stream and breaks I2, and the foundation's invariant preamble makes that a regression rather than a tradeoff (ADR-0010 decision 6, the ruling of 2026-09-17). When this task resumes, the cases asserting that a refused batch applies nothing at all pin the whole-batch shape and need rework, and this file's Acceptance needs reading again against MAP-72. MAP-66 in Linear carries the decision and the review's advisory findings.
+
 ## Trace
 
 **Requirement:** PRD **M2** for the storage-class clause and the geometry-family clause of its Acceptance;

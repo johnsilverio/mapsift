@@ -178,6 +178,12 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     acceptance list (T2.2, the correction MAP-10 earned). It also carries the first behaviour in this folder
     with **no upstream PRD criterion at all**, the unknown-layer refusal, which exists because the projection
     write makes a constraint reachable that was inert before it, and says so rather than inventing one.
+  - **`tasks/MAP-66-layer-declaration-refusals.md`** — the two refusals a layer's declarations make, reaching the
+    flush path, **parked 2026-09-17 behind MAP-72 and not merged**. It was read before dispatch five times, each read
+    finding a defect the previous edit had introduced, and the last two were corrected by deletion rather than by
+    rewrite. Its final review blocked on refusals that stall an append-only client stream, which the foundation's
+    invariant preamble makes a regression rather than a tradeoff, so the task waits for the per-operation verdict
+    rather than shipping a latent break of I2.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
