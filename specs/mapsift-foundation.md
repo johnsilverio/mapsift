@@ -1,6 +1,6 @@
 # Mapsift Foundation
 
-> **Status:** living document, foundation v0.18.1 (2026-08-21). Supersedes v0.18; revisions in section 15.
+> **Status:** living document, foundation v0.19 (2026-09-17). Supersedes v0.18.1; revisions in section 15.
 > **Authority:** this is the single source of truth for Mapsift. Every other document
 > (PRD, ADRs, per-task specs, CLAUDE.md constraints, Linear issues) derives from this
 > file and must not contradict it. When a derived document and this file disagree, this
@@ -445,14 +445,15 @@ interrupted midway (a client crash, or a dropped connection after the server app
 the client saw the ack). Without an idempotency guarantee, a resend either duplicates the already-applied
 operations or loses the unacked ones. The established pattern for an operation-queue (mutator) sync model is
 the one Replicache and its successor Zero use: a per-client monotonic mutation number carried on every
-operation, and a per-client last-applied mutation number tracked on the server. This is distinct from and
+operation, and a per-client last-processed mutation number tracked on the server. This is distinct from and
 complementary to the per-feature version: the per-feature version orders operations and detects conflict; the
 per-client mutation number gives queue idempotency and dedup.
 
-> **Decision (closed 2026-06-23, v0.7):** every operation carries a per-client monotonic mutation number,
+> **Decision (closed 2026-06-23, v0.7; the cursor's meaning revised 2026-09-17, v0.19, see below):** every
+> operation carries a per-client monotonic mutation number,
 > persisted in the queue with the operation. The server tracks, per client, the highest mutation number it has
-> applied. On flush the server applies operations in order and ignores any whose mutation number is at or below
-> the last-applied for that client (dedup), which makes resend idempotent. On reconnect after a partial flush
+> decided. On flush the server applies operations in order and ignores any whose mutation number is at or below
+> the last-decided for that client (dedup), which makes resend idempotent. On reconnect after a partial flush
 > the client resends its persistent queue from the last known ack; the server skips what it already applied and
 > applies the rest. Nothing is lost (the queue is persistent and append-only) and nothing is applied twice
 > (dedup by mutation number). This coexists with the per-feature version: feature version orders and detects
@@ -461,12 +462,35 @@ per-client mutation number gives queue idempotency and dedup.
 > **What this buys:** partial failure (the common offline case) is recoverable by construction, not by ad hoc
 > retry logic.
 >
-> **What this costs:** the server keeps a small per-client cursor (the last-applied mutation number), and the
+> **What this costs:** the server keeps a small per-client cursor (the last-decided mutation number), and the
 > client tags every queued operation with its sequence; both are cheap.
 
-The v0.7 decision established the per-client mutation number and the per-client last-applied cursor for dedup,
+> **Revision (2026-09-17, v0.19): the cursor counts what the server decided, not only what it applied, and an
+> operation it refuses is kept.** The decision above was taken when every operation a server accepted was
+> either applied or a duplicate, so "applied" and "decided" named the same set. They stopped naming the same
+> set once the server began refusing an operation on what the client authored (PRD T5.2, M9), because the
+> queue is **append-only** and the stream applies **only in contiguous order** (PRD M10): a refusal the cursor
+> does not pass leaves every later operation of that installation permanently unable to reach the server,
+> which is the divergence **I2** forbids. So the cursor advances over a refused operation as it does over an
+> applied one, and the refusal is **recorded with the operation as the client authored it**, never dropped.
+> The mechanism is ADR-0014.
+>
+> **What this buys:** the two requirements that were in tension, preserve-not-discard and convergence, both
+> hold: one refused operation costs its author that operation and costs the stream nothing.
+>
+> **What this costs:** a refusal is a permanent verdict rather than something a resend can change, since the
+> resend is deduplicated, so the surface that lets a human act on a refused operation is owed work rather than
+> optional (PRD T5.2's open resolution surface).
+>
+> **What was checked before deciding, because the pattern is borrowed:** Replicache and Zero, cited in this
+> section as the origin of this mechanism, both advance the cursor past a refused mutation for exactly this
+> reason, and **neither keeps the refused mutation**. The retention above is Mapsift's own and stricter than
+> the pattern; this document's "nothing is lost" holds in those systems for idempotency and resend alone. The
+> sources and the dates are in ADR-0014.
+
+The v0.7 decision established the per-client mutation number and the per-client cursor for dedup,
 and left two protocol holes. First, the document says the client resends from the last known ack but never
-established that the server returns the last-applied mutation number in the flush response; without that echo
+established that the server returns the cursor in the flush response; without that echo
 the client cannot advance its cursor, and either resends the whole queue on every reconnect (correct but
 wasteful) or advances blindly and loses operations. Second, "per-client" was never defined: if the cursor is
 per-user, the same user on the field tablet and on the office desktop becomes two independent mutation-number
@@ -474,8 +498,9 @@ streams colliding on the same cursor, and the server drops a legitimate operatio
 dedup, thinking it already saw that number from the other. That is silent data loss, the sin the whole product
 swears not to commit.
 
-> **Decision (closed 2026-06-23, v0.8):** first, the flush protocol requires the server to return the
-> per-client last-applied mutation number in its response, and the client advances its cursor only from that
+> **Decision (closed 2026-06-23, v0.8; the cursor renamed with its meaning 2026-09-17, v0.19):** first, the
+> flush protocol requires the server to return the
+> per-client last-decided mutation number in its response, and the client advances its cursor only from that
 > echo, never by assumption. Second, a client in the mutation-number sense is a persistent instance identified
 > by a clientID generated and persisted locally per installation or instance, not the user; the same user on
 > two devices is two clients, with two independent mutation-number streams and two cursors; the clientID uses
@@ -525,11 +550,11 @@ sequenceDiagram
     C->>C: optimistic apply as preview, persist to local queue
     Note over C,S: reconnect and flush
     C->>S: send queued ops with author and mutation number
-    S->>S: dedup by last-applied mutation number, idempotent
-    S->>S: validate author authorization, flag if revoked
+    S->>S: dedup by last-decided mutation number, idempotent
+    S->>S: validate author authorization, refuse and keep the operation if revoked
     S->>S: order by per-feature version and resolve conflict, authoritative
     S->>S: stamp applied-at
-    S-->>C: ack with last-applied number and authoritative state
+    S-->>C: ack with last-decided number, any refusals, and authoritative state
     C->>C: advance cursor from the echo, reconcile preview
 ```
 
@@ -1639,11 +1664,12 @@ Breaking one is a regression, not a tradeoff. (The exact thresholds marked "targ
     does (section 9.6.6).
 - **I9, idempotency and partial-failure recovery:** reapplying an already-applied operation has no effect, and
   an interrupted-then-resent flush converges to the same state with no duplicate and no loss; the server echoes
-  the per-client last-applied mutation number and the client advances its cursor only from that echo, never by
-  assumption; a client is a persistent instance (a clientID per installation, generated as in I3), not the user.
+  the per-client last-decided mutation number and the client advances its cursor only from that echo, never by
+  assumption (the cursor counts what the server decided rather than only what it applied, revised v0.19, so a
+  refused operation is recorded and passed rather than stalling the stream behind it); a client is a persistent instance (a clientID per installation, generated as in I3), not the user.
   Acceptance test, three cases: (1) interrupt a flush after the server applies part of the queue, resend the
   full queue, and the final state is identical with no duplicated feature and no lost edit; (2) the client
-  advances its cursor from the server's echoed last-applied, not by assumption; (3) two clients of the same user
+  advances its cursor from the server's echoed last-decided, not by assumption; (3) two clients of the same user
   with distinct clientIDs have non-colliding mutation-number streams, and an operation from the second device is
   not dropped by false dedup.
   - **Scar:** a flush interrupted after the server applied part of the queue but before the client saw the ack,
@@ -2321,6 +2347,30 @@ state, so the two never diverge. The procedure lives in the project's tracking s
     constitution, where it still read as a costed consequence of a closed decision. It now carries its own
     warning: no source, no date, illustration only, and Hort is the real evidence while not measuring the
     cross-runtime boundary at all.
+- **2026-09-17, foundation v0.19 (the per-client cursor counts what the server decided, so a refusal cannot
+  stall a stream).** A one-change round, opened by a defect found at the MAP-66 review and reproduced: the
+  refusals this product is adding to protect legal-weight geometry (PRD T5.2, M9) refuse a whole batch, and a
+  whole-batch refusal meets three rules already closed here. The queue is persistent and **append-only**
+  (v0.7), the stream applies **only in contiguous order** (PRD M10), and a resend reproduces the refusal, so
+  one operation the server refuses blocks every operation that installation captured after it, permanently.
+  That is the permanent divergence **I2** forbids, reached through a rule written to serve **C7**.
+  - **Revised (section 4, the v0.7 decision and its v0.8 completion):** the per-client cursor tracks the
+    highest mutation number the server **decided**, applied or refused, rather than the highest it applied;
+    the refused operation is **recorded as the client authored it and never dropped**; and the echoed number
+    is renamed with its meaning, to the **last-decided mutation number**. I9 in section 11 carries the same
+    wording. This is a round rather than a patch because it changes what a closed decision means, not how it
+    reads.
+  - **Not changed, and this is the point of the round:** no invariant gains an exemption. The owner refused a
+    revision that would have let a latent I2 break wait on a tracker relation (2026-09-17, at the MAP-66
+    close), and this round is the other remedy: the mechanism moves so that both **C7** and **I2** hold at
+    once, rather than one being traded for the other.
+  - **Checked before deciding, because the mechanism is borrowed:** Replicache and Zero, cited in section 4 as
+    the origin of the mutation number and its cursor, both advance past a refused mutation, and **neither
+    retains it**; the retention is Mapsift's own and stricter than the pattern. Sources, versions and dates
+    are in ADR-0014, which holds the mechanism.
+  - **Fan-out:** ADR-0014 is written; ADR-0010 decision 6, ADR-0011 section 4, ADR-0004 decision 4 and
+    ADR-0012 take dated notes; the PRD (M4, M8, M10, T2.3, T5.2, M9, M13, M15) and `CLAUDE.md` (C12) follow;
+    `index.md` and `log.md` get their lines. The implementation is MAP-72, and MAP-66 unparks behind it.
 - **2026-08-21, foundation v0.18.1 (patch: section 10's ordering sentence is corrected to the axis this
   document had already ratified).** Annotation only, on the v0.5.1, v0.8.1, v0.11.1 and v0.17.1 precedent: no
   decision, invariant intent, or open question moved, because the decision this corrects was already taken
