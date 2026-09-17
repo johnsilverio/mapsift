@@ -76,8 +76,14 @@ pytestmark = pytest.mark.django_db(transaction=True)
 OPERATIONS_PATH = "/api/operations"
 JSON = "application/json"
 
-# The one key this slice's response body carries (ADR-0010 decision 6, addition of 2026-08-11).
-THE_ECHO = "last_applied_mutation_number"
+# The two keys this route's success body carries (ADR-0010 decision 6, addition of 2026-08-11 for
+# the first and of 2026-09-17 for both as they read now). The echo is **renamed with its meaning**:
+# the cursor counts what the server decided, applied or refused, so a key reading last-applied would
+# lie about the number a client advances from (foundation v0.19, ADR-0014 decision 5). The refusal
+# list is empty for every batch in this module, none of which carries an operation the server
+# refuses; what it holds when one does is `tests/test_the_per_operation_verdict.py`'s.
+THE_ECHO = "last_decided_mutation_number"
+THE_REFUSALS = "refused"
 
 
 def _a_queue_of(
@@ -228,7 +234,7 @@ def test_a_flush_answers_with_the_last_mutation_number_it_applied(alice: Party) 
         JSON,
     )
 
-    assert response.json() == {THE_ECHO: 2}
+    assert response.json() == {THE_ECHO: 2, THE_REFUSALS: []}
 
 
 def test_an_applied_flush_writes_this_installations_cursor(alice: Party) -> None:
@@ -333,7 +339,7 @@ def test_a_batch_the_cursor_has_already_seen_answers_with_the_cursor_it_did_not_
         JSON,
     )
 
-    assert resent.json() == {THE_ECHO: 1}
+    assert resent.json() == {THE_ECHO: 1, THE_REFUSALS: []}
 
 
 def test_an_operation_the_server_already_holds_is_answered_as_applied_rather_than_refused(
@@ -363,7 +369,7 @@ def test_an_operation_the_server_already_holds_is_answered_as_applied_rather_tha
     )
 
     assert resent.status_code == HTTPStatus.OK
-    assert resent.json() == {THE_ECHO: 1}
+    assert resent.json() == {THE_ECHO: 1, THE_REFUSALS: []}
 
 
 def test_a_batch_carrying_an_operation_the_server_already_holds_still_lands_the_rest_of_it(

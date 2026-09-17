@@ -24,6 +24,16 @@ rejections; none exists in this repository, so a case for one would be a test of
 Their owners are MAP-38 and the conflict slice, MAP-37, and the versioning mechanism of OQ-15, and
 each inherits this path rather than building its own.
 
+**Added 2026-09-17, at MAP-72: the flush decides each operation of its batch, so the trail gains a
+fifth name.** ADR-0011 section 4's addition of that date puts `flush.refused` in the closed event
+set as the **second** per-operation record that section predicted, carrying its one identifier in
+`operation_ids`, the four correlation keys and `reason`, and carrying **no** `status`, because the
+response answered `200` and no status was the refusal's to give. ADR-0014 decision 8 is the decision
+and it moves the record's **timing** as well: that section's extension of 2026-08-17 sorts a record
+by asking what it would be false about if the transaction vanished, and a per-operation refusal is
+now a **write**, so it waits for the commit like an application rather than staying where it is
+taken. A refusal that decides nothing and writes nothing keeps the old position.
+
 **The join is over a field and never over a message.** ADR-0011 section 4 states the rule this
 module is the enforcement of: an identifier interpolated into a message string is not a join key, a
 key is a field, and `operation_ids` is a list rather than a delimited string. Every case below looks
@@ -78,6 +88,8 @@ from conftest import (
     Party,
     a_browser,
     a_feature_create_claiming,
+    an_operation_on_a_layer_this_project_holds,
+    an_operation_on_a_layer_this_project_lacks,
     the_documents_of,
     the_lines_the_logging_path_emits,
 )
@@ -108,6 +120,16 @@ FLUSH_APPLIED = "flush.applied"
 FLUSH_DEDUPLICATED = "flush.deduplicated"
 REQUEST_REFUSED = "request.refused"
 REQUEST_FAILED = "request.failed"
+# The fifth, and the second decision this path takes per operation rather than per flush (ADR-0011
+# section 4's addition of 2026-09-17; ADR-0014 decision 8).
+FLUSH_REFUSED = "flush.refused"
+
+# The success body's refusal list, which is where a per-operation refusal reaches the client now
+# that it has left the 409 set (ADR-0010 decision 6's addition of 2026-09-17). Spelled apart from
+# the two keys above it for the reason `THE_REASON_IN_THE_BODY` is: these are the wire object's
+# keys, and the two contracts agreeing on a spelling is not the same as being one contract.
+THE_REFUSALS_IN_THE_BODY = "refused"
+THE_MUTATION_NUMBER_REFUSED = "mutation_number"
 
 
 def _a_contiguous_queue_of(
@@ -292,6 +314,17 @@ def _the_decisions_recorded_about(operation_id: UUID, documents: Sequence[JsonOb
     identifier and this is everything the path has to say about it.
     """
     return [str(document[EVENT]) for document in _the_records_naming(operation_id, documents)]
+
+
+def _the_operations_each_record_names(documents: Sequence[JsonObject]) -> list[list[str]]:
+    """The join key of each record as its own list, in the order the path emitted them.
+
+    The reader a per-operation record needs and `_the_records_naming` cannot be: that one answers
+    which records mention an operation, and a single record naming the whole batch mentions every
+    one of them, so it is green against exactly the granularity ADR-0011 section 4's addition of
+    2026-09-17 fixes. This one shows what each record covers.
+    """
+    return [_the_operations_a_record_names(document) for document in documents]
 
 
 def _the_records_of(event: str, documents: Sequence[JsonObject]) -> list[JsonObject]:
@@ -493,25 +526,30 @@ def test_a_stream_the_server_could_not_continue_is_recorded_with_the_reason_the_
     assert _the_reasons_recorded(recorded) == [A_GAP_ABOVE_THE_CURSOR]
 
 
-def test_a_batch_refused_for_a_layer_this_project_lacks_is_recorded_as_a_refusal(
+def test_a_layer_this_project_lacks_is_recorded_against_the_operation_and_not_against_the_request(
     alice: Party,
 ) -> None:
-    """N9's every-refusal clause on the third member this status carries (ADR-0010 decision 6's
-    addition of 2026-09-08), and the sibling above's argument one member wider: a support desk
-    reading one status for three reasons is deciding between telling a client to resend from a
-    number, to rehandshake, and to create a layer, and a record that collapses them answers the
-    wrong one.
+    """**This case says the opposite of what it said, and the name is where a reader is told so.**
+    Its subject is unchanged, which trail this refusal lands on, and the answer inverted at ADR-0014
+    decision 2: the reason left the `409` set, so nothing about this flush refused a **request**,
+    and ADR-0011 section 4's addition of 2026-09-17 gives the decision its own event. Until then it
+    was recorded as `request.refused` beside the two cursor reasons.
 
-    **What this refusal exists against is a record of the other kind.** Until the flush writes the
-    projection an operation addressing an unknown layer is inert; once it does, the composite
+    **What this refusal still exists against is a record of the other kind.** Until the flush writes
+    the projection an operation addressing an unknown layer is inert; once it does, the composite
     reference is consulted and an unknown layer raises, so the two available shapes are a typed
-    refusal and an `IntegrityError` escaping as a `500`. ADR-0011 section 4 separates
-    `request.refused` from `request.failed` precisely because the second is a decision nobody took,
-    and this case is what says which of the two this path emits.
+    decision and an `IntegrityError` escaping as a `500`. That section separates `request.refused`
+    from `request.failed` precisely because the second is a decision nobody took, and this case is
+    what says which trail this path writes on.
 
-    The reason is pinned to the literal ADR-0010 fixes rather than read off the enum that carries
-    it, on this module's own rule for `A_GAP_ABOVE_THE_CURSOR`: it is a wire value, and a case
-    comparing an enum against itself cannot notice a member being renamed."""
+    **The empty `request.refused` is the half the sibling cases below cannot give**, and it is why
+    this case inverts rather than being superseded by them: they read the `flush.refused` records
+    and are green against a path that emits both, which would tell a support desk that the request
+    was refused when the request answered `200`.
+
+    The reason is pinned to the literal rather than read off the enum that carries it, on this
+    module's own rule for `A_GAP_ABOVE_THE_CURSOR`: it is a wire value, and a case comparing an enum
+    against itself cannot notice a member being renamed."""
     browser = a_browser(authenticated_as=alice.user_id)
     on_a_layer_that_never_existed = {
         "operations": [
@@ -522,13 +560,15 @@ def test_a_batch_refused_for_a_layer_this_project_lacks_is_recorded_as_a_refusal
     }
 
     with the_lines_the_logging_path_emits() as emitted:
-        refused = browser.post(OPERATIONS_PATH, on_a_layer_that_never_existed, JSON)
+        answered = browser.post(OPERATIONS_PATH, on_a_layer_that_never_existed, JSON)
 
-    recorded = _the_records_of(REQUEST_REFUSED, the_documents_of(emitted))
+    documents = the_documents_of(emitted)
 
-    assert refused.status_code == HTTPStatus.CONFLICT
-    assert refused.json()[THE_REASON_IN_THE_BODY] == NO_LAYER_IN_THIS_PROJECT
-    assert _the_reasons_recorded(recorded) == [NO_LAYER_IN_THIS_PROJECT]
+    assert answered.status_code == HTTPStatus.OK
+    assert _the_reasons_recorded(_the_records_of(FLUSH_REFUSED, documents)) == [
+        NO_LAYER_IN_THIS_PROJECT
+    ]
+    assert _the_records_of(REQUEST_REFUSED, documents) == []
 
 
 def test_a_batch_refused_before_any_handler_is_entered_still_leaves_a_record(alice: Party) -> None:
@@ -885,3 +925,236 @@ def test_a_flush_the_server_accepted_records_no_refusal(alice: Party) -> None:
     assert response.status_code == HTTPStatus.OK
     assert _the_decisions_recorded_about(applied, documents) == [FLUSH_APPLIED]
     assert _the_records_of(REQUEST_REFUSED, documents) == []
+
+
+def test_each_refused_operation_leaves_a_record_of_its_own_in_the_trail(alice: Party) -> None:
+    """ADR-0011 section 4's addition of 2026-09-17 with ADR-0014 decision 8: a flush that refuses
+    two of its operations emits two records, each carrying its one identifier.
+
+    **Two refusals rather than one, and that is the whole arrangement.** A single refusal is
+    answered identically by a record per operation and by one record naming the batch, so the
+    granularity this addition fixes has no witness until a batch carries two; and a per-operation
+    record is what N9's join needs, because the report that arrives quotes one identifier and the
+    answer is what the server decided about **that** operation.
+
+    **What each record covers is read rather than which records mention an operation.**
+    `_the_records_naming` answers the second question and a record listing the whole batch mentions
+    every operation in it, so it is green against exactly the shape this case exists to refuse.
+
+    The status is the positive control: the refusal has left the `409` set, so any other answer here
+    means the arrangement never reached a verdict at all (ADR-0010 decision 6's addition of
+    2026-09-17)."""
+    first_refused, second_refused = uuid4(), uuid4()
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    a_queue_refused_twice = {
+        "operations": [
+            an_operation_on_a_layer_this_project_holds(
+                alice,
+                operation_id=uuid4(),
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            an_operation_on_a_layer_this_project_lacks(
+                alice,
+                operation_id=first_refused,
+                from_installation=installation,
+                mutation_number=1,
+            ),
+            an_operation_on_a_layer_this_project_lacks(
+                alice,
+                operation_id=second_refused,
+                from_installation=installation,
+                mutation_number=2,
+            ),
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(OPERATIONS_PATH, a_queue_refused_twice, JSON)
+
+    recorded = _the_records_of(FLUSH_REFUSED, the_documents_of(emitted))
+
+    assert answered.status_code == HTTPStatus.OK
+    assert _the_operations_each_record_names(recorded) == [
+        [str(first_refused)],
+        [str(second_refused)],
+    ]
+
+
+def test_a_refused_operation_is_named_by_no_other_record_of_that_flush(alice: Party) -> None:
+    """ADR-0011 section 4's addition of 2026-09-17, on the sentence that section says exists because
+    a window reached it as a reading and it was contract: a refused operation appears in no other
+    record of that flush, so the applied record names the applied operations and nothing else.
+
+    **The trail is evidence or it is nothing, and that is the whole argument.** N9's reconstruction
+    is a join from one operation identifier, and the first question that join answers is whether
+    anything decided anything at all; an identifier carried by both `flush.applied` and
+    `flush.refused` says the same operation was applied and refused in one transaction, and a
+    support desk reading two records that disagree cannot tell which happened.
+
+    **The reading is which records name the operation, not which records the events cover**, so
+    `_the_records_naming` is the right instrument here and `_the_operations_each_record_names` is
+    not: the sibling above asks what each record covers, because the granularity is its subject, and
+    this one asks what mentions an operation at all, because being mentioned twice is the defect.
+
+    **The applied operation is read the same way beside it**, and that is the positive control
+    rather than a second subject: a path that emitted no `flush.applied` record at all would
+    satisfy an assertion about the refused one on its own, and it is the batch's other operation, so
+    the two readings come from one flush."""
+    applied, refused = uuid4(), uuid4()
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    a_queue_with_one_of_each = {
+        "operations": [
+            an_operation_on_a_layer_this_project_holds(
+                alice,
+                operation_id=applied,
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            an_operation_on_a_layer_this_project_lacks(
+                alice, operation_id=refused, from_installation=installation, mutation_number=1
+            ),
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(OPERATIONS_PATH, a_queue_with_one_of_each, JSON)
+
+    documents = the_documents_of(emitted)
+
+    assert answered.status_code == HTTPStatus.OK
+    assert _the_decisions_recorded_about(applied, documents) == [FLUSH_APPLIED]
+    assert _the_decisions_recorded_about(refused, documents) == [FLUSH_REFUSED]
+
+
+def test_a_refused_operation_is_recorded_with_the_reason_the_client_was_shown(
+    alice: Party,
+) -> None:
+    """N9's clause that every user-visible refusal has a matching record, asserted as a **match**
+    rather than as an existence, on the answer this refusal now travels in.
+
+    Why the match matters on this path specifically: the reasons are a closed set of their own
+    (ADR-0014 decision 6), a client is told one of them per refused operation, and a support desk
+    reading the trail is deciding what to tell that client to do about it. A record naming *some*
+    refusal for a flush that refused for a different one answers the wrong question.
+
+    **The body is read beside the record rather than the record alone**, which is the instrument the
+    sibling case for the `409` built on measured ground: a route that refused this batch for another
+    reason entirely would leave a record a case comparing against whatever the body said would call
+    correct.
+
+    The refused operation travels beside one the server applies, so a path that records a reason for
+    every operation of the flush is red rather than accidentally right."""
+    refused = uuid4()
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    a_queue_with_one_refusal = {
+        "operations": [
+            an_operation_on_a_layer_this_project_holds(
+                alice,
+                operation_id=uuid4(),
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            an_operation_on_a_layer_this_project_lacks(
+                alice, operation_id=refused, from_installation=installation, mutation_number=1
+            ),
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(OPERATIONS_PATH, a_queue_with_one_refusal, JSON)
+
+    recorded = _the_records_of(FLUSH_REFUSED, the_documents_of(emitted))
+
+    assert answered.json()[THE_REFUSALS_IN_THE_BODY] == [
+        {THE_MUTATION_NUMBER_REFUSED: 1, THE_REASON_IN_THE_BODY: NO_LAYER_IN_THIS_PROJECT}
+    ]
+    assert _the_reasons_recorded(recorded) == [NO_LAYER_IN_THIS_PROJECT]
+
+
+def test_a_refusal_record_carries_no_status_because_the_response_answered_two_hundred(
+    alice: Party,
+) -> None:
+    """ADR-0011 section 4's own mapping, applied by its addition of 2026-09-17: `status` is on the
+    two records that answered a client, and this one did not. The response answered `200`, so no
+    status was the refusal's to give, and inventing one would say a **request** was refused when an
+    **operation** was.
+
+    **That is the support desk's first question rather than a field-level nicety**, which is the
+    same argument that section makes for keeping `request.failed` apart from `request.refused`: a
+    trail carrying `200` on a refusal reads as an acknowledgement, and one carrying `409` reads as a
+    stream that cannot continue, and neither is what happened.
+
+    The status of the **answer** is the positive control beside it, and the two are not the same
+    assertion: one is what the client was told, the other is what the record claims about it."""
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    a_queue_with_one_refusal = {
+        "operations": [
+            an_operation_on_a_layer_this_project_holds(
+                alice,
+                operation_id=uuid4(),
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            an_operation_on_a_layer_this_project_lacks(
+                alice, operation_id=uuid4(), from_installation=installation, mutation_number=1
+            ),
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(OPERATIONS_PATH, a_queue_with_one_refusal, JSON)
+
+    recorded = _the_records_of(FLUSH_REFUSED, the_documents_of(emitted))
+
+    assert answered.status_code == HTTPStatus.OK
+    assert _the_field_each_record_carries(STATUS, recorded) == [None]
+
+
+def test_no_refusal_is_recorded_over_a_transaction_that_never_committed(alice: Party) -> None:
+    """ADR-0014 decision 8, which narrows ADR-0011 section 4's extension of 2026-08-17 rather than
+    excepting it: that rule sorts a record by asking what it would be false about if the transaction
+    vanished, and a per-operation refusal **is a write** now, so a record emitted before the commit
+    would assert a retention that may never exist.
+
+    **The retention is the whole of what makes the refusal worth recording**, so this is not a
+    timing preference: a trail saying an operation was refused-and-kept over a database holding
+    nothing is the mirror of N9's requirement that every recorded refusal was one a user was
+    actually shown, and the operation it names is the one the field client drew.
+
+    **The fault is a deferred constraint rather than the execute wrapper the failure cases use**,
+    for the reason `the_commit_refused_after_everything_was_written` gives: an execute wrapper is
+    offered statements and the commit is not one of them, so a path emitting its record one line
+    after the last statement stays green under it.
+
+    The `500` is the control and it says the arrangement reached the commit: every other way this
+    route ends is a refusal carrying a status of its own, so a `409` or a `200` here would mean the
+    flush never appended the refusal it was supposed to be recording."""
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id, reading_a_failure_as_a_response=True)
+    a_queue_with_one_refusal = {
+        "operations": [
+            an_operation_on_a_layer_this_project_holds(
+                alice,
+                operation_id=uuid4(),
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            an_operation_on_a_layer_this_project_lacks(
+                alice, operation_id=uuid4(), from_installation=installation, mutation_number=1
+            ),
+        ]
+    }
+
+    with (
+        the_commit_refused_after_everything_was_written(),
+        the_lines_the_logging_path_emits() as emitted,
+    ):
+        answered = browser.post(OPERATIONS_PATH, a_queue_with_one_refusal, JSON)
+
+    assert answered.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert _the_records_of(FLUSH_REFUSED, the_documents_of(emitted)) == []

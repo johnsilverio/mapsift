@@ -61,9 +61,13 @@ pytestmark = pytest.mark.django_db(transaction=True)
 OPERATIONS_PATH = "/api/operations"
 JSON = "application/json"
 
-# The one key an accepted flush answers with (ADR-0010 decision 6, addition of 2026-08-11), read
-# here only as the control that says a refusal did not quietly move what it refused to apply.
-THE_ECHO = "last_applied_mutation_number"
+# The two keys an accepted flush answers with (ADR-0010 decision 6, addition of 2026-08-11 for the
+# first and of 2026-09-17 for both as they read now), read here only as the control that says a
+# refusal did not quietly move what it refused to apply. The echo is **renamed with its meaning**:
+# the cursor counts what the server decided, applied or refused (foundation v0.19, ADR-0014 decision
+# 5). No batch in this module carries an operation the server refuses, so its list is always empty.
+THE_ECHO = "last_decided_mutation_number"
+THE_REFUSALS = "refused"
 
 # The closed object a refusal answers with, and the closed set of two its reason comes from
 # (ADR-0010 decision 6, addition of 2026-08-13). The restart point names its axis because M10
@@ -378,7 +382,7 @@ def test_the_resend_a_refusal_asked_for_lands_whole_rather_than_being_deduplicat
         JSON,
     )
 
-    assert filling_the_gap.json() == {THE_ECHO: 4}
+    assert filling_the_gap.json() == {THE_ECHO: 4, THE_REFUSALS: []}
     assert _the_operations_in_the_log(alice) == [*applied, the_missing_one, *above_the_gap]
 
 
