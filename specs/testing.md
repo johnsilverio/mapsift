@@ -79,6 +79,8 @@ Two reasons the run is not optional. A test can be red for the right reason and 
 
 The consequence is the rule that tells you whether a test is good: **a test changes only when a requirement changes.** A test that has to be edited because a function was renamed or a class was split was testing the wrong thing, and it will keep charging that tax on every refactor.
 
+**What happens to an existing case when the requirement does change** (added 2026-09-17, at MAP-72, where a round retired a contract six green cases were pinning and the spec had no rule to hand the test author). A case whose subject is still a behaviour the canon holds is **re-subjected**, never deleted, even when what it expects moves; a case is **superseded** only when its whole subject is retired **and** a named new case covers the property it existed for. A case that inverts says so in its own name, because a name surviving a reversal is how a reader is told the opposite of what the suite now proves. The deletion is the move that has to be argued for: a case removed in a round that retired its contract is indistinguishable, six months later, from a case somebody deleted because it was red.
+
 One behaviour per test, one test per behaviour. Arrange, act, assert, in that order and **separated by a blank line rather than labelled with `// Arrange` comments**, which say what the code already says and are the naming failure the comment discipline forbids. A test whose name needs "and" is two tests.
 
 ---
