@@ -28,9 +28,10 @@ The one refusal with a runtime today is the unknown layer, which is why it is th
 ## Out of scope
 
 - **The two layer-declaration refusals.** **MAP-66**, parked on its own branch; ADR-0014 decision 2 names
-  both as operation verdicts for when that task resumes, and its cases that assert a refused batch applies
-  nothing at all are the rework named there. **Their pure predicates are on this branch with no caller**
-  (`layers/rules.py`), and they stay that way here: wiring either is MAP-66's work, not a loose end.
+  both as operation verdicts for when that task resumes, and ADR-0014's Consequences name its cases that
+  assert a refused batch applies nothing at all as that task's rework. **Their pure predicates are on this branch with no production
+  caller** (`layers/rules.py`, exercised by their own unit tests and by nothing on the flush path), and they
+  stay that way here: wiring either is MAP-66's work, not a loose end.
 - **The author who lost authorization.** **MAP-37**. T5.2's other half has no runtime here: nothing in
   `apps/api` validates a per-project write permission, because the permission model PRD 10.6 defers is not
   built.
@@ -69,8 +70,8 @@ it.
 5. `no_layer_in_this_project` leaves the `409` set, which returns to two members: ADR-0010 decision 6's
    addition of 2026-09-17.
 6. The response stays `200` and grows the refusal list: the same addition.
-7. `flush.refused`, one record per operation, emitted after the commit: ADR-0011 section 4's addition and
-   ADR-0014 decision 8.
+7. `flush.refused`, one record per operation, emitted after the commit, and a refused operation appearing in
+   no other record of that flush: ADR-0011 section 4's addition and ADR-0014 decision 8.
 
 ## Evidence handed over
 
@@ -78,8 +79,8 @@ it.
 `grep -rn "last_applied\|last-applied" specs/ CLAUDE.md README.md .claude/ apps/ libs/`. The old cursor
 spelling reaches `mapsift/sync/` in `models.py`, `api.py`, `services.py`, `rules.py`, `selectors.py` and the
 migration that created the cursor table, and it is fixed as a **constant** in two test modules,
-`test_dedup_and_the_echoed_cursor.py` and `test_the_typed_resend_on_a_gap.py`, plus a docstring and a
-docstring-borne claim in `test_the_cursor_under_a_lost_race.py`. **This is a measurement of where the word
+`test_dedup_and_the_echoed_cursor.py` and `test_the_typed_resend_on_a_gap.py`, plus three occurrences across two
+docstrings in `test_the_cursor_under_a_lost_race.py`, the module's and one case's. **This is a measurement of where the word
 appears and not a conclusion about which of those the task must change**, which is the window's to decide
 against ADR-0014.
 
@@ -112,7 +113,7 @@ having reached `conftest.py` at MAP-12 (`63e9522`), with MAP-46 adding the write
 
 ## Acceptance
 
-**The delta only.** The criteria are law in the PRD and in ADR-0014, and the window reads them there.
+**The delta only.** The criteria are law in the PRD and in the ADR sections the Trace names, ADR-0011 section 4 included, and the window reads them there.
 
 - **T5.2's Acceptance is split, and only its second half has a runtime here.** The authorization half needs a
   permission model that does not exist (see Out of scope), so this task delivers the clause added on
@@ -130,8 +131,6 @@ having reached `conftest.py` at MAP-12 (`63e9522`), with MAP-46 adding the write
   Window A's review, 2026-09-17, and named here because the first form of this file named only MAP-66's
   parked cases). Five of them are in `apps/api/tests/test_the_projection_at_the_flush.py` and one in
   `mapsift/sync/tests/test_the_flush_decision_trail.py`; each was green when this task started and each
-  becomes false under ADR-0014. **The rule that decides each, rather than a per-case instruction:** a case
-  whose subject is still a behaviour the canon holds is **re-subjected**, never deleted, even when its status
-  expectation moves; a case is **superseded** only when its whole subject is retired and a new case covers the
-  property it existed for. A case that inverts says so in its own name. Reworking them is the test author's,
-  which is why it is here and not in Window B's brief: Window B may not edit a test.
+  becomes false under ADR-0014. The rule that decides each is **`specs/testing.md` section 2**, where it was
+  written on 2026-09-17 rather than here, because it is general. Reworking them is the test author's, which is
+  why they are named here and not in Window B's brief: Window B may not edit a test.

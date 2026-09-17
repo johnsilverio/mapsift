@@ -182,7 +182,7 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     authored: the unknown-layer refusal becomes a verdict on its own operation, kept on the log, with the
     cursor passing it. The first spec in this folder written **after** its round's canon was already closed,
     read against the foundation and corrected, so its Boundary block points at seven decisions that all
-    predate it. Its Acceptance is a delta of four bullets and **was five**: a bullet claiming the
+    predate it. Its Acceptance is a delta of five bullets and **lost one and gained one**: a bullet claiming the
     resend-dedup clause had no upstream criterion was struck at the pre-dispatch read, which found that
     clause in PRD M10's own Acceptance, added there hours earlier by the same fan-out. That is the third
     finding in this folder's history against a claim the orchestrator made about a set.
