@@ -88,6 +88,8 @@ The flush answers `{"last_decided_mutation_number": <integer>, "refused": [{"mut
 
 **`200` rather than a partial-success status**, because the batch was processed: the server decided every operation in it, and the client advances from the echo alone (T2.3, C12). `409` keeps meaning "this stream cannot continue here", which is now true of exactly the two cursor reasons, and a client that reads only the status still behaves correctly, because there is nothing to resend.
 
+**The list is in ascending mutation-number order**, which ADR-0010 decision 6 fixes as part of the body it owns rather than this decision restating it.
+
 **The keys name their axis** under the rule of ADR-0010 decision 6's addition of 2026-08-11, which is why the refusal carries `mutation_number` and not a bare index into the batch: a position in a list is not an axis and does not survive a client regrouping its queue. **The object is closed**, so a new key goes through ADR-0010 decision 6 the way the existing ones did.
 
 **Reason values are the `rules.py` enum's**, exactly as ADR-0011 section 4 delegates the `409`'s, and the refusal reasons are a closed set of their own owned there.
