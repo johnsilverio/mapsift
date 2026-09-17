@@ -583,6 +583,81 @@ def a_geometry_set_claiming(
     }
 
 
+def a_layer_this_project_lacks() -> UUID:
+    """A layer identifier nothing ever created, which is what makes an operation refusable.
+
+    Named rather than left as a bare `uuid4()` at each call site, because in this file's own
+    vocabulary a minted identifier means the **opposite**: the arrangers above document a fresh one
+    as what a caller with no interest in the axis would have written, which is exactly the reading
+    that made `a_feature_create_claiming`'s layer default a defect for one day (corrected
+    2026-09-09, in its own docstring). Here the mint is the whole arrangement (ADR-0014 decision 2),
+    so it says so.
+    """
+    return uuid4()
+
+
+def an_operation_on_a_layer_this_project_holds(
+    party: Party,
+    *,
+    from_installation: UUID,
+    mutation_number: int,
+    operation_id: UUID | None = None,
+    feature_id: UUID | None = None,
+) -> JsonObject:
+    """One operation this route applies, on the element layer its project was arranged with (M2).
+
+    A thin forward to `a_feature_create_claiming`, whose layer default is a function of the project
+    and is therefore the layer `_give_the_project_its_element_layer` created. The operation and the
+    feature stay settable because a case joining on either has to name it, and both carry that
+    arranger's own default otherwise.
+
+    Per operation rather than per batch, and that is what the batch builders cannot do: every case
+    about a verdict mixes operations this route applies with operations it refuses, and a builder
+    that numbers a whole queue from one start cannot say which of the two each one is.
+    """
+    return a_feature_create_claiming(
+        party.tenant_id,
+        operation_id=operation_id,
+        client_id=from_installation,
+        mutation_number=mutation_number,
+        project_id=party.project_id,
+        feature_id=feature_id,
+    )
+
+
+def an_operation_on_a_layer_this_project_lacks(
+    party: Party,
+    *,
+    from_installation: UUID,
+    mutation_number: int,
+    operation_id: UUID | None = None,
+    feature_id: UUID | None = None,
+) -> JsonObject:
+    """The one refusal with a runtime today, as the client authored it (ADR-0014 decision 2).
+
+    The sibling above with a layer nobody created, which is the whole difference between an
+    operation this flush applies and one it refuses.
+
+    **Here rather than once per module, on `statements_reaching`'s own rule.** That instrument sits
+    in this file because two suites consume it and a copy per module is two things that drift; these
+    two had reached two modules of this round under one name and two signatures, disagreeing on
+    whether the party is positional and on whether the feature can be named at all, which is the
+    grep that misleads whoever runs it. What stays local is the **batch** builders, for the reason
+    `test_the_flush_decision_trail.py::_a_contiguous_queue_of` argues in its own docstring: this
+    package holds several under four names, and a shared home would add a spelling rather than
+    remove one.
+    """
+    return a_feature_create_claiming(
+        party.tenant_id,
+        operation_id=operation_id,
+        client_id=from_installation,
+        mutation_number=mutation_number,
+        project_id=party.project_id,
+        layer_id=a_layer_this_project_lacks(),
+        feature_id=feature_id,
+    )
+
+
 # The logging path (ADR-0011). Everything below serves the seam MAP-14 opens.
 
 # PRD N9's four correlation keys, as the emitted document names them. The operations are a list on

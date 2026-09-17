@@ -2,14 +2,19 @@
 
 Trace: PRD M15 (the current state the application reads **is** a projection of the append-only log,
 and the reproducibility clause that makes the chain evidence) as its materialization is settled by
-**ADR-0012 decisions 1, 2, 3 and 6**; PRD T2.2's **requirement sentence**, the transactionality that
+**ADR-0012 decisions 1, 2, 3 and 6**, with **M15's Shape as added 2026-09-17**, which puts a refused
+operation on that log and outside both the projection and the replay the reproducibility clause
+runs, so the two readers below are two chains rather than one; PRD T2.2's **requirement sentence**,
+the transactionality that
 keeps the append and the projection consistent or neither, and not its acceptance list, which is
 about a dropped notification recovered by resync and is MAP-22's; PRD M9 (one target path per
 operation, and a geometry operation carrying the whole geometry, which is what makes a replay a
 latest-row-per-target-path read rather than a fold); PRD M2 (the layer is where the storage class
 sits, so every layer arranged here is an element layer); PRD M3 and M5 rule 1 for the identifier the
 row is stored under and the frame its geometry is held in; **ADR-0010 decision 6's addition of
-2026-09-08** for the typed refusal this write makes reachable, and **that decision's addition of
+2026-09-08** for the typed refusal this write makes reachable, **ADR-0014 decisions 1, 2, 3 and 6**
+with **ADR-0012 decision 3's narrowing of 2026-09-17** for the verdict that refusal became and for
+what the fold now walks, and **ADR-0012 decision 3's addition of
 2026-09-09** for what an operation leaves alone by saying nothing about it; PRD T6.5 with **ADR-0010
 decision 6's addition of 2026-08-07** for the comparative form a cross-tenant answer is tested in,
 which a feature identifier reaches because it is minted by the client rather than allocated per
@@ -80,6 +85,7 @@ from conftest import (
     a_browser,
     a_feature_create_claiming,
     a_geometry_set_claiming,
+    a_layer_this_project_lacks,
     second_project_of,
 )
 from mapsift.common.binding import tenant_scope
@@ -96,13 +102,25 @@ JSON = "application/json"
 # M5 rule 1: SIRGAS 2000, the one frame stored geometry is in.
 STORAGE_FRAME_SRID = 4674
 
-# The closed object this route's second answer carries and the member the projection makes
-# reachable (ADR-0010 decision 6's addition of 2026-09-08). Spelled as literals rather than read
-# off `WhyAStreamCannotBeContinued`, because these are the wire values that decision fixes and a
-# case comparing the enum against itself cannot notice a member being renamed.
+# The closed success object this route answers with and the refusal the projection makes reachable
+# (ADR-0010 decision 6's addition of 2026-09-17, which is where that refusal landed once ADR-0014
+# decision 2 took it out of the `409` set). Spelled as literals rather than read off the enums that
+# carry them, because these are the wire values those decisions fix and a case comparing an enum
+# against itself cannot notice a member being renamed.
+THE_ECHO = "last_decided_mutation_number"
+THE_REFUSALS = "refused"
+THE_MUTATION_NUMBER_REFUSED = "mutation_number"
 THE_REASON = "reason"
-THE_RESTART_POINT = "resend_from_mutation_number"
 NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
+
+# The log column the server writes its decision on, and the member of the envelope's closed verdict
+# set that says it applied the operation (ADR-0014 decisions 3 and 4). Named the way
+# `test_the_per_operation_verdict.py` names them, which is the module that owns this contract: the
+# column is storage for it and never a second declaration of it (ADR-0004 decision 4's rule), and
+# the member is a literal rather than a read off the enum, because a case comparing an enum against
+# itself cannot notice a member being renamed.
+THE_VERDICT = "verdict"
+APPLIED = "applied"
 
 # The catalog member that carries a geometry (M9), as the envelope spells its type.
 THE_OPERATION_THAT_SETS_A_GEOMETRY = "feature.geometry.set"
@@ -338,6 +356,26 @@ def _the_chain_the_log_holds_for(party: Party, feature_id: UUID) -> list[JsonObj
             entry.client_half
             for entry in OperationLogEntry.objects.filter(
                 client_half__target__feature_id=str(feature_id)
+            ).order_by("project_version")
+        ]
+
+
+def _the_chain_the_reproducibility_clause_replays(
+    party: Party, feature_id: UUID
+) -> list[JsonObject]:
+    """One feature's **applied** operations, in the order the server recorded (M15's Shape).
+
+    Narrower than the reader above by exactly the sentence added 2026-09-17: the log holds a refused
+    operation as well, and that operation is not part of the projection **nor of the replay the
+    reproducibility clause runs**. The reader above consults no verdict, because what it answers is
+    what the log holds, which is the retention half of the same sentence; a replay fed from it walks
+    a geometry the server told the client it would not apply.
+    """
+    with tenant_scope(party.tenant_id):
+        return [
+            entry.client_half
+            for entry in OperationLogEntry.objects.filter(
+                client_half__target__feature_id=str(feature_id), **{THE_VERDICT: APPLIED}
             ).order_by("project_version")
         ]
 
@@ -705,22 +743,28 @@ def test_a_resent_batch_the_cursor_had_already_seen_does_not_move_the_geometry_b
     )
 
 
-def test_an_operation_addressing_a_layer_this_project_lacks_is_refused_as_a_typed_conflict(
+def test_an_operation_addressing_a_layer_this_project_lacks_is_refused_by_a_typed_verdict(
     alice: Party,
 ) -> None:
     """ADR-0010 decision 6's addition of 2026-09-08, which is where this refusal is created and the
     only place it exists: nothing in the PRD carries it, because nothing in the PRD anticipated a
     constraint that only becomes reachable once the projection is written.
 
-    **Typed or a crash, with no third state.** The composite reference
-    `feature_layer_within_the_same_tenant_and_project` is consulted the moment a projection row is
-    written, so an unknown layer raises, and an `IntegrityError` escaping as a `500` is a decision
-    nobody took, which N9 and N12 both refuse.
+    **Typed or a crash, with no third state, and that is the subject this case keeps.** The
+    composite reference `feature_layer_within_the_same_tenant_and_project` is consulted the moment a
+    projection row is written, so an unknown layer raises, and an `IntegrityError` escaping as a
+    `500` is a decision nobody took, which N9 and N12 both refuse.
 
-    The whole body is compared rather than one key of it, because that addition closes this object
-    exactly as it closed the acknowledgement's. The restart point is null with a meaning of its own
-    here: the stream is contiguous and the cursor is intact, so resending reproduces this refusal
-    forever, and a client meeting this reason creates the layer or stops."""
+    **What moved is where the typed answer lands, and the name says so.** This refusal was a
+    whole-batch `409` until ADR-0014 decision 2, which takes it out of that set because it fails the
+    criterion of decision 1 in every clause: the stream is contiguous, the cursor is intact, and
+    resending reproduces it forever, so the client's next act does not exist on the wire. It is a
+    verdict on the operation now, carried in a `200` body.
+
+    The whole body is compared rather than one key of it, because ADR-0010 decision 6 closes this
+    object exactly as it closed the one this case used to read. The echo counts what the server
+    **decided**, so it names this operation even though nothing was applied (ADR-0014 decision 5,
+    foundation v0.19)."""
     browser = a_browser(authenticated_as=alice.user_id)
 
     refused = browser.post(
@@ -729,8 +773,13 @@ def test_an_operation_addressing_a_layer_this_project_lacks_is_refused_as_a_type
         JSON,
     )
 
-    assert refused.status_code == HTTPStatus.CONFLICT
-    assert refused.json() == {THE_REASON: NO_LAYER_IN_THIS_PROJECT, THE_RESTART_POINT: None}
+    assert refused.status_code == HTTPStatus.OK
+    assert refused.json() == {
+        THE_ECHO: 0,
+        THE_REFUSALS: [
+            {THE_MUTATION_NUMBER_REFUSED: 0, THE_REASON: NO_LAYER_IN_THIS_PROJECT},
+        ],
+    }
 
 
 def test_a_layer_of_another_project_is_refused_exactly_as_one_that_never_existed(
@@ -746,9 +795,16 @@ def test_a_layer_of_another_project_is_refused_exactly_as_one_that_never_existed
     tempt an implementation into a second answer is the layer it **can** see, and that is the one
     arranged here.
 
-    The status is the positive control and it is doing the work: both requests answer alike today
-    for the wrong reason, since neither is refused at all, so the comparison alone would be green
-    against a route that consults no layer."""
+    **The refusal list is the positive control, and it replaces the status because the status
+    stopped being one.** While this refusal was a `409` (ADR-0010 decision 6's addition of
+    2026-09-08), a route that consulted no layer answered `200` to both requests and the comparison
+    alone was green against it; now that the verdict rides in a `200` body (ADR-0014 decision 2) the
+    status no longer tells the two apart at all, and what does is that the first request was
+    actually refused for the reason this case is about.
+
+    Each request is its own installation's first operation, which the shared arranger's default
+    mints, so the second is not deduplicated against a cursor the first one moved (M10,
+    ADR-0014 decision 5)."""
     a_layer_of_another_project = uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
     _an_element_layer_of(
@@ -768,17 +824,19 @@ def test_a_layer_of_another_project_is_refused_exactly_as_one_that_never_existed
         JSON,
     )
 
-    assert on_a_layer_of_another_project.status_code == HTTPStatus.CONFLICT
+    assert on_a_layer_of_another_project.json()[THE_REFUSALS] == [
+        {THE_MUTATION_NUMBER_REFUSED: 0, THE_REASON: NO_LAYER_IN_THIS_PROJECT}
+    ]
     assert (on_a_layer_of_another_project.status_code, on_a_layer_of_another_project.content) == (
         on_a_layer_that_never_existed.status_code,
         on_a_layer_that_never_existed.content,
     )
 
 
-def test_a_batch_naming_an_absent_layer_first_is_refused_though_its_feature_ends_under_a_held_one(
+def test_the_operation_naming_an_absent_layer_first_is_refused_though_the_fold_loses_that_layer(
     alice: Party,
 ) -> None:
-    """ADR-0012 decision 3 on the **guard** rather than on the write: the set a refusal is decided
+    """ADR-0012 decision 3 on the **guard** rather than on the write: the set a verdict is decided
     over is the operations, never the state they fold to. That fold is one row per feature and is
     lawfully lossy, keeping the last address each feature was given, so a check fed from its output
     inherits every loss as a blind spot, which is why `the_layers_this_batch_addresses` reads the
@@ -788,18 +846,27 @@ def test_a_batch_naming_an_absent_layer_first_is_refused_though_its_feature_ends
     tells the two readings apart: the refusal cases beside this one each give the absent layer a
     feature of its own, where it survives any fold and the guard answers alike either way. Here the
     second operation replaces the address the fold keeps, so a guard reading the folded state never
-    sees the absent layer at all, the batch is applied, and the row lands under the layer this
-    project does hold with no `IntegrityError` to raise the alarm (M2, M9).
+    sees the absent layer at all, nothing is refused, and the row lands under the layer this project
+    does hold with no `IntegrityError` to raise the alarm (M2, M9).
 
-    **The reason is named beside the status rather than the whole body compared**, because what this
-    case adds is that the refusal is reached and not what its object carries: the two cursor
-    refusals answer `409` too, so a status alone would not say which mechanism refused."""
+    **The second operation is a create rather than the geometry set this case carried while the
+    refusal was whole-batch**, and that is forced rather than preferred. Once the first operation
+    earns a verdict of its own (ADR-0014 decision 1) the batch around it applies, so a geometry set
+    here would be one for a feature no applied operation ever created: the shape this module's own
+    docstring says nothing arranges, and the one ADR-0014 decision 7 explicitly declines to decide.
+    A create keeps the fold identical, the absent layer first and the held one last, while leaving
+    every operation of the batch decidable.
+
+    **The whole body is compared**, which the retired form could not do: it asserted that a refusal
+    was reached at all, since a status alone would not say which of three mechanisms refused, and
+    the list now names the refused operation by its own mutation number and says in the same breath
+    that the one behind it was not refused (ADR-0014 decisions 6 and 7)."""
     a_layer_that_never_existed, the_layer_its_feature_ends_under = uuid4(), uuid4()
     feature_id, installation = uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
     _an_element_layer_of(alice, layer_id=the_layer_its_feature_ends_under)
 
-    refused = browser.post(
+    answered = browser.post(
         OPERATIONS_PATH,
         _a_queue_of(
             _a_feature_create(
@@ -809,11 +876,10 @@ def test_a_batch_naming_an_absent_layer_first_is_refused_though_its_feature_ends
                 from_installation=installation,
                 mutation_number=0,
             ),
-            _a_geometry_set(
+            _a_feature_create(
                 alice,
                 layer_id=the_layer_its_feature_ends_under,
                 feature_id=feature_id,
-                at=A_PLACE_IN_THE_FIELD,
                 from_installation=installation,
                 mutation_number=1,
             ),
@@ -821,24 +887,37 @@ def test_a_batch_naming_an_absent_layer_first_is_refused_though_its_feature_ends
         JSON,
     )
 
-    assert refused.status_code == HTTPStatus.CONFLICT
-    assert refused.json()[THE_REASON] == NO_LAYER_IN_THIS_PROJECT
+    assert answered.status_code == HTTPStatus.OK
+    assert answered.json() == {
+        THE_ECHO: 1,
+        THE_REFUSALS: [
+            {THE_MUTATION_NUMBER_REFUSED: 0, THE_REASON: NO_LAYER_IN_THIS_PROJECT},
+        ],
+    }
 
 
-def test_a_batch_refused_for_an_unknown_layer_leaves_nothing_in_the_log(alice: Party) -> None:
-    """T2.2's requirement sentence: the flush is a transactional call, so the append and the
-    projection are consistent or neither happened. This is the direction that has a witness, since
-    the projection write is reached before the append: an implementation that appended anyway is one
-    that put the projection write behind a savepoint it recovered from, and M9's flag-and-retain is
-    exactly the reason somebody reaches for that shape here.
+def test_a_batch_carrying_an_unknown_layer_keeps_both_its_operations_on_the_log(
+    alice: Party,
+) -> None:
+    """**This case says the opposite of what it said, and the name is where a reader is told so.**
+    Its subject is unchanged, what the log holds after a batch one of whose operations the server
+    will not apply, and the answer inverted at ADR-0014 decision 3: the refused operation is
+    *retained*, on the same append-only log, written exactly as an applied one is with the client
+    half verbatim (M8). Until that decision the whole batch was refused and the log held nothing.
 
-    **The batch carries a good operation beside the refused one**, so what is asserted is a batch
-    that applied nothing rather than a refusal that lost only the operation it named.
+    **The retention is the departure the product exists to make** and it is what T5.2 and M9 mean by
+    flagged, not applied, not dropped: the geometry was drawn in the field, and every system this
+    decision was researched against keeps an error message and discards the work (C7).
 
-    **The accepted flush before it is the control rather than a second subject**, and it closes the
-    trap this suite is written against: the log is read under Alice's own binding, which is exactly
-    where a rogue row would have landed, and the wall answers a bound read with nothing as readily
-    as an empty table does."""
+    **The batch carries a good operation beside the refused one**, so what is asserted is that both
+    halves of a mixed batch reach the log, rather than a refusal that took the batch down with it or
+    an application that kept only what it applied.
+
+    **What the accepted flush before it buys changed with the answer, so it is restated rather than
+    carried over.** It used to be the control that told an empty log apart from a refused one; the
+    assertion is a presence now, so an absent write is red on its own. What it buys instead is the
+    property one batch cannot show: an operation an earlier flush applied is still on the log after
+    a later batch was partly refused, so a refusal truncates nothing behind it (M15, C7)."""
     layer_id, installation = uuid4(), uuid4()
     accepted, alongside_the_unknown_layer, addressing_the_unknown_layer = uuid4(), uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
@@ -858,7 +937,7 @@ def test_a_batch_refused_for_an_unknown_layer_leaves_nothing_in_the_log(alice: P
         ),
         JSON,
     )
-    refused = browser.post(
+    answered = browser.post(
         OPERATIONS_PATH,
         _a_queue_of(
             _a_feature_create(
@@ -881,21 +960,33 @@ def test_a_batch_refused_for_an_unknown_layer_leaves_nothing_in_the_log(alice: P
         JSON,
     )
 
-    assert refused.status_code == HTTPStatus.CONFLICT
-    assert _the_operations_the_log_holds(alice) == {accepted}
+    assert answered.status_code == HTTPStatus.OK
+    assert _the_operations_the_log_holds(alice) == {
+        accepted,
+        alongside_the_unknown_layer,
+        addressing_the_unknown_layer,
+    }
 
 
-def test_a_batch_refused_for_an_unknown_layer_leaves_no_feature_in_the_projection(
+def test_only_the_features_of_the_operations_a_flush_applied_reach_the_projection(
     alice: Party,
 ) -> None:
-    """M10's applies-nothing-at-all read on the state this task creates: the operation beside the
-    refused one addressed a layer this project does hold, so a projection written operation by
-    operation leaves that feature behind while the client is told the batch was refused, which is a
-    server and a client disagreeing about what exists.
+    """**This case says the opposite of what it said, and the name is where a reader is told so.**
+    Its subject is unchanged, what the projection holds after a batch one of whose operations the
+    server will not apply, and the answer inverted at ADR-0014 decision 1: the operation beside the
+    refused one is applied and its feature is current state. Until that decision the batch was
+    refused whole and the projection held nothing of it.
 
-    **The accepted flush before it is the control**, and here it is what makes the assertion say
-    anything at all: an empty projection satisfies *nothing was written* whether the refusal held or
-    the write was never built."""
+    **What did not invert is the half this case now carries alone**, and it is ADR-0012 decision 3
+    as narrowed the same day: the fold walks the operations the flush **applied**, so a refused
+    operation's feature never reaches the current state at all. The set is compared whole, so this
+    is one read answering both halves rather than two assertions.
+
+    **What the accepted flush before it buys changed with the answer, so it is restated rather than
+    carried over.** It used to be what made an empty projection mean anything; the assertion names
+    two features now, so a fold that never ran is red on its own. What it buys instead is the
+    property one batch cannot show: a feature an earlier flush projected survives a later batch the
+    server partly refused, so a refusal unwinds nothing behind it (M15, C7)."""
     layer_id, installation = uuid4(), uuid4()
     accepted, alongside_the_unknown_layer = uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
@@ -914,7 +1005,7 @@ def test_a_batch_refused_for_an_unknown_layer_leaves_no_feature_in_the_projectio
         ),
         JSON,
     )
-    refused = browser.post(
+    answered = browser.post(
         OPERATIONS_PATH,
         _a_queue_of(
             _a_feature_create(
@@ -935,8 +1026,8 @@ def test_a_batch_refused_for_an_unknown_layer_leaves_no_feature_in_the_projectio
         JSON,
     )
 
-    assert refused.status_code == HTTPStatus.CONFLICT
-    assert _the_features_the_projection_holds(alice) == {accepted}
+    assert answered.status_code == HTTPStatus.OK
+    assert _the_features_the_projection_holds(alice) == {accepted, alongside_the_unknown_layer}
 
 
 def test_replaying_a_features_chain_in_server_order_reproduces_the_geometry_the_projection_holds(
@@ -1046,6 +1137,76 @@ def test_the_projection_a_geometry_set_carrying_none_leaves_is_what_that_chain_r
     replayed = _the_geometry_a_chain_replays_to(_the_chain_the_log_holds_for(alice, feature_id))
 
     assert replayed is None
+    assert _the_geometry_the_projection_holds(alice, feature_id) == replayed
+
+
+def test_the_replay_a_refused_geometry_is_left_out_of_still_reproduces_what_the_projection_holds(
+    alice: Party,
+) -> None:
+    """M15's Shape as added 2026-09-17, at the half its own sentence puts **beside** the projection:
+    a refused operation is a log entry as well, and it is not part of the projection *nor of the
+    replay the reproducibility clause runs*.
+
+    **The second half is reachable on its own, which is why it needs a case rather than a reading.**
+    Retention and exclusion are one sentence in the document and two behaviours in the code: the
+    server can keep the refused operation exactly as ADR-0014 decision 3 requires, withhold it from
+    the fold exactly as ADR-0012 decision 3's narrowing requires, and still leave the chain that
+    replays it indistinguishable from the chain that was applied. M15's reproducibility clause is
+    then false of every feature a refusal ever touched, and the log stops being the evidence the
+    whole requirement exists to make it.
+
+    **The refused geometry moves the feature somewhere else**, because a refusal replaying to the
+    place it was refused from is an arrangement that cannot fail: the two places have to differ for
+    the replay and the projection to be able to disagree at all.
+
+    **The refusal list is asserted first and it is the control rather than a second subject.** A
+    route that stopped refusing this operation applies it, and then the replay and the projection
+    agree on the wrong place instead of disagreeing, which is a red this case should reach by saying
+    what happened rather than by a geometry comparison a reader has to reconstruct.
+
+    The literal is asserted before the projection on this module's own ground: a chain read back
+    empty replays to nothing and a projection nobody wrote holds nothing, and nothing equals
+    nothing."""
+    layer_id, feature_id, installation = uuid4(), uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _an_element_layer_of(alice, layer_id=layer_id)
+    browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            *_drawing_a_feature_at(
+                alice,
+                layer_id=layer_id,
+                feature_id=feature_id,
+                at=A_PLACE_IN_THE_FIELD,
+                from_installation=installation,
+            )
+        ),
+        JSON,
+    )
+
+    moved_on_a_layer_this_project_lacks = browser.post(
+        OPERATIONS_PATH,
+        _a_queue_of(
+            _a_geometry_set(
+                alice,
+                layer_id=a_layer_this_project_lacks(),
+                feature_id=feature_id,
+                at=ANOTHER_PLACE_IN_THE_FIELD,
+                from_installation=installation,
+                mutation_number=2,
+            )
+        ),
+        JSON,
+    )
+
+    replayed = _the_geometry_a_chain_replays_to(
+        _the_chain_the_reproducibility_clause_replays(alice, feature_id)
+    )
+
+    assert moved_on_a_layer_this_project_lacks.json()[THE_REFUSALS] == [
+        {THE_MUTATION_NUMBER_REFUSED: 2, THE_REASON: NO_LAYER_IN_THIS_PROJECT}
+    ]
+    assert replayed == _as_the_storage_frame_holds_it(A_PLACE_IN_THE_FIELD)
     assert _the_geometry_the_projection_holds(alice, feature_id) == replayed
 
 

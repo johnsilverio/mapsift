@@ -1,8 +1,11 @@
 """The cursor's backwards guard, witnessed under two flushes contending for the same row.
 
-Trace: PRD T2.3 (the server tracks the per-client last-applied number and echoes it) and M4 (the
-cursor keyed by clientID, tenant and project, **holding** the last-applied mutation number, which
-is the word this module is about); I9, whose Scar is the interrupted-then-resent flush; C12.
+Trace: PRD T2.3 (the server tracks the per-client last-decided number and echoes it) and M4 (the
+cursor keyed by clientID, tenant and project, **holding** the last-decided mutation number, which
+is the word this module is about), both quoted as their revision of 2026-09-17 leaves them
+(foundation v0.19, ADR-0014: the cursor passes an operation the server refused as well as one it
+applied, which renames the axis and leaves this module's subject, the guard that refuses to move it
+**backwards**, exactly where it was); I9, whose Scar is the interrupted-then-resent flush; C12.
 ADR-0004 decision 2's extension of 2026-08-11 for the shape under test, the cursor read early and
 written late in one statement carrying a guard that refuses to move it backwards; ADR-0010
 decision 6 for what makes the contention one installation against its own resend and nothing else,
@@ -347,7 +350,7 @@ def _a_queue_of(operation_ids: list[UUID], *, by: Party, from_installation: UUID
 
 
 def _the_cursor_left_for(party: Party, installation: UUID) -> int | None:
-    """How far the server holds this installation's stream applied, read where the flush reads it.
+    """How far the server holds this installation's stream decided, read where the flush reads it.
 
     Bound to the tenant before the read, because the wall answers an unbound one with nothing and a
     case can pass on that silence (ADR-0005 sections 3 and 4).
@@ -359,7 +362,7 @@ def _the_cursor_left_for(party: Party, installation: UUID) -> int | None:
 def test_a_flush_that_lost_the_race_does_not_lower_the_cursor_the_winner_already_raised(
     alice: Party,
 ) -> None:
-    """M4's "holding the last-applied", under the guard ADR-0004 decision 2's extension of
+    """M4's "holding the last-decided", under the guard ADR-0004 decision 2's extension of
     2026-08-11 puts on the cursor write. The story is I9's own scar: a client flushes what it has,
     the acknowledgement does not arrive, and it resends a queue that grew while it waited, so two
     flushes of one installation are in flight and both read a cursor that is not there yet. The
