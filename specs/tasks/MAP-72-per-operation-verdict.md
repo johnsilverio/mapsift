@@ -27,9 +27,10 @@ The one refusal with a runtime today is the unknown layer, which is why it is th
 
 ## Out of scope
 
-- **The two layer-declaration refusals.** **MAP-66**, parked on its own branch; they become operation verdicts
-  by ADR-0014 decision 1 once that task resumes, and its cases that assert a refused batch applies nothing at
-  all are the rework that decision names.
+- **The two layer-declaration refusals.** **MAP-66**, parked on its own branch; ADR-0014 decision 2 names
+  both as operation verdicts for when that task resumes, and its cases that assert a refused batch applies
+  nothing at all are the rework named there. **Their pure predicates are on this branch with no caller**
+  (`layers/rules.py`), and they stay that way here: wiring either is MAP-66's work, not a loose end.
 - **The author who lost authorization.** **MAP-37**. T5.2's other half has no runtime here: nothing in
   `apps/api` validates a per-project write permission, because the permission model PRD 10.6 defers is not
   built.
@@ -46,11 +47,16 @@ The one refusal with a runtime today is the unknown layer, which is why it is th
   column; this task neither creates it nor works around its absence.
 - **What a wire-legal geometry payload is**, and **what a create addressing an existing feature means**.
   **MAP-70** and **MAP-68**.
-- **Any `409` behaviour.** The two cursor reasons keep their shape, their status and their restart point.
+- **The two cursor reasons' `409` behaviour**, which keeps its shape, its status and its restart point.
+  Taking the third reason out of that set is boundary decision 5 and **is** this task's work; what is out of
+  scope is changing anything about a gap or an absent cursor.
 
 ## Boundary decisions the owner closed
 
-All on **2026-09-17**, each written into the document that owns it before this file existed.
+All on **2026-09-17**, each written into the document that owns it before this file existed, with one
+exception recorded rather than smoothed: decision 7's **timing** half reached ADR-0011 section 4 after this
+file was first committed, at the pre-dispatch read. The decision itself is ADR-0014 decision 8 and predates
+it.
 
 1. The cursor counts what the server **decided** and the echoed key is renamed with it: foundation v0.19,
    ADR-0014 decision 5.
@@ -82,8 +88,8 @@ against ADR-0014.
 is implementation rather than canon.
 
 **A reading, labelled as one.** `ServerHalf` declares `applied_at`, `feature_version`,
-`applied_rule_version`, `project_version`, `legal_weight_in_force` and `verdict`, the first five
-non-optional; `AppliedOperation` is the separate struct holding a client half beside a server half.
+`applied_rule_version`, `project_version`, `legal_weight_in_force` and `verdict`, **all six non-optional**;
+`AppliedOperation` is the separate struct holding a client half beside a server half.
 ADR-0012 decision 5's amendment is about the **log column** and not about either struct, and ADR-0014
 decision 3 answers the struct question directly. **This paragraph hands over what is on disk and settles
 nothing**, which is deliberate: the envelope is touched in this task for the verdict member of boundary
@@ -100,8 +106,9 @@ final count, because `apps/api/pyproject.toml`'s `addopts` already carries `-q`.
 **What an absence assertion costs here, measured across MAP-45 and MAP-46 and repeated because it decides test
 design.** State read **after** a refusal is blind to anything the refusal unwinds: the cursor write and the
 log append both sit inside the `atomic()` block `tenant_scope` opens, and the refusal is caught outside it, so
-a later read sees nothing either way. What separates the two is recording the statements as they run
-(`statements_reaching`), which those two tasks established.
+a later read sees nothing either way. What separates the two is recording the statements as they run, and
+the lesson is what MAP-45 and MAP-46 established; **the instrument predates them**, `statements_reaching`
+having reached `conftest.py` at MAP-12 (`63e9522`), with MAP-46 adding the write filter beside it.
 
 ## Acceptance
 
@@ -111,7 +118,8 @@ a later read sees nothing either way. What separates the two is recording the st
   permission model that does not exist (see Out of scope), so this task delivers the clause added on
   2026-09-17, that the operations after a flagged one still reach the server, and delivers it against the
   refusal that does exist. The first half is MAP-37's and is not weakened, deferred or restated.
-- **M9's final Acceptance clause has no runtime on this branch at all.** Its refusal lives on MAP-66's parked
+- **M9's final Acceptance clause has no runtime on this branch at all**, the predicate that would decide it
+  being present and uncalled (see Out of scope). Its refusal lives on MAP-66's parked
   branch. This task must not implement it in order to test it.
 - **M10's Acceptance is read with ADR-0014 decision 5, not against it.** Its applies-nothing-at-all clause is
   about a **gap**, which stays a whole-batch `409`; the per-operation verdict does not touch it, and a case
