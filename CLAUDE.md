@@ -11,7 +11,7 @@ internal by nature.
 
 Mapsift is **early**: a scaffold exists and runs (four ecosystems building, type checking and testing green,
 containerised, with the task runner and the CI gates in place) and **no product capability is built yet**.
-`specs/mapsift-foundation.md` is at **v0.18.1** and is the **live source of truth** (the
+`specs/mapsift-foundation.md` is at **v0.19** and is the **live source of truth** (the
 constitution: the what and the why). `specs/PRD.md` is a living document at **v0.16**, and its **prose is complete**
 (Layer 1 the native capability floor with the anti-requirements and the extension catalog, Layer 2 the transversal
 system behaviors T1 to T9, Layer 3 the data model and contracts M1 to M16, Layer 4 the surfaces and platform
@@ -159,7 +159,7 @@ This is the architectural core. Get it wrong and nothing else makes sense.
 
 ## Non-negotiable constraints
 
-Derived from the foundation (v0.18.1). Each is load-bearing and pairs with a pass/fail acceptance test (the
+Derived from the foundation (v0.19). Each is load-bearing and pairs with a pass/fail acceptance test (the
 Hort C-equivalents). Breaking one is a regression, not a tradeoff. CI and review enforce them.
 
 - **C1, offline write path (foundation I1).** An element edit commits locally (op queue, IndexedDB/OPFS)
@@ -215,15 +215,17 @@ Hort C-equivalents). Breaking one is a regression, not a tradeoff. CI and review
   compiles to both WASM and a native FFI library from one source, and no UI object or live handle crosses the
   boundary.
 - **C12, idempotency and partial-failure recovery (foundation I9, section 4).** Every operation carries a
-  per-client monotonic mutation number; the server tracks the per-client last-applied number and ignores any
-  operation at or below it (dedup), so a resent flush is idempotent. The server echoes the per-client
-  last-applied number in the flush response and the client advances its cursor only from that echo, never by
+  per-client monotonic mutation number; the server tracks the per-client last-**decided** number (what it
+  applied **and** what it refused, revised foundation v0.19; ADR-0014) and ignores any
+  operation at or below it (dedup), so a resent flush is idempotent and a refused operation never stalls the
+  operations behind it in an append-only stream. The server echoes the per-client
+  last-decided number in the flush response and the client advances its cursor only from that echo, never by
   assumption. A client here is a persistent instance (a clientID generated and persisted per installation, using
   the I3 client-side identifier mechanism), not the user, so the same user on two devices is two clients with
   non-colliding streams. This is distinct from the per-feature version (which orders and detects conflict).
   *Test:* interrupt a flush after the server applies part of the queue, resend the full queue, and the final
   state is identical with no duplicated feature and no lost edit; the client advances its cursor from the
-  echoed last-applied; and two clients of the same user (distinct clientIDs) do not collide and neither loses an
+  echoed last-decided; and two clients of the same user (distinct clientIDs) do not collide and neither loses an
   operation to false dedup.
 - **C13, authored and authorized writes (foundation I10, section 9).** Every operation is attributed to an
   author whose authoritative identity is the authenticated session that created it, proved by verifiable
@@ -282,9 +284,12 @@ rules) is deferred to the PRD and is NOT pre-decided here.
   and presence only; the sync protocol uses versioning, gap detection, and resync, and never relies on
   at-most-once delivery. Do NOT put authoritative document state in the Channels tier.
 - **Operations are idempotent and authored.** Every queued operation carries a per-client monotonic mutation
-  number (the server dedups by per-client last-applied, making resends idempotent, distinct from the
+  number (the server dedups by per-client last-decided, making resends idempotent, distinct from the
   per-feature version that orders and detects conflict) and an author stamped at creation (authorization is
   validated server-side at flush; an unauthorized offline op is flagged, not silently applied or dropped).
+  **A refusal about what a client authored is a verdict on that one operation, never on the batch** (ADR-0014):
+  the operation is recorded on the log with its reason, the cursor passes it, and the rest of the stream
+  applies, because the queue is append-only and a whole-batch refusal there stalls it forever (I2).
 - **Large data: dynamic MVT now, pre-generated tiles gated.** Large vector is served as dynamic MVT from
   PostGIS (ST_AsMVT) via the tile server (Martin), with edits writing straight to PostGIS and HTTP tile
   caching. Pre-generated base tiles plus merge-on-demand (the Lightning shape) are introduced only when a
@@ -497,7 +502,7 @@ foundation with nobody noticing.
 
 ## Process & tracking
 
-Authority chain: `specs/mapsift-foundation.md` (constitution, v0.18.1, the what and the why) → `specs/PRD.md`
+Authority chain: `specs/mapsift-foundation.md` (constitution, v0.19, the what and the why) → `specs/PRD.md`
 (the how, one layer above code) and this file (the constraints-and-behaviors digest), both derived from the
 foundation → ADRs (code-shape) → spec-per-task in git (what the agent reads to implement, shaped by
 `specs/tasks/README.md`). **The loop from a decision in the canon to a merged pull request is ratified in

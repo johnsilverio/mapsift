@@ -104,6 +104,13 @@ Correcting it belongs to that ADR and is named in Consequences.
 
 ### 3. The projection write is inside the flush transaction, before the range allocation, over a sorted set of rows
 
+> **Narrowed 2026-09-17 by ADR-0014: the fold walks the operations the flush **applied**, not every operation
+> in the batch.** Until that decision every operation reaching this point was applied, so the two readings
+> named the same set and nothing here had to say which it meant. They stopped naming the same set when the
+> flush began deciding each operation: a refused operation is appended to the log with its verdict and must
+> not reach `layers_feature`, or a refusal would leave exactly the state it exists to withhold. M15's replay
+> reads the applied chain for the same reason.
+
 Inside, because a projection written outside the transaction that appends the log is the drift this decision
 exists to prevent. The Rails Event Store guidance for synchronous handlers, to swallow the exception and send
 it to a tracker (railseventstore.org, read 2026-08-21), is **poison in this codebase for exactly that reason**

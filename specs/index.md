@@ -329,3 +329,14 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     buffers per prefix row independent of the box. It carries the four conditions the result depends on, says
     which have an owner and which do not, and points at foundation section 6's tiling gate rather than closing
     it. Extends ADR-0005 decision 5 and corrects that ADR's own Consequences note of 2026-08-21.
+  - **`adr/0014-the-per-operation-verdict-at-the-flush.md`** — the flush stops being all-or-nothing about what
+    it accepts: a refusal that judges what a client authored falls on that one operation, which is recorded on
+    the append-only log with its verdict and its reason and never dropped, while the rest of the batch applies
+    and the per-client cursor passes it. Opened because a whole-batch refusal meets an append-only queue and
+    M10's contiguity and stalls that installation's stream permanently, which is the divergence I2 forbids,
+    found at MAP-66's final review and reproduced. It carries the criterion separating a batch refusal from an
+    operation verdict, the rename of the echoed cursor to the last-**decided** mutation number, and the
+    research that made the cursor's move evidence rather than preference: Replicache, Zero, PowerSync and
+    ElectricSQL all advance past a refused mutation and **none of them keeps it**, so the retention is
+    Mapsift's own and stricter than the pattern the foundation cites. Extends ADR-0010 decision 6 (whose third
+    reason it moves out of the stream set), ADR-0004 decision 4, ADR-0011 section 4 and ADR-0012 decision 3.
