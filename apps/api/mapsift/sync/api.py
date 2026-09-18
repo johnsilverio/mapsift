@@ -24,6 +24,7 @@ from mapsift.sync.rules import (
     MalformedBatch,
     OneUnbrokenStream,
     ThisStreamCannotBeContinued,
+    WhyAnOperationWasRefused,
     WhyAStreamCannotBeContinued,
     the_one_unbroken_stream_this_batch_carries,
     the_operation_identifiers_in,
@@ -74,11 +75,30 @@ class OperationBatch(Schema):
         return self._stream_claimed.client_id
 
 
-class FlushAcknowledgement(Schema):
-    """How far this installation's stream has been applied, and the closed object a client reads
-    to advance its cursor (ADR-0010 decision 6's addition of 2026-08-11; T2.3, C12)."""
+class RefusedOperation(Schema):
+    """One operation of the batch the server will not apply, and why (ADR-0010 decision 6's
+    addition of 2026-09-17; ADR-0014 decisions 1 and 6).
 
-    last_applied_mutation_number: int
+    It names the mutation number rather than a place in the batch, because a position is not one
+    of M10's axes and does not survive a client regrouping its queue.
+    """
+
+    mutation_number: int
+    reason: WhyAnOperationWasRefused
+
+
+class FlushAcknowledgement(Schema):
+    """How far this installation's stream has been decided and what of it was refused, the closed
+    object a client reads to advance its cursor (ADR-0010 decision 6's additions of 2026-08-11 and
+    2026-09-17; T2.3, C12).
+
+    The list is empty when nothing was refused, and otherwise ascends by mutation number because
+    the batch it is read from is one contiguous stream (ADR-0010 decision 6's addition of
+    2026-08-13), which is what lets it line up against the queue the client still holds.
+    """
+
+    last_decided_mutation_number: int
+    refused: list[RefusedOperation]
 
 
 class FlushRefusal(Schema):
@@ -98,8 +118,9 @@ def flush_operations(
     request: AuthenticatedRequest, batch: OperationBatch
 ) -> Status[FlushAcknowledgement] | Status[FlushRefusal]:
     """Append a batch to the operation log under a tenant claim the principal holds and a project
-    that tenant holds, and answer with the number this installation has now had applied, or with
-    why its stream could not be continued here (M15, T2.3, M10, M4)."""
+    that tenant holds, and answer with the number this installation has now had decided and the
+    operations a verdict refused, or with why its stream could not be continued here (M15, T2.3,
+    M10, M4, ADR-0014)."""
     with (
         correlated_by(
             tenant_id=batch.tenant_claimed,
@@ -115,7 +136,7 @@ def flush_operations(
         try:
             with tenant_scope(batch.tenant_claimed):
                 _refuse_a_project_the_verified_tenant_does_not_hold(batch.project_claimed)
-                applied = apply_the_flush(batch.operations)
+                decided = apply_the_flush(batch.operations)
         except ThisStreamCannotBeContinued as refusal:
             record_the_decision(
                 TheDecisionARecordNames.REQUEST_REFUSED,
@@ -129,7 +150,16 @@ def flush_operations(
                     resend_from_mutation_number=refusal.resend_from_mutation_number,
                 ),
             )
-        return Status(HTTPStatus.OK, FlushAcknowledgement(last_applied_mutation_number=applied))
+        return Status(
+            HTTPStatus.OK,
+            FlushAcknowledgement(
+                last_decided_mutation_number=decided.last_decided_mutation_number,
+                refused=[
+                    RefusedOperation(mutation_number=verdict.mutation_number, reason=verdict.reason)
+                    for verdict in decided.refusals
+                ],
+            ),
+        )
 
 
 def _refuse_a_claim_this_principal_cannot_back(tenant_id: UUID) -> None:

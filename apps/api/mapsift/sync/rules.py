@@ -1,6 +1,7 @@
 """Pure decisions over a batch of operations, taken on plain envelope data (ADR-0007 section 3)."""
 
 from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import pairwise
@@ -51,11 +52,18 @@ class OperationsAreNotOneContiguousStream(MalformedBatch):
 
 
 class WhyAStreamCannotBeContinued(StrEnum):
-    """The closed set a refusal names, whose remedies differ (ADR-0010 decision 6's addition of
-    2026-08-13, and its addition of 2026-09-08 for the third)."""
+    """The closed set a whole-batch refusal names, both of whose remedies are a resend (ADR-0010
+    decision 6's addition of 2026-08-13, as ADR-0014 decision 2 leaves it)."""
 
     GAP_ABOVE_CURSOR = "gap_above_cursor"
     NO_CURSOR_IN_THIS_DOMAIN = "no_cursor_in_this_domain"
+
+
+class WhyAnOperationWasRefused(StrEnum):
+    """The closed set a verdict on one operation names, whose remedy is on no wire at all: the
+    client's queue is append-only, so resending reproduces the answer (ADR-0014 decisions 2 and 6).
+    """
+
     NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
 
 
@@ -183,68 +191,72 @@ def the_one_unbroken_stream_this_batch_carries(
 
 
 def refuse_a_stream_this_cursor_cannot_continue(
-    starts_at: int, already_applied: int | None
+    starts_at: int, already_decided: int | None
 ) -> None:
     """Let a batch through only where it carries on from this installation's cursor (M10, M4).
 
     A batch at or below the cursor carries on trivially and is the dedup's (T2.3); what is refused
     is a batch opening above the first number the server still needs.
     """
-    if already_applied is None and starts_at != THE_FIRST_MUTATION_NUMBER:
+    if already_decided is None and starts_at != THE_FIRST_MUTATION_NUMBER:
         raise ThisStreamCannotBeContinued(
             WhyAStreamCannotBeContinued.NO_CURSOR_IN_THIS_DOMAIN,
             resend_from_mutation_number=None,
         )
-    if already_applied is not None and starts_at > already_applied + 1:
+    if already_decided is not None and starts_at > already_decided + 1:
         raise ThisStreamCannotBeContinued(
             WhyAStreamCannotBeContinued.GAP_ABOVE_CURSOR,
-            resend_from_mutation_number=already_applied + 1,
+            resend_from_mutation_number=already_decided + 1,
         )
 
 
-def this_cursor_has_seen(operation: ClientHalf, already_applied: int | None) -> bool:
+def this_cursor_has_seen(operation: ClientHalf, already_decided: int | None) -> bool:
     """Whether one operation is at or below a cursor, an absent cursor having seen nothing (T2.3).
 
     The one boundary both partitions below read, so moving it cannot leave the flush writing an
     operation the trail records as dropped. The absence is `None` rather than a number, because
-    zero is the first mutation number and so a legitimate applied value rather than an available
+    zero is the first mutation number and so a legitimate decided value rather than an available
     sentinel (M4's Shape, M10's Shape).
     """
-    if already_applied is None:
+    if already_decided is None:
         return False
-    return the_mutation_number_of(operation) <= already_applied
+    return the_mutation_number_of(operation) <= already_decided
 
 
 def the_operations_this_cursor_has_not_seen(
-    operations: Sequence[ClientHalf], already_applied: int | None
+    operations: Sequence[ClientHalf], already_decided: int | None
 ) -> list[ClientHalf]:
-    """The operations of a batch above the cursor, which the flush writes (T2.3)."""
+    """The operations of a batch above the cursor, which the flush decides (T2.3)."""
     return [
         operation
         for operation in operations
-        if not this_cursor_has_seen(operation, already_applied)
+        if not this_cursor_has_seen(operation, already_decided)
     ]
 
 
 def the_operations_this_cursor_has_already_seen(
-    operations: Sequence[ClientHalf], already_applied: int | None
+    operations: Sequence[ClientHalf], already_decided: int | None
 ) -> list[ClientHalf]:
     """The operations of a batch at or below the cursor, which the dedup drops (T2.3)."""
     return [
-        operation for operation in operations if this_cursor_has_seen(operation, already_applied)
+        operation for operation in operations if this_cursor_has_seen(operation, already_decided)
     ]
 
 
-def the_last_applied_this_flush_leaves(
-    operations: Sequence[ClientHalf], already_applied: int | None
+def the_last_decided_mutation_number_this_flush_leaves(
+    operations: Sequence[ClientHalf], already_decided: int | None
 ) -> int:
     """The number a flush echoes: the highest of the cursor it found and the batch it carried.
+
+    Decided rather than applied, which is the axis this counts on: the cursor passes an operation
+    the flush refused exactly as it passes one it applied, so a refused operation is deduplicated
+    on a resend and the stream behind it is never stalled (ADR-0014 decision 5, T2.3, M4).
 
     A batch deduplicated away entirely therefore answers with the cursor it did not move (T2.3).
     """
     reached = [the_mutation_number_of(operation) for operation in operations]
-    if already_applied is not None:
-        reached.append(already_applied)
+    if already_decided is not None:
+        reached.append(already_decided)
     return max(reached)
 
 
@@ -274,6 +286,51 @@ def the_layers_this_batch_addresses(operations: Sequence[ClientHalf]) -> frozens
     per feature and a guard fed from it inherits every loss (ADR-0012 decision 3).
     """
     return frozenset(the_address_of(operation).layer_id for operation in operations)
+
+
+@dataclass(frozen=True, slots=True)
+class TheRefusalOfAnOperation:
+    """One operation of a batch the server will not apply, and why (ADR-0014 decision 1)."""
+
+    operation_id: UUID
+    mutation_number: int
+    reason: WhyAnOperationWasRefused
+
+
+def the_refusals_this_batch_earns(
+    operations: Sequence[ClientHalf], *, layers_the_project_holds: AbstractSet[UUID]
+) -> list[TheRefusalOfAnOperation]:
+    """What the server refuses of a batch, one verdict per operation, in the order it was given.
+
+    A refusal here judges what the client authored against server state it could not have known,
+    which is the criterion that keeps it off the whole batch: the queue is append-only, so nothing
+    the client can send changes the answer, and refusing the batch would stall the stream
+    permanently (ADR-0014 decision 1, I2).
+
+    The layers are read from the operations and never from the state they fold to, which is the
+    reason `the_layers_this_batch_addresses` gives for itself (ADR-0012 decision 3).
+    """
+    return [
+        TheRefusalOfAnOperation(
+            operation_id=operation.root.operation_id,
+            mutation_number=the_mutation_number_of(operation),
+            reason=WhyAnOperationWasRefused.NO_LAYER_IN_THIS_PROJECT,
+        )
+        for operation in operations
+        if the_address_of(operation).layer_id not in layers_the_project_holds
+    ]
+
+
+def the_operations_no_refusal_names(
+    operations: Sequence[ClientHalf], refusals: Sequence[TheRefusalOfAnOperation]
+) -> list[ClientHalf]:
+    """The operations of a batch the flush applies, which is every one no verdict refused.
+
+    Nothing is refused for being downstream of a refusal, so this keeps the order it was given and
+    drops only what a verdict names (ADR-0014 decision 7).
+    """
+    refused = {refusal.operation_id for refusal in refusals}
+    return [operation for operation in operations if operation.root.operation_id not in refused]
 
 
 def the_current_state_this_batch_leaves(

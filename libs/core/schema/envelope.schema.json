@@ -285,10 +285,11 @@
       ]
     },
     "Verdict": {
-      "description": "What the server decided about the operation. A closed set, declared by M13 and grown\nadditively.",
+      "description": "What the server decided about the operation. A closed set grown additively, with two\ndeclarants: M13 declares the conflict-rule members and ADR-0014 the refusal member.",
       "type": "string",
       "enum": [
-        "applied"
+        "applied",
+        "refused"
       ]
     }
   }
