@@ -1029,6 +1029,66 @@ def test_a_refused_operation_is_named_by_no_other_record_of_that_flush(alice: Pa
     assert _the_decisions_recorded_about(refused, documents) == [FLUSH_REFUSED]
 
 
+def test_a_flush_that_refused_every_operation_records_no_application(alice: Party) -> None:
+    """ADR-0011 section 4's addition of 2026-09-17 at the arm its sibling above cannot reach: a
+    refused operation appears in no other record of that flush, and a flush that applied nothing has
+    no applied record for one to appear in.
+
+    **Every case in this module that reads the applied trail arranges an application**, so the
+    applied record is always about an operation that really was applied and the question this case
+    asks never arises. The one all-refused batch this module already posts is the inverted case
+    above, which reads the refusal's own record and the empty `request.refused` and never asks what
+    the applied trail holds; the all-refused batch the verdict suite arranges compares the response
+    body, which its own docstring gives as the whole of its arm.
+
+    **What an implementation emits here is not exotic, which is why the arm is worth a case.** The
+    correlation keys are inherited **per key** from the wider block in force (ADR-0011 section 2, as
+    sharpened 2026-08-17), and the block this route opens binds the whole batch, so a record emitted
+    with an empty identifier list does not name nothing: it names every operation of the flush. The
+    applied record would then say these refusals were applied, over a transaction that applied none
+    of them, and N9's join answers the support desk's first question with the opposite of what
+    happened.
+
+    **The two readings are one behaviour from its two ends**, which is how the sibling above reads
+    its own: `_the_records_of` says no applied record exists at all, and
+    `_the_decisions_recorded_about` says the only record covering each refused operation is its own.
+    The second is what makes the first more than an assertion about silence, because a path that
+    emitted nothing whatever would satisfy an empty list on its own.
+
+    The status is the positive control: the refusal has left the `409` set, so any other answer here
+    means the batch never reached a verdict at all (ADR-0010 decision 6's addition of
+    2026-09-17)."""
+    first_refused, second_refused = uuid4(), uuid4()
+    installation = uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    a_queue_refused_whole = {
+        "operations": [
+            an_operation_on_a_layer_this_project_lacks(
+                alice,
+                operation_id=first_refused,
+                from_installation=installation,
+                mutation_number=0,
+            ),
+            an_operation_on_a_layer_this_project_lacks(
+                alice,
+                operation_id=second_refused,
+                from_installation=installation,
+                mutation_number=1,
+            ),
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(OPERATIONS_PATH, a_queue_refused_whole, JSON)
+
+    documents = the_documents_of(emitted)
+
+    assert answered.status_code == HTTPStatus.OK
+    assert _the_records_of(FLUSH_APPLIED, documents) == []
+    assert _the_decisions_recorded_about(first_refused, documents) == [FLUSH_REFUSED]
+    assert _the_decisions_recorded_about(second_refused, documents) == [FLUSH_REFUSED]
+
+
 def test_a_refused_operation_is_recorded_with_the_reason_the_client_was_shown(
     alice: Party,
 ) -> None:
