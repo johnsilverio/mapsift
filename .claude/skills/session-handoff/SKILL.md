@@ -79,8 +79,9 @@ awk '/^## 0\. Current state/,/^## 1\. The canon/' specs/session-handoff.md | wc 
 
 This section is **injected into the boot of every orchestrator and every onboarding window**, which is what
 makes it the live state rather than a document somebody remembers to open. That guarantee holds only while
-it fits: past roughly forty kilobytes the harness hands it over as a file preview, and a preview is a
-pointer a window can skip. The failure is silent and it is the worst kind, because the material is then
+it fits: **measured 2026-09-18, a boot handed this section over as a file preview at 30,003 bytes**, so the
+threshold is near **thirty** kilobytes rather than the forty this file claimed until that day, and a preview
+is a pointer a window can skip. The failure is silent and it is the worst kind, because the material is then
 both unread and believed covered.
 
 So the budget is not tidiness, it is what keeps the injection true. **Over it, migrate rather than
