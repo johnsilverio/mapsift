@@ -114,6 +114,7 @@ class PropertyTarget(RootModel[PropertyAddress]):
 
 class Verdict(StrEnum):
     applied = "applied"
+    refused = "refused"
 
 
 class FeatureCreateOperation(BaseModel):

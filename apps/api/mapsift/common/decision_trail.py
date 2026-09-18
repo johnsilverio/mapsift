@@ -72,6 +72,7 @@ class TheDecisionARecordNames(StrEnum):
 
     FLUSH_APPLIED = ("flush.applied", logging.INFO)
     FLUSH_DEDUPLICATED = ("flush.deduplicated", logging.INFO)
+    FLUSH_REFUSED = ("flush.refused", logging.WARNING)
     REQUEST_REFUSED = ("request.refused", logging.WARNING)
     REQUEST_FAILED = ("request.failed", logging.ERROR)
 

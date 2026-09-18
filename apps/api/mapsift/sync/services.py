@@ -2,6 +2,7 @@
 row it is ordered by (ADR-0004), and the cursor that says how far a client got (M4)."""
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from functools import partial
 from uuid import UUID
 
@@ -14,22 +15,23 @@ from mapsift.common.decision_trail import (
 )
 from mapsift.layers.selectors import the_layers_a_project_holds_among
 from mapsift.layers.services import project_the_current_state
-from mapsift.sync.envelope import ClientHalf
+from mapsift.sync.envelope import ClientHalf, Verdict
 from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
 from mapsift.sync.rules import (
     OneUnbrokenStream,
-    ThisStreamCannotBeContinued,
-    WhyAStreamCannotBeContinued,
+    TheRefusalOfAnOperation,
     refuse_a_stream_this_cursor_cannot_continue,
     the_address_of,
     the_current_state_this_batch_leaves,
-    the_last_applied_this_flush_leaves,
+    the_last_decided_mutation_number_this_flush_leaves,
     the_layers_this_batch_addresses,
     the_one_unbroken_stream_this_batch_carries,
     the_operation_identifiers_in,
+    the_operations_no_refusal_names,
     the_operations_this_cursor_has_already_seen,
     the_operations_this_cursor_has_not_seen,
     the_project_every_operation_claims,
+    the_refusals_this_batch_earns,
     the_tenant_every_operation_claims,
 )
 from mapsift.sync.selectors import the_cursor_of
@@ -49,60 +51,83 @@ TAKE_THE_PROJECTS_VERSION_ROW = f"""
 # (ADR-0004 decision 2, extension of 2026-08-11).
 ADVANCE_THIS_INSTALLATIONS_CURSOR = f"""
     INSERT INTO {ClientCursor._meta.db_table} AS held
-        (tenant_id, client_id, project_id, last_applied_mutation_number)
+        (tenant_id, client_id, project_id, last_decided_mutation_number)
     VALUES (%s, %s, %s, %s)
     ON CONFLICT (tenant_id, client_id, project_id)
-    DO UPDATE SET last_applied_mutation_number = GREATEST(
-        held.last_applied_mutation_number, EXCLUDED.last_applied_mutation_number
+    DO UPDATE SET last_decided_mutation_number = GREATEST(
+        held.last_decided_mutation_number, EXCLUDED.last_decided_mutation_number
     )
 """
 
 
-def apply_the_flush(operations: list[ClientHalf]) -> int:
-    """Apply what this installation has not had applied here, and answer with its last-applied
-    mutation number, which is the only thing a client advances its cursor from (T2.3, C12).
+@dataclass(frozen=True, slots=True)
+class WhatTheFlushDecided:
+    """The one echo a client advances from, and the verdicts that went with it (T2.3, C12)."""
 
-    Refuses the whole batch with `ThisStreamCannotBeContinued` and applies nothing at all where
-    its stream does not carry on from the cursor this installation left behind (M10, M4), and
-    where it files a feature under a layer its project does not hold (ADR-0010 decision 6's
-    addition of 2026-09-08).
+    last_decided_mutation_number: int
+    refusals: tuple[TheRefusalOfAnOperation, ...]
+
+
+def apply_the_flush(operations: list[ClientHalf]) -> WhatTheFlushDecided:
+    """Decide every operation this installation has not had decided here, applying what it can and
+    retaining what it refuses, and answer with the last-decided mutation number beside those
+    refusals (T2.3, C12, ADR-0014 decisions 1 and 6).
+
+    Refuses the whole batch with `ThisStreamCannotBeContinued` and applies nothing at all where its
+    stream does not carry on from the cursor this installation left behind, which is the one
+    refusal whose remedy is a resend (M10, M4, ADR-0014 decision 1).
     """
     stream = the_one_unbroken_stream_this_batch_carries(operations)
 
-    already_applied = the_cursor_of(stream.client_id, stream.project_id)
-    refuse_a_stream_this_cursor_cannot_continue(stream.starts_at_mutation_number, already_applied)
+    already_decided = the_cursor_of(stream.client_id, stream.project_id)
+    refuse_a_stream_this_cursor_cannot_continue(stream.starts_at_mutation_number, already_decided)
 
-    fresh = the_operations_this_cursor_has_not_seen(operations, already_applied)
-    last_applied = the_last_applied_this_flush_leaves(operations, already_applied)
+    fresh = the_operations_this_cursor_has_not_seen(operations, already_decided)
+    last_decided = the_last_decided_mutation_number_this_flush_leaves(operations, already_decided)
 
-    _record_what_this_cursor_had_already_seen(operations, already_applied)
+    _record_what_this_cursor_had_already_seen(operations, already_decided)
     if not fresh:
-        return last_applied
+        return WhatTheFlushDecided(last_decided, ())
 
-    _project_what_this_flush_leaves(fresh, stream.project_id)
+    refusals = _the_refusals_this_flush_decides(fresh, stream.project_id)
+    applied = the_operations_no_refusal_names(fresh, refusals)
+
+    _project_what_this_flush_applied(applied)
     # Before the append and not after, though "beside the allocation" reads the other way: the
     # order is a contention trade ADR-0004 decision 2 settles in its extension of 2026-08-11.
-    _advance_the_cursor_of(stream, last_applied)
-    append_to_the_operation_log(fresh, tolerating_a_resend=True)
-    # Not the direct call this looks like it should be: logging is not transactional, so a record
-    # written here outlives a rollback and the trail then reads *applied* over a database holding
-    # nothing (ADR-0011 section 4's extension of 2026-08-17).
-    transaction.on_commit(partial(_record_what_this_flush_applied, fresh))
-    return last_applied
+    _advance_the_cursor_of(stream, last_decided)
+    append_to_the_operation_log(fresh, tolerating_a_resend=True, refusals=refusals)
+    # Not the direct calls these look like they should be: logging is not transactional, so a
+    # record written here outlives a rollback, and both of these assert a write (ADR-0011 section
+    # 4's extension of 2026-08-17 as ADR-0014 decision 8 narrows it).
+    transaction.on_commit(partial(_record_what_this_flush_applied, applied))
+    transaction.on_commit(partial(_record_what_this_flush_refused, refusals))
+    return WhatTheFlushDecided(last_decided, refusals)
 
 
 def append_to_the_operation_log(
-    operations: list[ClientHalf], *, tolerating_a_resend: bool = False
+    operations: Sequence[ClientHalf],
+    *,
+    tolerating_a_resend: bool = False,
+    refusals: Sequence[TheRefusalOfAnOperation] = (),
 ) -> None:
-    """Append a batch to the log, each entry carrying its place in its project's order (M10).
+    """Append a batch to the log, each entry carrying its place in its project's order (M10) and
+    what the server decided about it (ADR-0014 decision 3).
+
+    An operation a refusal names is written refused, with the reason the client was shown; every
+    other one is written applied, so a caller appending a batch it applied names no refusal.
 
     An operation the log already holds is refused by its identity constraint unless the caller is
     tolerating a resend, which is the flush path's contract under T2.3 and never the log's own.
     """
+    refused = {refusal.operation_id: refusal for refusal in refusals}
     # A list and never a generator inside bulk_create: the allocation below takes the project's
     # row and holds it to the commit, and a generator serialises every operation inside that
     # window (ADR-0004 decision 2, sharpened 2026-08-10).
-    entries = [_as_a_log_entry(operation) for operation in operations]
+    entries = [
+        _as_a_log_entry(operation, refused.get(operation.root.operation_id))
+        for operation in operations
+    ]
 
     top = _allocate_the_range_this_flush_needs(
         the_tenant_every_operation_claims(operations),
@@ -116,62 +141,88 @@ def append_to_the_operation_log(
 
 
 def _record_what_this_cursor_had_already_seen(
-    operations: Sequence[ClientHalf], already_applied: int | None
+    operations: Sequence[ClientHalf], already_decided: int | None
 ) -> None:
     """One record per dropped operation, the dedup being the decision that is genuinely per
     operation rather than per flush (ADR-0011 section 4).
 
-    Emitted where it is taken and deliberately not deferred to the commit its sibling waits for,
+    Emitted where it is taken and deliberately not deferred to the commit its siblings wait for,
     on that section's correction of 2026-08-17.
     """
     for operation_id in the_operation_identifiers_in(
-        the_operations_this_cursor_has_already_seen(operations, already_applied)
+        the_operations_this_cursor_has_already_seen(operations, already_decided)
     ):
         with correlated_by(operation_ids=(operation_id,)):
             record_the_decision(TheDecisionARecordNames.FLUSH_DEDUPLICATED)
 
 
-def _record_what_this_flush_applied(fresh: Sequence[ClientHalf]) -> None:
-    """One record for the decision, naming the operations it covers (ADR-0011 section 4)."""
-    with correlated_by(operation_ids=the_operation_identifiers_in(fresh)):
+def _record_what_this_flush_applied(applied: Sequence[ClientHalf]) -> None:
+    """One record for the decision, naming the operations it covers (ADR-0011 section 4).
+
+    The applied operations and nothing else, because an identifier carried by this record and by a
+    refusal would say the same operation was applied and refused in one transaction (that
+    section's addition of 2026-09-17). A flush that applied none of them records none.
+    """
+    if not applied:
+        return
+
+    with correlated_by(operation_ids=the_operation_identifiers_in(applied)):
         record_the_decision(TheDecisionARecordNames.FLUSH_APPLIED)
 
 
-def _project_what_this_flush_leaves(operations: list[ClientHalf], project_id: UUID) -> None:
-    """Leave the current state beside the log this flush appends, in the same transaction (M15).
+def _record_what_this_flush_refused(refusals: Sequence[TheRefusalOfAnOperation]) -> None:
+    """One record per refused operation, the verdict being the second decision this path takes per
+    operation rather than per flush (ADR-0011 section 4's addition of 2026-09-17).
 
-    Immediately before the cursor write, which is where ADR-0012 decision 3 puts it in the order
-    ADR-0004 decision 2 owns.
+    It carries no status, because the response answered `200` and no status was the refusal's to
+    give: inventing one would say a request was refused when an operation was.
     """
-    _refuse_a_layer_this_project_does_not_hold(operations, project_id)
-    project_the_current_state(the_current_state_this_batch_leaves(operations))
+    for refusal in refusals:
+        with correlated_by(operation_ids=(refusal.operation_id,)):
+            record_the_decision(TheDecisionARecordNames.FLUSH_REFUSED, reason=refusal.reason)
 
 
-def _refuse_a_layer_this_project_does_not_hold(
+def _the_refusals_this_flush_decides(
     operations: Sequence[ClientHalf], project_id: UUID
-) -> None:
-    """Refuse the whole batch where it files a feature under a layer this project does not hold.
+) -> tuple[TheRefusalOfAnOperation, ...]:
+    """What this flush will not apply of the batch it accepted, decided before anything is written.
 
-    Taken here rather than left to the composite reference, whose refusal is an `IntegrityError`
-    escaping as a 500 (ADR-0010 decision 6's addition of 2026-09-08). The restart point is null
-    because resending reproduces this refusal: the remedy is the layer, not the stream.
+    A verdict is a pure decision taken ahead of the critical section and never an exception caught
+    mid-write, which is what keeps an unexpected failure from being read as a refusal (ADR-0014
+    decision 1, ADR-0004 decision 2). The layer is consulted here rather than left to the composite
+    reference, whose refusal is an `IntegrityError` escaping as a 500 (ADR-0010 decision 6's
+    addition of 2026-09-08, as that of 2026-09-17 moves it).
     """
     addressed = the_layers_this_batch_addresses(operations)
-    if addressed <= the_layers_a_project_holds_among(project_id, addressed):
-        return
-
-    raise ThisStreamCannotBeContinued(
-        WhyAStreamCannotBeContinued.NO_LAYER_IN_THIS_PROJECT,
-        resend_from_mutation_number=None,
+    return tuple(
+        the_refusals_this_batch_earns(
+            operations,
+            layers_the_project_holds=the_layers_a_project_holds_among(project_id, addressed),
+        )
     )
 
 
-def _advance_the_cursor_of(stream: OneUnbrokenStream, last_applied: int) -> None:
-    """Raise this installation's cursor to what this flush applied, never lowering it (M4)."""
+def _project_what_this_flush_applied(applied: Sequence[ClientHalf]) -> None:
+    """Leave the current state beside the log this flush appends, in the same transaction (M15).
+
+    The applied operations alone and never the whole batch, or a refusal would leave exactly the
+    state it exists to withhold (ADR-0012 decision 3 as narrowed 2026-09-17).
+
+    Immediately before the cursor write, which is where ADR-0012 decision 3 puts it in the order
+    ADR-0004 decision 2 owns. A flush that applied none of them projects nothing.
+    """
+    if not applied:
+        return
+
+    project_the_current_state(the_current_state_this_batch_leaves(applied))
+
+
+def _advance_the_cursor_of(stream: OneUnbrokenStream, last_decided: int) -> None:
+    """Raise this installation's cursor to what this flush decided, never lowering it (M4)."""
     with connection.cursor() as cursor:
         cursor.execute(
             ADVANCE_THIS_INSTALLATIONS_CURSOR,
-            [stream.tenant_id, stream.client_id, stream.project_id, last_applied],
+            [stream.tenant_id, stream.client_id, stream.project_id, last_decided],
         )
 
 
@@ -186,12 +237,21 @@ def _allocate_the_range_this_flush_needs(tenant_id: UUID, project_id: UUID, widt
         return allocated
 
 
-def _as_a_log_entry(operation: ClientHalf) -> OperationLogEntry:
-    """One entry with everything the insert needs except its place in the project's order."""
+def _as_a_log_entry(
+    operation: ClientHalf, refusal: TheRefusalOfAnOperation | None
+) -> OperationLogEntry:
+    """One entry with everything the insert needs except its place in the project's order.
+
+    The client half is verbatim whatever the verdict, because a refused operation is retained
+    exactly as an applied one is and M8 forbids the server rewriting what the client sent
+    (ADR-0014 decision 3).
+    """
     address = the_address_of(operation)
     return OperationLogEntry(
         tenant_id=address.tenant_id,
         operation_id=operation.root.operation_id,
         client_half=operation.model_dump(mode="json"),
         project_id=address.project_id,
+        verdict=Verdict.applied if refusal is None else Verdict.refused,
+        refusal_reason=None if refusal is None else refusal.reason,
     )

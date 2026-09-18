@@ -219,10 +219,11 @@ pub struct MediationProvenance {
     pub agent: String,
 }
 
-/// What the server decided about the operation. A closed set, declared by M13 and grown
-/// additively.
+/// What the server decided about the operation. A closed set grown additively, with two
+/// declarants: M13 declares the conflict-rule members and ADR-0014 the refusal member.
 #[derive(Serialize, Deserialize, JsonSchema, Tsify)]
 #[serde(rename_all = "lowercase")]
 pub enum Verdict {
     Applied,
+    Refused,
 }
