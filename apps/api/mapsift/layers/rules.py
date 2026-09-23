@@ -60,6 +60,14 @@ def geometry_is_admissible(*, layer_kind: GeometryKind, geometry_type: str) -> b
 
 
 @dataclass(frozen=True, slots=True)
+class TheDeclarationsOfALayer:
+    """What one layer declares about every feature it holds, in plain data (M2)."""
+
+    storage_class: StorageClass
+    geometry_kind: GeometryKind
+
+
+@dataclass(frozen=True, slots=True)
 class TheCurrentStateOfAFeature:
     """One feature as the operations addressing it leave it, in plain data (M15, M9).
 

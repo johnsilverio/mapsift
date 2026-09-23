@@ -88,12 +88,15 @@ from conftest import (
     Party,
     a_browser,
     a_feature_create_claiming,
+    a_geometry_set_claiming,
     an_operation_on_a_layer_this_project_holds,
     an_operation_on_a_layer_this_project_lacks,
     the_documents_of,
     the_lines_the_logging_path_emits,
 )
 from mapsift.common.binding import tenant_scope
+from mapsift.layers.rules import GeometryKind, StorageClass
+from mapsift.layers.services import create_layer
 from mapsift.sync.models import OperationLogEntry
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -101,14 +104,16 @@ pytestmark = pytest.mark.django_db(transaction=True)
 OPERATIONS_PATH = "/api/operations"
 JSON = "application/json"
 
-# The refusal body this route answers with (ADR-0010 decision 6, addition of 2026-08-13), read here
-# only to arrange which of that status's two refusals a case is about. Spelled apart from conftest's
-# `REASON` on purpose: that one is the record's field under ADR-0011 section 4, this one is the wire
-# object's key, and the two contracts agreeing on a spelling is not the same as being one contract.
+# The key a refusal's reason travels under on the wire, in the `409` body of ADR-0010 decision 6's
+# addition of 2026-08-13 and in each item of the success body's refusal list below. Spelled apart
+# from conftest's `REASON` on purpose: that one is the record's field under ADR-0011 section 4, this
+# one is the wire object's key, and the two contracts agreeing on a spelling is not the same as
+# being one contract.
 THE_REASON_IN_THE_BODY = "reason"
 A_GAP_ABOVE_THE_CURSOR = "gap_above_cursor"
-# The third member of that closed set, which the projection is what makes reachable (ADR-0010
-# decision 6's addition of 2026-09-08).
+# Not a member of the `409` set beside it: ADR-0014 decision 2 moved it out, and it is the first
+# member of the operation refusal set ADR-0010 decision 6's addition of 2026-09-17 places in
+# `mapsift/sync/rules.py`, keeping its spelling.
 NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
 
 # The four event names ADR-0011 section 4 closes, as a record spells them. The first two are the
@@ -130,6 +135,10 @@ FLUSH_REFUSED = "flush.refused"
 # keys, and the two contracts agreeing on a spelling is not the same as being one contract.
 THE_REFUSALS_IN_THE_BODY = "refused"
 THE_MUTATION_NUMBER_REFUSED = "mutation_number"
+# The two members a layer's declarations add to that list's reasons (ADR-0010 decision 6's addition
+# of 2026-09-23), spelled as wire values for the reason `NO_LAYER_IN_THIS_PROJECT` is.
+SERVED_LAYER_TAKES_NO_OPERATIONS = "served_layer_takes_no_operations"
+GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY = "geometry_outside_the_layers_family"
 
 
 def _a_contiguous_queue_of(
@@ -1133,6 +1142,90 @@ def test_a_refused_operation_is_recorded_with_the_reason_the_client_was_shown(
         {THE_MUTATION_NUMBER_REFUSED: 1, THE_REASON_IN_THE_BODY: NO_LAYER_IN_THIS_PROJECT}
     ]
     assert _the_reasons_recorded(recorded) == [NO_LAYER_IN_THIS_PROJECT]
+
+
+def test_what_a_layers_declarations_refuse_is_recorded_with_the_reason_the_client_was_shown(
+    alice: Party,
+) -> None:
+    """N9's clause that every user-visible refusal has a matching record, for the two reasons MAP-66
+    adds to the set the case above reads one member of (ADR-0010 decision 6's addition of
+    2026-09-23, ADR-0014 decision 8).
+
+    **Joined per operation rather than compared as a list**, because the question a support desk
+    brings is one identifier and what the server decided about it: each record is found by the
+    operation it names and its reason is read against the reason the body gave that operation.
+
+    **Both refusals in one flush, beside an operation the server applies**, so a path that records
+    only the reason it already knew, or one reason for the whole flush, is red rather than right by
+    accident."""
+    naming_the_served_layer, carrying_a_parcel = uuid4(), uuid4()
+    a_served_layer, feature_id, installation = uuid4(), uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    with tenant_scope(alice.tenant_id):
+        create_layer(
+            layer_id=a_served_layer,
+            tenant_id=alice.tenant_id,
+            project_id=alice.project_id,
+            name="imagery footprints",
+            geometry_kind=GeometryKind.POINT,
+            storage_class=StorageClass.SERVED,
+        )
+    a_queue_refused_for_its_layers = {
+        "operations": [
+            a_feature_create_claiming(
+                alice.tenant_id,
+                operation_id=naming_the_served_layer,
+                client_id=installation,
+                mutation_number=0,
+                project_id=alice.project_id,
+                layer_id=a_served_layer,
+            ),
+            a_feature_create_claiming(
+                alice.tenant_id,
+                client_id=installation,
+                mutation_number=1,
+                project_id=alice.project_id,
+                feature_id=feature_id,
+            ),
+            {
+                **a_geometry_set_claiming(
+                    alice.tenant_id,
+                    operation_id=carrying_a_parcel,
+                    client_id=installation,
+                    mutation_number=2,
+                    project_id=alice.project_id,
+                    feature_id=feature_id,
+                ),
+                "payload": {
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[-47.6, -15.9], [-47.5, -15.9], [-47.5, -15.8], [-47.6, -15.9]]
+                        ],
+                    }
+                },
+            },
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(OPERATIONS_PATH, a_queue_refused_for_its_layers, JSON)
+
+    recorded = _the_records_of(FLUSH_REFUSED, the_documents_of(emitted))
+
+    assert answered.json()[THE_REFUSALS_IN_THE_BODY] == [
+        {THE_MUTATION_NUMBER_REFUSED: 0, THE_REASON_IN_THE_BODY: SERVED_LAYER_TAKES_NO_OPERATIONS},
+        {
+            THE_MUTATION_NUMBER_REFUSED: 2,
+            THE_REASON_IN_THE_BODY: GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY,
+        },
+    ]
+    assert _the_reasons_recorded(_the_records_naming(naming_the_served_layer, recorded)) == [
+        SERVED_LAYER_TAKES_NO_OPERATIONS
+    ]
+    assert _the_reasons_recorded(_the_records_naming(carrying_a_parcel, recorded)) == [
+        GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY
+    ]
 
 
 def test_a_refusal_record_carries_no_status_because_the_response_answered_two_hundred(

@@ -1,14 +1,13 @@
 """Pure decisions over a batch of operations, taken on plain envelope data (ADR-0007 section 3)."""
 
-from collections.abc import Sequence
-from collections.abc import Set as AbstractSet
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import pairwise
 from typing import assert_never
 from uuid import UUID
 
-from mapsift.layers.rules import TheCurrentStateOfAFeature
+from mapsift.layers.rules import TheCurrentStateOfAFeature, TheDeclarationsOfALayer
 from mapsift.sync.envelope import (
     ClientHalf,
     FeatureAddress,
@@ -298,7 +297,9 @@ class TheRefusalOfAnOperation:
 
 
 def the_refusals_this_batch_earns(
-    operations: Sequence[ClientHalf], *, layers_the_project_holds: AbstractSet[UUID]
+    operations: Sequence[ClientHalf],
+    *,
+    layers_the_project_holds: Mapping[UUID, TheDeclarationsOfALayer],
 ) -> list[TheRefusalOfAnOperation]:
     """What the server refuses of a batch, one verdict per operation, in the order it was given.
 

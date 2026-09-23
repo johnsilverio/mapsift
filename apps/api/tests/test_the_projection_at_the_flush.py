@@ -138,8 +138,8 @@ def _an_element_layer_of(party: Party, *, layer_id: UUID, project_id: UUID | Non
 
     Element rather than served because a served layer's features never enter the operation queue at
     all, and point rather than polygon because a layer's declared family is a contract on its
-    features; both refusals are MAP-66's and neither is wired today, so an arrangement that ignored
-    either would be arranging a batch this route is meant to refuse the day it is.
+    features; both refusals are MAP-66's, so an arrangement that ignored either would be arranging
+    a batch this route refuses.
     """
     with tenant_scope(party.tenant_id):
         create_layer(

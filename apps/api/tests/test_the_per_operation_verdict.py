@@ -44,8 +44,8 @@ afterwards is evidence rather than silence. The one case below that reads a refu
 back witnesses the statements as they run instead.
 
 What is deliberately not here, each with the issue that owns it: the two refusals a layer's own
-declarations make, its storage class and its geometry family (**MAP-66**, parked, its pure
-predicates on this branch with no caller); the author who lost authorization, T5.2's other half
+declarations make, its storage class and its geometry family (**MAP-66**, whose cases are
+`test_the_layer_declaration_refusals.py`); the author who lost authorization, T5.2's other half
 (**MAP-37**), which has no runtime because the permission model PRD 10.6 defers is not built; the
 client's local queue, the optimistic preview a refusal must not leave standing and the resolution
 surface (**MAP-15**, **MAP-16**, T5.2's open `Open / ADR`); the resync read that must filter on the
