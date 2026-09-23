@@ -10,7 +10,9 @@
 
 **Requirement:** PRD **M2** for the storage-class clause and the geometry-family clause of its Acceptance;
 PRD **M9** for the final clause of its Acceptance, which is where a geometry outside its layer's family is
-refused, flagged and retained, on that operation alone.
+refused, flagged and retained, on that operation alone. PRD **N9**'s Acceptance, whole and unchanged, for
+the record each of the two new refusals leaves (added 2026-09-23 at the Window A review, where a case
+already witnessed it and this line did not name it).
 
 **Invariants and constraints:** **I1**, **I2**, **I9**; **C1**, **C7**, **C12**.
 
