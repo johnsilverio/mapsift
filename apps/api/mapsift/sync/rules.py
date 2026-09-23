@@ -7,12 +7,19 @@ from itertools import pairwise
 from typing import assert_never
 from uuid import UUID
 
-from mapsift.layers.rules import TheCurrentStateOfAFeature, TheDeclarationsOfALayer
+from mapsift.layers.rules import (
+    GeometryKind,
+    TheCurrentStateOfAFeature,
+    TheDeclarationsOfALayer,
+    enters_the_operation_queue,
+    geometry_is_admissible,
+)
 from mapsift.sync.envelope import (
     ClientHalf,
     FeatureAddress,
     FeatureCreateOperation,
     FeatureGeometrySetOperation,
+    FeatureGeometrySetPayload,
     PropertyAddress,
 )
 
@@ -64,6 +71,8 @@ class WhyAnOperationWasRefused(StrEnum):
     """
 
     NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
+    SERVED_LAYER_TAKES_NO_OPERATIONS = "served_layer_takes_no_operations"
+    GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY = "geometry_outside_the_layers_family"
 
 
 class ThisStreamCannotBeContinued(Exception):
@@ -308,18 +317,66 @@ def the_refusals_this_batch_earns(
     the client can send changes the answer, and refusing the batch would stall the stream
     permanently (ADR-0014 decision 1, I2).
 
-    The layers are read from the operations and never from the state they fold to, which is the
-    reason `the_layers_this_batch_addresses` gives for itself (ADR-0012 decision 3).
+    Each operation is judged on the layer it names and the geometry it carries, both read from the
+    operation and never from the state the batch folds to, which is the reason
+    `the_layers_this_batch_addresses` gives for itself (ADR-0012 decision 3).
     """
-    return [
-        TheRefusalOfAnOperation(
-            operation_id=operation.root.operation_id,
-            mutation_number=the_mutation_number_of(operation),
-            reason=WhyAnOperationWasRefused.NO_LAYER_IN_THIS_PROJECT,
-        )
-        for operation in operations
-        if the_address_of(operation).layer_id not in layers_the_project_holds
-    ]
+    refusals: list[TheRefusalOfAnOperation] = []
+    for operation in operations:
+        reason = the_reason_an_operation_is_refused_for(operation, layers_the_project_holds)
+        if reason is not None:
+            refusals.append(
+                TheRefusalOfAnOperation(
+                    operation_id=operation.root.operation_id,
+                    mutation_number=the_mutation_number_of(operation),
+                    reason=reason,
+                )
+            )
+    return refusals
+
+
+def the_reason_an_operation_is_refused_for(
+    operation: ClientHalf, layers_the_project_holds: Mapping[UUID, TheDeclarationsOfALayer]
+) -> WhyAnOperationWasRefused | None:
+    """The one reason an operation is refused for, or None where its layer's declarations admit it.
+
+    An operation failing more than one rule carries the first in the order ADR-0010 decision 6's
+    addition of 2026-09-23 fixes as contract: the layer held, then its class, then its family.
+    """
+    declarations = layers_the_project_holds.get(the_address_of(operation).layer_id)
+    if declarations is None:
+        return WhyAnOperationWasRefused.NO_LAYER_IN_THIS_PROJECT
+    if not enters_the_operation_queue(declarations.storage_class):
+        return WhyAnOperationWasRefused.SERVED_LAYER_TAKES_NO_OPERATIONS
+    if carries_a_geometry_outside_the_family(operation, declarations.geometry_kind):
+        return WhyAnOperationWasRefused.GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY
+    return None
+
+
+def carries_a_geometry_outside_the_family(operation: ClientHalf, family: GeometryKind) -> bool:
+    """Whether an operation carries a geometry declaring a type outside a family (M2, M9).
+
+    Read off the declared `type` alone and never by parsing, and false wherever no type can be read:
+    an operation stating nothing of its geometry, or stating there is none, is not outside any
+    family, and a payload with no readable type is MAP-70's (ADR-0010 decision 6's addition of
+    2026-09-23).
+    """
+    stated = the_geometry_payload_of(operation)
+    if stated is None:
+        return False
+    declared_type = the_type_a_geometry_declares(stated.geometry)
+    if declared_type is None:
+        return False
+    return not geometry_is_admissible(layer_kind=family, geometry_type=declared_type)
+
+
+def the_type_a_geometry_declares(geometry: object) -> str | None:
+    """The `type` a GeoJSON-shaped structure declares for itself, or None where it declares none
+    this rule can read: not a mapping, no `type`, or a `type` that is not a string."""
+    if not isinstance(geometry, Mapping):
+        return None
+    declared = geometry.get("type")
+    return declared if isinstance(declared, str) else None
 
 
 def the_operations_no_refusal_names(
@@ -332,6 +389,28 @@ def the_operations_no_refusal_names(
     """
     refused = {refusal.operation_id for refusal in refusals}
     return [operation for operation in operations if operation.root.operation_id not in refused]
+
+
+def the_geometry_payload_of(operation: ClientHalf) -> FeatureGeometrySetPayload | None:
+    """The payload an operation states its feature's whole geometry in, or None where it states
+    nothing about that geometry at all (M9).
+
+    The one place the catalog is read for the geometry an operation carries, so the family check and
+    the projection cannot disagree about which operation carried which geometry.
+    """
+    authored = operation.root
+    match authored:
+        case FeatureCreateOperation():
+            # Not an oversight and not a null to record: a create's payload carries nothing
+            # beyond the address, so it makes no statement about the geometry at all, while a
+            # set carrying null states there is none (ADR-0012 3's addition of 2026-09-09).
+            return None
+        case FeatureGeometrySetOperation():
+            return authored.payload
+        case _:
+            # A catalog member added later lands here and fails the type check until somebody
+            # decides what geometry it carries, which a fallback would decide for them.
+            assert_never(authored)
 
 
 def the_current_state_this_batch_leaves(
@@ -350,19 +429,9 @@ def the_current_state_this_batch_leaves(
     for operation in operations:
         address = the_address_of(operation)
         addressed[address.feature_id] = address
-        authored = operation.root
-        match authored:
-            case FeatureCreateOperation():
-                # Not an oversight and not a null to record: a create's payload carries nothing
-                # beyond the address, so it makes no statement about the geometry at all, while a
-                # set carrying null states there is none (ADR-0012 3's addition of 2026-09-09).
-                pass
-            case FeatureGeometrySetOperation():
-                spoken[address.feature_id] = authored.payload.geometry
-            case _:
-                # A catalog member added later lands here and fails the type check until somebody
-                # decides what it leaves in the projection, which a fallback would decide for them.
-                assert_never(authored)
+        stated = the_geometry_payload_of(operation)
+        if stated is not None:
+            spoken[address.feature_id] = stated.geometry
 
     return [
         TheCurrentStateOfAFeature(
