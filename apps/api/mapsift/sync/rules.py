@@ -356,13 +356,13 @@ def the_reason_an_operation_is_refused_for(
 def carries_a_geometry_outside_the_family(operation: ClientHalf, family: GeometryKind) -> bool:
     """Whether an operation carries a geometry declaring a type outside a family (M2, M9).
 
-    Read off the declared `type` alone and never by parsing, and false wherever no type can be read:
-    an operation stating nothing of its geometry, or stating there is none, is not outside any
-    family, and a payload with no readable type is MAP-70's (ADR-0010 decision 6's addition of
-    2026-09-23).
+    Read off the declared `type` alone and never by parsing. False for an operation carrying no
+    geometry, whether it states nothing of one or states there is none, since neither is outside any
+    family; and false for a geometry no type can be read off, which is not checked for a family at
+    all (ADR-0010 decision 6's addition of 2026-09-23).
     """
     stated = the_geometry_payload_of(operation)
-    if stated is None:
+    if stated is None or stated.geometry is None:
         return False
     declared_type = the_type_a_geometry_declares(stated.geometry)
     if declared_type is None:
@@ -401,9 +401,9 @@ def the_geometry_payload_of(operation: ClientHalf) -> FeatureGeometrySetPayload 
     authored = operation.root
     match authored:
         case FeatureCreateOperation():
-            # Not an oversight and not a null to record: a create's payload carries nothing
-            # beyond the address, so it makes no statement about the geometry at all, while a
-            # set carrying null states there is none (ADR-0012 3's addition of 2026-09-09).
+            # No payload, never a payload carrying null: a create says nothing of the geometry and
+            # leaves the stored column alone, while a set carrying null says there is none and is
+            # written (ADR-0012 decision 3's addition of 2026-09-09).
             return None
         case FeatureGeometrySetOperation():
             return authored.payload

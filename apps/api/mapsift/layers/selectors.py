@@ -33,8 +33,9 @@ def features_of_a_project_intersecting(project_id: UUID, box: Polygon) -> QueryS
 def the_declarations_of_the_layers_a_project_holds_among(
     project_id: UUID, layer_ids: Collection[UUID]
 ) -> dict[UUID, TheDeclarationsOfALayer]:
-    """What each of the given layers this project of the tenant in force holds declares (M2), a
-    layer it does not hold being absent rather than refused.
+    """The declarations of the given layers this project of the tenant in force holds (M2).
+
+    A given layer the project does not hold is absent from the mapping rather than refused.
 
     Requires a tenant binding and opens none (ADR-0005 sections 3 and 4). It answers a mapping
     rather than a queryset, so its rows are read inside the binding that authorised them.

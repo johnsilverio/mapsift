@@ -1,6 +1,6 @@
 """A layer's declarations and the two decisions they make about its features (M2), and the shapes
-that cross this package's edge as plain data: the declarations, going out to the flush that judges
-an operation by them, and one feature's current state, coming in to be projected (M15)."""
+that cross this package's edge as plain data: a layer's declarations on their way out, and one
+feature's current state on its way in to be projected (M15)."""
 
 from dataclasses import dataclass
 from enum import StrEnum
