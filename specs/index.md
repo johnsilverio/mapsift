@@ -186,6 +186,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     resend-dedup clause had no upstream criterion was struck at the pre-dispatch read, which found that
     clause in PRD M10's own Acceptance, added there hours earlier by the same fan-out. That is the third
     finding in this folder's history against a claim the orchestrator made about a set.
+  - **`tasks/MAP-66-layer-declaration-refusals.md`** — the two refusals a layer's declarations make, its
+    storage class and its geometry family, wired onto the flush as verdicts on one operation rather than on
+    the batch. **The first file here written twice**: its first pickup built both as whole-batch refusals,
+    whose final review found them stalling an append-only stream against I2, which is what opened MAP-72.
+    The second pickup, after MAP-72 merged, replaced the file rather than amending it, keeps the first
+    branch as evidence rather than rebasing it, and retires one Acceptance reading the first version
+    carried: that the server's log never holds an operation naming a served layer.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
