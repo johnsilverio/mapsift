@@ -13,7 +13,7 @@ from mapsift.common.decision_trail import (
     correlated_by,
     record_the_decision,
 )
-from mapsift.layers.selectors import the_layers_a_project_holds_among
+from mapsift.layers.selectors import the_declarations_of_the_layers_a_project_holds_among
 from mapsift.layers.services import project_the_current_state
 from mapsift.sync.envelope import ClientHalf, Verdict
 from mapsift.sync.models import ClientCursor, OperationLogEntry, ProjectVersionCounter
@@ -197,7 +197,9 @@ def _the_refusals_this_flush_decides(
     return tuple(
         the_refusals_this_batch_earns(
             operations,
-            layers_the_project_holds=the_layers_a_project_holds_among(project_id, addressed),
+            layers_the_project_holds=the_declarations_of_the_layers_a_project_holds_among(
+                project_id, addressed
+            ),
         )
     )
 
