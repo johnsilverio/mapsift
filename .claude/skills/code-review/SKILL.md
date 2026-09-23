@@ -69,6 +69,15 @@ stack the diff never touched is reporting that it does not know what it is looki
 **If a machine gate is red the review stops here and reports that.** A judgement review over a red build
 is a report about code that does not run.
 
+> **Added 2026-09-23, the reading the owner approved on 2026-09-08 and deferred until MAP-65 closed: a
+> Window A round is red by construction, so for it "green" means this.** `lint` and `format` are green.
+> `pytest` is red **only on the new cases**, every pre-existing case passes, and each new case is red for
+> the reason it declares, never through a collection or import error. `typecheck` is green except where a
+> new name the implementing window will create is imported, and except for a **production caller broken
+> only by a signature the window changed** at the seam its tests drive (extended by the owner 2026-09-23
+> at MAP-66, where the one error was the flush's call into the pure rule and closing it was the
+> implementation). Anything else red stops the review exactly as above.
+
 **Prose is caught by `.claude/hooks/check-prose.sh` since 2026-08-10, and the axis still reads it.** The
 hook is `PostToolUse`: the write **lands** and the violation is handed back to the model to fix, which is
 not the same as refusing it. Two things it cannot see, and they are why nothing here was narrowed on the
