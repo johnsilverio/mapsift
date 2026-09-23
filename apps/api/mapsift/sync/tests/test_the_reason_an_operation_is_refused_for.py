@@ -6,13 +6,15 @@ layer's declarations, and an operation is judged against the layer it addresses)
 acceptance clause for the refusal the family check makes; **ADR-0014 decisions 1 and 7** for the
 verdict being one operation's and a pure decision taken before anything is written. I2; C7.
 
-**Pure because the decision is pure, and here because the route cannot carry these cases.** A
-payload this rule reads no family out of answers `500` at the writer, which is MAP-70's to change,
-so a route case over one pins what that issue owns; a geometry set on a served layer is always one
-for a feature no applied operation created, the shape ADR-0014 decision 7 leaves open; and which
-declarations the rule reads is invisible at the route while its one caller hands it exactly the
-layers the batch names. Everything the route can show is in
-`tests/test_the_layer_declaration_refusals.py`.
+**Pure because the decision is pure, and here because the route cannot carry these cases inside
+this task's scope.** A payload this rule reads no family out of answers `500` at the writer, which
+is MAP-70's to change, so a route case over one pins what that issue owns; a geometry set on a
+served layer reaches the route either for a feature no applied operation created, the shape
+ADR-0014 decision 7 leaves open, or addressed at a layer other than the one its feature is filed
+under, a feature changing path, which M2's fourth acceptance clause governs and MAP-66's task spec
+keeps out of scope; and which declarations the rule reads is invisible at the route while its one
+caller hands it exactly the layers the batch names. Every case the route carries inside that scope
+is in `tests/test_the_layer_declaration_refusals.py`.
 
 The reasons are spelled as literals rather than read off `WhyAnOperationWasRefused`, on this suite's
 rule for a wire value: a case comparing an enum against itself cannot notice a member being renamed.
@@ -106,8 +108,11 @@ def test_a_served_layer_carrying_a_geometry_of_another_family_is_refused_for_its
     choice rather than forced: a served layer takes no operations at all (M2), so whether a
     geometry fits its family is a question never reached, and the one reason carried is the class.
 
-    Here rather than through the route because every route arrangement of it is a geometry set for
-    a feature no applied operation created, which ADR-0014 decision 7 declines to decide."""
+    Here rather than through the route because each route arrangement of it rests on a shape this
+    task does not own: a geometry set for a feature no applied operation created, which ADR-0014
+    decision 7 declines to decide, or one addressed at a layer other than the one its feature is
+    filed under, a feature changing path (M2's fourth acceptance clause) that MAP-66's task spec
+    keeps out of scope."""
     a_served_point_layer = uuid4()
 
     refusals = the_refusals_this_batch_earns(

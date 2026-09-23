@@ -370,9 +370,11 @@ def test_a_served_layers_feature_never_becomes_current_state_while_an_element_la
 def test_the_operation_naming_a_served_layer_first_is_refused_though_the_fold_loses_that_layer(
     alice: Party,
 ) -> None:
-    """ADR-0012 decision 3 on the **guard** rather than on the write, the MAP-65 trap carried to the
-    storage class: a verdict is decided over the operations and never over the state they fold to,
-    because that fold keeps one row per feature and the last address each feature was given.
+    """A guard reads the set it guards and never a reduction of it (`specs/log.md` under
+    2026-09-09, and the docstring of `the_layers_this_batch_addresses`), the MAP-65 trap carried to
+    the storage class: a verdict is decided over the operations and never over the state they fold
+    to, because the fold the projection writes from (ADR-0012 decision 3) keeps one row per feature
+    and the last address each feature was given.
 
     **One feature and two creates, the served layer named first**, which is the only shape that
     tells the two readings apart: the fold files the feature under the element layer, so a guard
@@ -599,9 +601,11 @@ def test_a_geometry_outside_the_family_its_layer_declares_is_refused_by_a_verdic
 def test_the_geometry_that_left_the_family_first_is_refused_though_the_fold_keeps_one_inside_it(
     alice: Party,
 ) -> None:
-    """ADR-0012 decision 3 on the guard, on the axis the unknown layer's correction did not cover:
-    the fold keeps the last geometry each feature was given as well as its last address, so a guard
-    fed from it never sees a geometry an earlier operation carried.
+    """A guard reads the set it guards and never a reduction of it (`specs/log.md` under
+    2026-09-09, and the docstring of `the_layers_this_batch_addresses`), on the axis the unknown
+    layer's correction did not cover: the fold the projection writes from (ADR-0012 decision 3)
+    keeps the last geometry each feature was given as well as its last address, so a guard fed from
+    it never sees a geometry an earlier operation carried.
 
     **One feature and two geometries, the parcel drawn first and the point surveyed after it**,
     which is the shape the two readings answer differently: the fold keeps the point, a guard fed
