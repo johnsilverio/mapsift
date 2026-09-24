@@ -107,14 +107,44 @@ def test_a_logged_entry_replays_the_catalogs_other_operation_with_its_payload(
     """M15 with M9, and not a duplicate of the case above. The two catalog members carry
     structurally different targets and only this one carries a payload, so an entry shaped around
     `feature.create` drops the geometry of a `feature.geometry.set` while the case above stays
-    green, which is exactly the log MAP-11's replay could not read back."""
-    authored = a_geometry_set_claiming(alice.tenant_id, project_id=alice.project_id)
+    green, which is exactly the log MAP-11's replay could not read back.
+
+    **Re-arranged 2026-09-24 at MAP-68: the geometry set follows a create for its own feature.** It
+    named a feature nothing created, which PRD M9's clause of that date refuses
+    `no_feature_at_this_address`, and a refused entry, though retained verbatim, is outside the
+    replay this case is named for (M15's Shape as added 2026-09-17). The create keeps the entry
+    read here an applied one, and the entry is read by its own identifier because the log now holds
+    two."""
+    feature_id, one_client, the_set = uuid4(), uuid4(), uuid4()
+    authored = a_geometry_set_claiming(
+        alice.tenant_id,
+        operation_id=the_set,
+        client_id=one_client,
+        mutation_number=1,
+        project_id=alice.project_id,
+        feature_id=feature_id,
+    )
     browser = a_browser(authenticated_as=alice.user_id)
 
-    browser.post(OPERATIONS_PATH, {"operations": [authored]}, JSON)
+    browser.post(
+        OPERATIONS_PATH,
+        {
+            "operations": [
+                a_feature_create_claiming(
+                    alice.tenant_id,
+                    client_id=one_client,
+                    mutation_number=0,
+                    project_id=alice.project_id,
+                    feature_id=feature_id,
+                ),
+                authored,
+            ]
+        },
+        JSON,
+    )
 
     with tenant_scope(alice.tenant_id):
-        entry = OperationLogEntry.objects.get()
+        entry = OperationLogEntry.objects.get(operation_id=the_set)
 
     assert ClientHalf.model_validate(entry.client_half) == ClientHalf.model_validate(authored)
 

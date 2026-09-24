@@ -34,6 +34,16 @@ by asking what it would be false about if the transaction vanished, and a per-op
 now a **write**, so it waits for the commit like an application rather than staying where it is
 taken. A refusal that decides nothing and writes nothing keeps the old position.
 
+**Added 2026-09-24, at MAP-68 and MAP-74: two more reasons reach `flush.refused`, and a resend of an
+operation the log already holds is a drop.** ADR-0010 decision 6's addition of that date adds
+`feature_already_created` and `no_feature_at_this_address` to the refusal set, so their records are
+the per-operation refusal above with two more reason values. ADR-0011 section 4's note of the same
+date sorts the held resend into that section's third category: it asserts that an earlier flush
+already decided the operation, true whether or not this one commits, so it is `flush.deduplicated`,
+one per operation, emitted where it is taken, named by neither `flush.applied` nor `flush.refused`,
+and **carrying the held refusal's `reason` where the verdict the log holds is a refusal**, because
+the response lists it under `refused` and every user-visible refusal has its matching record.
+
 **The join is over a field and never over a message.** ADR-0011 section 4 states the rule this
 module is the enforcement of: an identifier interpolated into a message string is not a join key, a
 key is a field, and `operation_ids` is a list rather than a delimited string. Every case below looks
@@ -139,6 +149,10 @@ THE_MUTATION_NUMBER_REFUSED = "mutation_number"
 # of 2026-09-23), spelled as wire values for the reason `NO_LAYER_IN_THIS_PROJECT` is.
 SERVED_LAYER_TAKES_NO_OPERATIONS = "served_layer_takes_no_operations"
 GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY = "geometry_outside_the_layers_family"
+# The two members the feature an operation names adds to them (ADR-0010 decision 6's addition of
+# 2026-09-24), spelled as wire values for the same reason.
+FEATURE_ALREADY_CREATED = "feature_already_created"
+NO_FEATURE_AT_THIS_ADDRESS = "no_feature_at_this_address"
 
 
 def _a_contiguous_queue_of(
@@ -355,6 +369,22 @@ def _the_field_each_record_carries(field: str, documents: Sequence[JsonObject]) 
     whether the record carries the field, never whether the reader survived it.
     """
     return [document.get(field) for document in documents]
+
+
+def _the_decisions_and_reasons_recorded_about(
+    operation_id: UUID, documents: Sequence[JsonObject]
+) -> list[tuple[str, str]]:
+    """What the server decided about one operation and the reason each record gives for it, in the
+    order it decided it, an absent or null reason read as the empty string.
+
+    The pair rather than either half, for the question a held resend raises: which decision the
+    trail names for it and whether that decision carries the reason the client was shown, which are
+    two readings of one record and have to come from the same one.
+    """
+    return [
+        (str(document[EVENT]), str(document.get(REASON) or ""))
+        for document in _the_records_naming(operation_id, documents)
+    ]
 
 
 def _the_reasons_recorded(documents: Sequence[JsonObject]) -> list[str]:
@@ -1311,3 +1341,173 @@ def test_no_refusal_is_recorded_over_a_transaction_that_never_committed(alice: P
 
     assert answered.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert _the_records_of(FLUSH_REFUSED, the_documents_of(emitted)) == []
+
+
+def test_a_refusal_about_the_feature_an_operation_names_is_recorded_with_the_reason_shown(
+    alice: Party,
+) -> None:
+    """N9's clause that every user-visible refusal has a matching record, for the two reasons
+    ADR-0010 decision 6's addition of 2026-09-24 adds to the set (PRD M9's clause of that date),
+    each recorded as its own `flush.refused` under ADR-0014 decision 8.
+
+    **Joined per operation rather than compared as a list**, on the ground the sibling case for the
+    layer's declarations gives: the question a support desk brings is one identifier and what the
+    server decided about it. **Both reasons in one flush**, a create of a feature an earlier flush
+    created and a geometry set for a feature nothing created, so a path recording only the reasons
+    it already knew, or one reason for the whole flush, is red rather than right by accident."""
+    created_again, naming_nothing_created = uuid4(), uuid4()
+    feature_id, installation = uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _the_server_took(
+        browser,
+        {
+            "operations": [
+                a_feature_create_claiming(
+                    alice.tenant_id,
+                    client_id=installation,
+                    mutation_number=0,
+                    project_id=alice.project_id,
+                    feature_id=feature_id,
+                )
+            ]
+        },
+    )
+    a_queue_refused_for_the_features_it_names = {
+        "operations": [
+            a_feature_create_claiming(
+                alice.tenant_id,
+                operation_id=created_again,
+                client_id=installation,
+                mutation_number=1,
+                project_id=alice.project_id,
+                feature_id=feature_id,
+            ),
+            a_geometry_set_claiming(
+                alice.tenant_id,
+                operation_id=naming_nothing_created,
+                client_id=installation,
+                mutation_number=2,
+                project_id=alice.project_id,
+            ),
+        ]
+    }
+
+    with the_lines_the_logging_path_emits() as emitted:
+        answered = browser.post(OPERATIONS_PATH, a_queue_refused_for_the_features_it_names, JSON)
+
+    recorded = _the_records_of(FLUSH_REFUSED, the_documents_of(emitted))
+
+    assert answered.json()[THE_REFUSALS_IN_THE_BODY] == [
+        {THE_MUTATION_NUMBER_REFUSED: 1, THE_REASON_IN_THE_BODY: FEATURE_ALREADY_CREATED},
+        {THE_MUTATION_NUMBER_REFUSED: 2, THE_REASON_IN_THE_BODY: NO_FEATURE_AT_THIS_ADDRESS},
+    ]
+    assert _the_reasons_recorded(_the_records_naming(created_again, recorded)) == [
+        FEATURE_ALREADY_CREATED
+    ]
+    assert _the_reasons_recorded(_the_records_naming(naming_nothing_created, recorded)) == [
+        NO_FEATURE_AT_THIS_ADDRESS
+    ]
+
+
+def test_an_operation_the_log_already_holds_is_recorded_as_dropped_rather_than_decided_again(
+    alice: Party,
+) -> None:
+    """ADR-0011 section 4's note of 2026-09-24 with PRD T2.3 as sharpened that day: a resend of an
+    operation the log already holds is answered with the verdict the log holds and writes nothing,
+    so it is a **drop** and recorded as `flush.deduplicated`, and it appears in neither
+    `flush.applied` nor `flush.refused`, since this flush applied nothing and refused nothing of it.
+
+    **The resend arrives above the cursor**, which is what separates it from the drop
+    `test_an_operation_the_cursor_had_already_seen_is_recorded_as_dropped_and_not_as_applied` reads:
+    the cursor lets this one through, and by reading at the MAP-68 pickup the trail recorded it
+    `flush.applied` while the log's identity constraint dropped it, a record claiming a write that
+    never happened.
+
+    **The verdict the log holds is applied, so the drop carries no reason**, the quiet side of the
+    note's clause that the reason rides on a drop whose held verdict is a refusal; the pair is read
+    from the one record, so a drop and a second decision cannot both be counted."""
+    held, installation = uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    _the_server_took(
+        browser,
+        _a_contiguous_queue_of(held, by=alice, from_installation=installation, starting_at=0),
+    )
+
+    with the_lines_the_logging_path_emits() as emitted:
+        again = browser.post(
+            OPERATIONS_PATH,
+            _a_contiguous_queue_of(held, by=alice, from_installation=installation, starting_at=1),
+            JSON,
+        )
+
+    assert again.status_code == HTTPStatus.OK
+    assert _the_decisions_and_reasons_recorded_about(held, the_documents_of(emitted)) == [
+        (FLUSH_DEDUPLICATED, "")
+    ]
+
+
+def test_a_refusal_the_log_already_holds_is_recorded_as_dropped_with_the_reason_shown(
+    alice: Party,
+) -> None:
+    """ADR-0011 section 4's note of 2026-09-24 on the other verdict the log can hold: a held
+    refused operation, resent, is listed under `refused` (ADR-0010 decision 6's addition of the same
+    date), and **its drop carries that refusal's `reason`**, because N9 requires every user-visible
+    refusal to have its matching record, and it is still a drop rather than a `flush.refused`, since
+    this flush decided nothing about it.
+
+    **The body is read beside the record**, on the measured ground the sibling refusal cases give: a
+    record compared against whatever the body said would call a refusal for another reason correct.
+    Nothing is created between the two flushes, so the layer is still absent and a second judgement
+    answers the same reason; the event is what tells a drop from a second decision here."""
+    held_refusal, installation = uuid4(), uuid4()
+    browser = a_browser(authenticated_as=alice.user_id)
+    refused_the_first_time = an_operation_on_a_layer_this_project_lacks(
+        alice, operation_id=held_refusal, from_installation=installation, mutation_number=0
+    )
+    _the_server_took(browser, {"operations": [refused_the_first_time]})
+
+    with the_lines_the_logging_path_emits() as emitted:
+        again = browser.post(
+            OPERATIONS_PATH,
+            {"operations": [{**refused_the_first_time, "mutation_number": 1}]},
+            JSON,
+        )
+
+    assert again.json()[THE_REFUSALS_IN_THE_BODY] == [
+        {THE_MUTATION_NUMBER_REFUSED: 1, THE_REASON_IN_THE_BODY: NO_LAYER_IN_THIS_PROJECT}
+    ]
+    assert _the_decisions_and_reasons_recorded_about(held_refusal, the_documents_of(emitted)) == [
+        (FLUSH_DEDUPLICATED, NO_LAYER_IN_THIS_PROJECT)
+    ]
+
+
+def test_a_drop_of_an_operation_the_log_already_holds_is_recorded_though_the_flush_never_committed(
+    alice: Party,
+) -> None:
+    """ADR-0011 section 4's note of 2026-09-24 on **when** the held drop is emitted: where it is
+    taken, like the cursor's drop and unlike an application, because it asserts that an earlier
+    flush already decided the operation, which is true whether or not this one commits. Deferred to
+    a commit that never comes, it is lost, and the one record a resent-and-then-failed flush has to
+    offer about that operation goes with it.
+
+    **An operation the log does not hold travels behind it**, so the flush has something to append
+    and the deferred constraint of `the_commit_refused_after_everything_was_written` has a commit to
+    refuse. The `500` is the control, every other end this route has being a refusal carrying a
+    status of its own."""
+    held, drawn_since, installation = uuid4(), uuid4(), uuid4()
+    _the_server_took(
+        a_browser(authenticated_as=alice.user_id),
+        _a_contiguous_queue_of(held, by=alice, from_installation=installation, starting_at=0),
+    )
+
+    what_the_client_was_told, documents = _a_flush_meeting(
+        the_commit_refused_after_everything_was_written(),
+        held,
+        drawn_since,
+        by=alice,
+        from_installation=installation,
+        starting_at=1,
+    )
+
+    assert what_the_client_was_told == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert _the_records_of(FLUSH_DEDUPLICATED, _the_records_naming(held, documents)) != []

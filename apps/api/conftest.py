@@ -559,6 +559,11 @@ def a_geometry_set_claiming(
     settled 2026-08-11). It read 2, minted before the first value of the axis was decided and
     surviving the correction of its sibling because it is a literal rather than a default, which is
     how a stale value outlives the round that retired it.
+
+    **The feature defaults to a fresh identifier, which no applied operation created**, and since
+    2026-09-24 that operation is refused `no_feature_at_this_address` (PRD M9, ADR-0010 decision
+    6's addition of that date). A caller that wants its geometry applied names a feature a create
+    before it filed at this address; a caller that leaves the default is arranging that refusal.
     """
     addressed_project = project_id or uuid4()
     return {

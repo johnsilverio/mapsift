@@ -36,6 +36,7 @@ import logging
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from http import HTTPStatus
+from uuid import uuid4
 
 import pytest
 from django.core import mail
@@ -200,8 +201,33 @@ def _carrying(text: str, lines: Sequence[str]) -> list[str]:
 
 
 def _a_flush_carrying_a_coordinate(party: Party) -> JsonObject:
-    """One geometry operation from an installation the server has never met (M9, M10's Shape)."""
-    return {"operations": [a_geometry_set_claiming(party.tenant_id, project_id=party.project_id)]}
+    """One drawing from an installation the server has never met: a feature's create, then the
+    geometry operation carrying the coordinate (M9, M10's Shape).
+
+    **The create is there because the geometry needs a feature to name**, re-arranged 2026-09-24 at
+    MAP-68: a geometry set naming a feature nothing created is refused `no_feature_at_this_address`
+    since PRD M9's clause of that date, and every case reading this flush was written against one
+    the server applies, whose records are the ones it reasons about.
+    """
+    feature_id, installation = uuid4(), uuid4()
+    return {
+        "operations": [
+            a_feature_create_claiming(
+                party.tenant_id,
+                client_id=installation,
+                mutation_number=0,
+                project_id=party.project_id,
+                feature_id=feature_id,
+            ),
+            a_geometry_set_claiming(
+                party.tenant_id,
+                client_id=installation,
+                mutation_number=1,
+                project_id=party.project_id,
+                feature_id=feature_id,
+            ),
+        ]
+    }
 
 
 def test_no_line_the_path_emits_carries_a_coordinate_though_django_logs_the_insert_holding_one(

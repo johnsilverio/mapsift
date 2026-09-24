@@ -24,12 +24,14 @@ What is deliberately not here, each with the issue that owns it: the client's qu
 optimistic preview of a refused operation (**MAP-15**, **MAP-16**); the element budget and the
 import classification (M2's other clauses, which nothing reaches); a feature changing path (OQ-6
 and M2's fourth clause); every geometry payload the writer cannot take (**MAP-70**, **MAP-69**,
-**MAP-33**), so each payload below is one GEOS and the column already take; a create addressing a
-feature that already exists (**MAP-68**); and the record each refusal leaves in the decision trail,
-which is `mapsift/sync/tests/test_the_flush_decision_trail.py`'s. **One shape nothing here
-arranges**, on the convention the projection module states: a geometry set for a feature no applied
-operation created, which ADR-0014 decision 7 leaves open, so every geometry follows a create for its
-own feature that the flush applies.
+**MAP-33**), so each payload below is one GEOS and the column already take; the two refusals about
+the feature an operation names (**MAP-68**, `tests/test_the_feature_an_operation_names.py`); and the
+record each refusal leaves in the decision trail, which is
+`mapsift/sync/tests/test_the_flush_decision_trail.py`'s. **Every geometry follows a create for its
+own feature that the flush applies**, on the convention the projection module states: a geometry set
+for a feature no applied operation created is refused `no_feature_at_this_address` since 2026-09-24,
+which the order of ADR-0010 decision 6's addition of that date puts ahead of the family, so a case
+here that set a geometry on nothing would be answered by the address and not by the declaration.
 """
 
 from dataclasses import dataclass
@@ -380,8 +382,11 @@ def test_the_operation_naming_a_served_layer_first_is_refused_though_the_fold_lo
     tells the two readings apart: the fold files the feature under the element layer, so a guard
     reading it never sees the served one and refuses nothing. Two creates rather than a create and a
     geometry set, because once the first operation earns its own verdict the batch around it
-    applies, and a geometry set there would address a feature no applied operation created
-    (ADR-0014 decision 7)."""
+    applies, and a geometry set there would name a feature no applied operation created, refused
+    `no_feature_at_this_address` in its own right since 2026-09-24. **The second create is
+    admitted**: a create refused earlier in the batch leaves nothing held, so a second create of the
+    same feature is judged like any create (ADR-0010 decision 6's addition of 2026-09-24), which the
+    body says by naming one refusal and not two."""
     a_served_layer, an_element_layer = uuid4(), uuid4()
     feature_id, installation = uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)

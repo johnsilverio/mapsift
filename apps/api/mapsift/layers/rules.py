@@ -69,6 +69,15 @@ class TheDeclarationsOfALayer:
 
 
 @dataclass(frozen=True, slots=True)
+class WhereAFeatureIsFiled:
+    """The project and the layer one feature the tenant holds is filed under, in plain data (M2,
+    M9)."""
+
+    project_id: UUID
+    layer_id: UUID
+
+
+@dataclass(frozen=True, slots=True)
 class TheCurrentStateOfAFeature:
     """One feature as the operations addressing it leave it, in plain data (M15, M9).
 

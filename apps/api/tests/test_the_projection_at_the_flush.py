@@ -34,7 +34,10 @@ contract relaxed is in the wrong package, and so is a test.
 **Everything goes through the route and never through the writer**, on the ground the sibling flush
 modules already state: `tenant_scope` opens `transaction.atomic()` itself, so a case whose only
 transaction is the one its own context manager opened is green against an implementation that has
-none, and the atomicity this task is about is precisely what that would hide.
+none, and the atomicity this task is about is precisely what that would hide. **One case acts
+through the writer, and it says why in its own docstring** (added 2026-09-24, at MAP-68): the rule
+it is about is the write's, the route stopped reaching it that day, and atomicity is not its
+subject.
 
 **Every read of either table forces its rows inside the binding that authorised it.** A queryset
 built inside `tenant_scope` and evaluated after that block closes has lost
@@ -61,13 +64,18 @@ parsed payload being a relabel rather than a transformation, so no payload below
 member of its own and every geometry here is written in the frame it is read back in; a **geometry
 payload the parser or the column cannot take** (MAP-70), which this write makes reachable for the
 first time by carrying a client's payload to GEOS and PostGIS, so every payload below is one they
-take; and whether a **create for a feature that already exists** is legitimate at all (MAP-68),
-which the two cases over that shape leave exactly where the ADR left it, pinning what the projection
-does with a flush the route accepts today and never that it should.
+take; and the **two refusals about the feature an operation names**, a create naming a feature the
+tenant already holds and any other operation naming one it does not hold at that address, which
+MAP-68 decided on 2026-09-24 (PRD M9's clause of that date) and whose cases are
+`tests/test_the_feature_an_operation_names.py`. The two cases here that were written over a create
+for an existing feature while it was undecided moved with that decision: one inverted and says so in
+its name, and one was re-subjected to the write, whose rule the route no longer reaches (ADR-0012
+decision 3's note of 2026-09-24).
 
-**One shape nothing here arranges, because nobody has decided it:** a `feature.geometry.set` for a
-feature no operation ever created. Every geometry below follows a create for its own feature, in an
-earlier flush or in the same batch.
+**Every geometry below follows a create for its own feature**, in an earlier flush or in the same
+batch, because a geometry set for a feature no applied operation created is refused
+`no_feature_at_this_address` since that date, and a case here that set a geometry on nothing would
+be arranging a refusal rather than the projection it is about.
 """
 
 import json
@@ -90,8 +98,8 @@ from conftest import (
 )
 from mapsift.common.binding import tenant_scope
 from mapsift.layers.models import Feature
-from mapsift.layers.rules import GeometryKind, StorageClass
-from mapsift.layers.services import create_layer
+from mapsift.layers.rules import GeometryKind, StorageClass, TheCurrentStateOfAFeature
+from mapsift.layers.services import create_layer, project_the_current_state
 from mapsift.sync.models import OperationLogEntry
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -112,6 +120,9 @@ THE_REFUSALS = "refused"
 THE_MUTATION_NUMBER_REFUSED = "mutation_number"
 THE_REASON = "reason"
 NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
+# The member MAP-68 adds for a create naming a feature the tenant already holds (ADR-0010 decision
+# 6's addition of 2026-09-24), spelled as a literal for the reason the others are.
+FEATURE_ALREADY_CREATED = "feature_already_created"
 
 # The log column the server writes its decision on, and the member of the envelope's closed verdict
 # set that says it applied the operation (ADR-0014 decisions 3 and 4). Named the way
@@ -580,26 +591,30 @@ def test_a_later_flush_replaces_the_geometry_an_earlier_flush_left(alice: Party)
     )
 
 
-def test_a_create_for_a_feature_that_already_exists_leaves_the_stored_geometry_it_says_nothing_of(
+def test_a_projection_write_silent_on_a_features_geometry_leaves_the_geometry_already_stored(
     alice: Party,
 ) -> None:
-    """ADR-0012 decision 3's addition of 2026-09-09, on the arm that was found as a defect: a
-    create's payload carries nothing beyond the address it creates (M9), so it makes no statement
-    about the geometry at all, and a write that carried that silence into its update set cleared a
-    surveyed point while answering the client that the flush was applied.
+    """ADR-0012 decision 3's addition of 2026-09-09, on the arm that was found as a defect: a write
+    that says nothing about a feature's geometry leaves the stored geometry as it found it, and a
+    write that carried that silence into its update set cleared a surveyed point while answering
+    the client that the flush was applied.
 
-    **Across two flushes rather than inside one**, which is why the defect survived a green suite:
-    a create following a geometry set within one batch is folded per feature and already leaves the
-    geometry alone, so the only reachable loss is a projection row an earlier flush left behind.
+    **Re-subjected 2026-09-24 at MAP-68, and the name moved with the subject.** It was
+    `test_a_create_for_a_feature_that_already_exists_leaves_the_stored_geometry_it_says_nothing_of`
+    and reached this rule through the route, by a create for a feature an earlier flush had
+    projected. That create is refused `feature_already_created` now, and a held resend is no longer
+    projected (PRD M9 and T2.3 as that date left them), so no flush reaching the write addresses an
+    existing feature while saying nothing of its geometry: through the route this case would stay
+    green without the write ever being asked. **The rule stands**, binding the first catalog member
+    that leaves a column unspoken on an existing feature (ADR-0012 decision 3's note of 2026-09-24),
+    so the case asks the write directly, which is the one place this module goes through the writer;
+    the atomicity that keeps every other case on the route is not this one's subject.
 
-    **The shape is one the canon requires the route to accept rather than one this case invents.**
-    PRD T2.3's acceptance, addition of 2026-08-11, has an operation the server already holds,
-    resent above the cursor, answered as applied rather than refused; whether a re-create is
-    legitimate at all is MAP-68's and is not decided here."""
+    **The row it leaves alone is one a flush wrote**, drawn through the route first, so what the
+    write is asked to preserve is the state a real flush leaves rather than one this case built."""
     layer_id, feature_id, installation = uuid4(), uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
     _an_element_layer_of(alice, layer_id=layer_id)
-
     browser.post(
         OPERATIONS_PATH,
         _a_queue_of(
@@ -613,41 +628,63 @@ def test_a_create_for_a_feature_that_already_exists_leaves_the_stored_geometry_i
         ),
         JSON,
     )
-    browser.post(
-        OPERATIONS_PATH,
-        _a_queue_of(
-            _a_feature_create(
-                alice,
-                layer_id=layer_id,
-                feature_id=feature_id,
-                from_installation=installation,
-                mutation_number=2,
-            )
-        ),
-        JSON,
-    )
+
+    with tenant_scope(alice.tenant_id):
+        project_the_current_state(
+            [
+                TheCurrentStateOfAFeature(
+                    tenant_id=alice.tenant_id,
+                    project_id=alice.project_id,
+                    layer_id=layer_id,
+                    feature_id=feature_id,
+                    geometry=None,
+                    the_batch_spoke_of_its_geometry=False,
+                )
+            ]
+        )
 
     assert _the_geometry_the_projection_holds(alice, feature_id) == _as_the_storage_frame_holds_it(
         A_PLACE_IN_THE_FIELD
     )
 
 
-def test_a_create_for_a_feature_that_already_exists_files_it_under_the_layer_it_names(
+def test_a_create_for_a_feature_that_already_exists_leaves_it_under_the_layer_it_was_drawn_in(
     alice: Party,
 ) -> None:
-    """ADR-0012 decision 3's addition of 2026-09-09, on the opposite mistake in the same place: a
-    column an operation **did** speak of moves, and a write that left the container of a conflicting
-    row as it found it logged the new layer while the projection went on filing the feature under
-    the old one (M2, M9).
+    """**This case says the opposite of what it said, and the name is where a reader is told so.**
+    It was `test_a_create_for_a_feature_that_already_exists_files_it_under_the_layer_it_names`,
+    written on ADR-0012 decision 3's addition of 2026-09-09 while whether such a create was
+    legitimate at all was undecided. Its subject is unchanged, which layer a feature is filed under
+    after a create naming it under another, and the answer inverted at MAP-68: PRD M9's clause of
+    2026-09-24 refuses a `feature.create` naming a feature the tenant already holds, under whatever
+    layer, and **a held feature stays where it was**. M2 files a feature under exactly one layer and
+    M3 keeps its identifier to one object, and the re-filing this case used to pin paired the layer
+    a create named with a geometry only an earlier set had carried, a row no single operation
+    stated (M2's half MAP-66 left to this task, across flushes).
 
     **Two layers of one project**, because the composite reference only asks that the layer exist
-    in the project the batch addresses, so a feature that never moves is indistinguishable from one
-    refiled correctly where there is a single layer to name."""
-    the_layer_it_was_drawn_in, the_layer_it_is_moved_to = uuid4(), uuid4()
+    in the project the batch addresses, so a feature re-filed is indistinguishable from one left
+    alone where there is a single layer to name. **The refusal list is the control**: a create
+    refused for any other reason leaves the feature where it was too, and the second layer is
+    exactly the arrangement that would earn `no_layer_in_this_project` if it were missing.
+
+    **The second layer declares the polygon family**, re-arranged at the Window A correction round
+    of 2026-09-24 so the re-filing this case refuses is the breach MAP-66's task spec handed to this
+    task, a surveyed point filed under a polygon layer, and the row is read on the two columns that
+    pairing is about."""
+    the_layer_it_was_drawn_in, a_polygon_layer_of_the_same_project = uuid4(), uuid4()
     feature_id, installation = uuid4(), uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
     _an_element_layer_of(alice, layer_id=the_layer_it_was_drawn_in)
-    _an_element_layer_of(alice, layer_id=the_layer_it_is_moved_to)
+    with tenant_scope(alice.tenant_id):
+        create_layer(
+            layer_id=a_polygon_layer_of_the_same_project,
+            tenant_id=alice.tenant_id,
+            project_id=alice.project_id,
+            name="preservation areas",
+            geometry_kind=GeometryKind.POLYGON,
+            storage_class=StorageClass.ELEMENT,
+        )
 
     browser.post(
         OPERATIONS_PATH,
@@ -662,12 +699,12 @@ def test_a_create_for_a_feature_that_already_exists_files_it_under_the_layer_it_
         ),
         JSON,
     )
-    browser.post(
+    created_again_elsewhere = browser.post(
         OPERATIONS_PATH,
         _a_queue_of(
             _a_feature_create(
                 alice,
-                layer_id=the_layer_it_is_moved_to,
+                layer_id=a_polygon_layer_of_the_same_project,
                 feature_id=feature_id,
                 from_installation=installation,
                 mutation_number=2,
@@ -675,8 +712,15 @@ def test_a_create_for_a_feature_that_already_exists_files_it_under_the_layer_it_
         ),
         JSON,
     )
+    held = _the_feature_the_projection_holds(alice, feature_id)
 
-    assert _the_layer_the_projection_files(alice, feature_id) == the_layer_it_is_moved_to
+    assert created_again_elsewhere.json()[THE_REFUSALS] == [
+        {THE_MUTATION_NUMBER_REFUSED: 2, THE_REASON: FEATURE_ALREADY_CREATED}
+    ]
+    assert (held.layer_id, held.geometry) == (
+        the_layer_it_was_drawn_in,
+        _as_the_storage_frame_holds_it(A_PLACE_IN_THE_FIELD),
+    )
 
 
 def test_a_resent_batch_the_cursor_had_already_seen_does_not_move_the_geometry_back(
@@ -852,10 +896,13 @@ def test_the_operation_naming_an_absent_layer_first_is_refused_though_the_fold_l
     **The second operation is a create rather than the geometry set this case carried while the
     refusal was whole-batch**, and that is forced rather than preferred. Once the first operation
     earns a verdict of its own (ADR-0014 decision 1) the batch around it applies, so a geometry set
-    here would be one for a feature no applied operation ever created: the shape this module's own
-    docstring says nothing arranges, and the one ADR-0014 decision 7 explicitly declines to decide.
-    A create keeps the fold identical, the absent layer first and the held one last, while leaving
-    every operation of the batch decidable.
+    here would name a feature no applied operation ever created, which is refused
+    `no_feature_at_this_address` in its own right since 2026-09-24 and would add a second refusal
+    to the body. A create keeps the fold identical, the absent layer first and the held one last,
+    and **it is admitted**: a create refused earlier in the batch leaves nothing held, so a second
+    create of the same feature is judged like any create (ADR-0010 decision 6's addition of
+    2026-09-24, as sharpened at that day's pre-dispatch read), which the body below says by naming
+    one refusal and not two.
 
     **The whole body is compared**, which the retired form could not do: it asserted that a refusal
     was reached at all, since a status alone would not say which of three mechanisms refused, and
