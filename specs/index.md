@@ -193,6 +193,12 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     The second pickup, after MAP-72 merged, replaced the file rather than amending it, keeps the first
     branch as evidence rather than rebasing it, and retires one Acceptance reading the first version
     carried: that the server's log never holds an operation naming a served layer.
+  - **`tasks/MAP-68-address-verdicts.md`** — the flush judges each operation against the feature it names, so
+    nothing re-files, re-creates or conjures a feature, and an operation the log already decided changes
+    nothing. The second file here to cover **two** issues (MAP-68 and MAP-74), and the first whose Evidence
+    measures what the suite already authors against the new rules with a **non-behavioural instrument**
+    rather than a grep. Its pickup carries a recommendation of the orchestrator's reversed within the hour
+    and the one exception to T6.5 the owner accepted in consequence, owned by MAP-75.
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
