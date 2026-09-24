@@ -1,20 +1,29 @@
-"""Which reason a layer's declarations refuse an operation for, if any, decided over plain data.
+"""Which reason an operation is refused for, if any, decided over plain data.
 
 Trace: **ADR-0010 decision 6's addition of 2026-09-23** for the order that picks one reason and for
-the scope of the family check; PRD **M2** (the storage class and the geometry family are the
-layer's declarations, and an operation is judged against the layer it addresses); **M9**'s final
-acceptance clause for the refusal the family check makes; **ADR-0014 decisions 1 and 7** for the
-verdict being one operation's and a pure decision taken before anything is written. I2; C7.
+the scope of the family check, and **its addition of 2026-09-24** for the two reasons about the
+feature an operation names, the place they take in that order, and what the operations before one
+in the same batch contribute to what the tenant holds; PRD **M2** (the storage class and the
+geometry family are the layer's declarations, and an operation is judged against the layer it
+addresses); **M9**'s final acceptance clause for the refusal the family check makes, and the clause
+it gained on 2026-09-24 for the refusals about the feature; **ADR-0014 decisions 1 and 7**, with
+decision 7's addition of 2026-09-24, for the verdict being one operation's, a pure decision taken
+before anything is written, and each operation being judged against what the **applied**
+operations before it leave. I2, I3; C7.
 
-**Pure because the decision is pure, and here because the route cannot carry these cases inside
-this task's scope.** A payload this rule reads no family out of answers `500` at the writer, which
-is MAP-70's to change, so a route case over one pins what that issue owns; a geometry set on a
-served layer reaches the route either for a feature no applied operation created, the shape
-ADR-0014 decision 7 leaves open, or addressed at a layer other than the one its feature is filed
-under, a feature changing path, which M2's fourth acceptance clause governs and MAP-66's task spec
-keeps out of scope; and which declarations the rule reads is invisible at the route while its one
-caller hands it exactly the layers the batch names. Every case the route carries inside that scope
-is in `tests/test_the_layer_declaration_refusals.py`.
+**Pure because the decision is pure, and here for what the route cannot carry or cannot see.** A
+payload this rule reads no family out of answers `500` at the writer, which is MAP-70's to change,
+so a route case over one pins what that issue owns; which declarations the rule reads is invisible
+at the route while its one caller hands it exactly the layers the batch names; and the order among
+five reasons, with what a batch contributes to what the tenant holds, is a decision over plain data
+whose every arm a route case would reach through a database arrangement it adds nothing to. Every
+case the route carries for the layer's declarations is in
+`tests/test_the_layer_declaration_refusals.py`, and every one for the feature an operation names is
+in `tests/test_the_feature_an_operation_names.py`.
+
+**What the tenant holds is handed to the rule rather than read by it**, and a case below that hands
+it nothing is saying the tenant holds no feature at all, which is the state every batch in this
+module starts from unless it says otherwise.
 
 The reasons are spelled as literals rather than read off `WhyAnOperationWasRefused`, on this suite's
 rule for a wire value: a case comparing an enum against itself cannot notice a member being renamed.
@@ -26,11 +35,19 @@ from uuid import UUID, uuid4
 import pytest
 
 from conftest import JsonObject, a_feature_create_claiming, a_geometry_set_claiming
-from mapsift.layers.rules import GeometryKind, StorageClass, TheDeclarationsOfALayer
+from mapsift.layers.rules import (
+    GeometryKind,
+    StorageClass,
+    TheDeclarationsOfALayer,
+    WhereAFeatureIsFiled,
+)
 from mapsift.sync.envelope import ClientHalf
 from mapsift.sync.rules import TheRefusalOfAnOperation, the_refusals_this_batch_earns
 
+NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
 SERVED_LAYER_TAKES_NO_OPERATIONS = "served_layer_takes_no_operations"
+FEATURE_ALREADY_CREATED = "feature_already_created"
+NO_FEATURE_AT_THIS_ADDRESS = "no_feature_at_this_address"
 GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY = "geometry_outside_the_layers_family"
 
 AN_ELEMENT_POINT_LAYER = TheDeclarationsOfALayer(
@@ -108,11 +125,12 @@ def test_a_served_layer_carrying_a_geometry_of_another_family_is_refused_for_its
     choice rather than forced: a served layer takes no operations at all (M2), so whether a
     geometry fits its family is a question never reached, and the one reason carried is the class.
 
-    Here rather than through the route because each route arrangement of it rests on a shape this
-    task does not own: a geometry set for a feature no applied operation created, which ADR-0014
-    decision 7 declines to decide, or one addressed at a layer other than the one its feature is
-    filed under, a feature changing path (M2's fourth acceptance clause) that MAP-66's task spec
-    keeps out of scope."""
+    **The feature is one the tenant does not hold, and since 2026-09-24 that is a third reason this
+    operation earns.** The addition of that date puts the class ahead of both reasons about the
+    feature, walking M9's target path from the layer to the feature, so the one reason carried is
+    still the class, and this is where that position is pinned. A feature the tenant **does** hold
+    at a served layer, which an import rather than an operation puts there (ADR-0012 decision 6),
+    fails the class alone, and the case after this one is that arm."""
     a_served_point_layer = uuid4()
 
     refusals = the_refusals_this_batch_earns(
@@ -122,6 +140,41 @@ def test_a_served_layer_carrying_a_geometry_of_another_family_is_refused_for_its
             )
         ),
         layers_the_project_holds={a_served_point_layer: A_SERVED_POINT_LAYER},
+        features_the_tenant_holds={},
+    )
+
+    assert _the_reasons_given(refusals) == [(0, SERVED_LAYER_TAKES_NO_OPERATIONS)]
+
+
+def test_a_geometry_set_on_a_feature_held_at_a_served_layer_is_refused_for_its_class() -> None:
+    """M2's served-versus-element clause on the arm where the class is the **only** rule an
+    operation fails: `layers_feature` holds import-derived features of a served layer beside the
+    log-derived ones (ADR-0012 decision 6 and its Consequences), and that table is where what a
+    tenant holds is read from (ADR-0010 decision 6's addition of 2026-09-24), so a geometry set can
+    name a feature the tenant holds at exactly the served layer it names.
+
+    **Held at that address, the feature reasons admit it**, so only the class stands between this
+    operation and a served feature entering the operation queue. A rule that asks the layer's class
+    only of an operation whose feature it does not already hold at its address, on the reading that
+    a held feature was created through the queue and its layer must be an element layer, admits it
+    here, and the case above cannot see that rule, its feature being held nowhere."""
+    a_served_point_layer, imported_feature = uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(
+            _a_geometry_set_on(
+                a_served_point_layer,
+                carrying=A_POINT_SURVEYED_IN_THE_FIELD,
+                feature_id=imported_feature,
+                mutation_number=0,
+            )
+        ),
+        layers_the_project_holds={a_served_point_layer: A_SERVED_POINT_LAYER},
+        features_the_tenant_holds={
+            imported_feature: WhereAFeatureIsFiled(
+                project_id=A_PROJECT, layer_id=a_served_point_layer
+            )
+        },
     )
 
     assert _the_reasons_given(refusals) == [(0, SERVED_LAYER_TAKES_NO_OPERATIONS)]
@@ -154,6 +207,7 @@ def test_an_operation_is_judged_by_the_declarations_of_its_own_layer_and_no_othe
             a_served_layer: A_SERVED_POINT_LAYER,
             the_point_layer_addressed: AN_ELEMENT_POINT_LAYER,
         },
+        features_the_tenant_holds={},
     )
 
     assert _the_reasons_given(refusals) == []
@@ -178,16 +232,24 @@ def test_a_geometry_whose_family_cannot_be_read_off_it_is_not_checked_for_one(
 
     **On a polygon layer, where each of them would be outside the family if it were read as a
     point**, so a rule that indexes into the payload raises here and one that reads an absent or
-    unreadable type as foreign refuses."""
-    a_polygon_layer = uuid4()
+    unreadable type as foreign refuses.
+
+    **The feature is one the tenant holds at that layer**, re-arranged at MAP-68: a set naming a
+    feature nobody holds earns `no_feature_at_this_address`, which the order of ADR-0010 decision
+    6's addition of 2026-09-24 puts ahead of the family, so without the holding this case would be
+    answered by the address and would stop asking the question it is about."""
+    a_polygon_layer, feature_id = uuid4(), uuid4()
 
     refusals = the_refusals_this_batch_earns(
         _as_authored(
             _a_geometry_set_on(
-                a_polygon_layer, carrying=unreadable, feature_id=uuid4(), mutation_number=0
+                a_polygon_layer, carrying=unreadable, feature_id=feature_id, mutation_number=0
             )
         ),
         layers_the_project_holds={a_polygon_layer: AN_ELEMENT_POLYGON_LAYER},
+        features_the_tenant_holds={
+            feature_id: WhereAFeatureIsFiled(project_id=A_PROJECT, layer_id=a_polygon_layer)
+        },
     )
 
     assert _the_reasons_given(refusals) == []
@@ -199,16 +261,22 @@ def test_a_geometry_declaring_a_type_of_its_layers_family_is_admitted_on_that_al
 
     **The payload declares a point and carries no coordinates**, which no geometry library parses,
     so a rule that reads the family by parsing raises here or refuses what it could not read, and
-    only a rule reading the declared type alone answers that a point is inside the point family."""
-    a_point_layer = uuid4()
+    only a rule reading the declared type alone answers that a point is inside the point family.
+
+    **The feature is one the tenant holds at that layer**, for the reason the case above gives: held
+    nowhere, it would be refused for its address before its family was asked about."""
+    a_point_layer, feature_id = uuid4(), uuid4()
 
     refusals = the_refusals_this_batch_earns(
         _as_authored(
             _a_geometry_set_on(
-                a_point_layer, carrying={"type": "Point"}, feature_id=uuid4(), mutation_number=0
+                a_point_layer, carrying={"type": "Point"}, feature_id=feature_id, mutation_number=0
             )
         ),
         layers_the_project_holds={a_point_layer: AN_ELEMENT_POINT_LAYER},
+        features_the_tenant_holds={
+            feature_id: WhereAFeatureIsFiled(project_id=A_PROJECT, layer_id=a_point_layer)
+        },
     )
 
     assert _the_reasons_given(refusals) == []
@@ -219,16 +287,218 @@ def test_a_geometry_declaring_a_type_outside_its_layers_family_is_refused_on_tha
     whatever else the payload carries or lacks (M2, M9).
 
     **A declared polygon with no coordinates, on a point layer**, so a rule that skips whatever it
-    cannot parse lets it through, and the sibling above cannot tell that rule apart from this."""
+    cannot parse lets it through, and the sibling above cannot tell that rule apart from this.
+
+    **The feature is one the tenant holds at that layer**, for the reason the cases above give, and
+    here it is what keeps the reason the family's: held nowhere, this operation is refused for its
+    address instead."""
+    a_point_layer, feature_id = uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(
+            _a_geometry_set_on(
+                a_point_layer,
+                carrying={"type": "Polygon"},
+                feature_id=feature_id,
+                mutation_number=0,
+            )
+        ),
+        layers_the_project_holds={a_point_layer: AN_ELEMENT_POINT_LAYER},
+        features_the_tenant_holds={
+            feature_id: WhereAFeatureIsFiled(project_id=A_PROJECT, layer_id=a_point_layer)
+        },
+    )
+
+    assert _the_reasons_given(refusals) == [(0, GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY)]
+
+
+def test_a_create_naming_a_held_feature_on_a_layer_the_project_lacks_is_refused_for_the_layer() -> (
+    None
+):
+    """ADR-0010 decision 6's addition of 2026-09-24, on the first position of the order it fixes:
+    `no_layer_in_this_project`, then the class, then `feature_already_created`. The position is
+    forced rather than chosen, because M9's target path is walked from its coarsest segment, and a
+    layer the project does not hold is decided before anything about the feature filed under it.
+
+    **The feature is one the tenant holds, so this create fails two rules**, and a rule that asks
+    about the feature before the layer answers `feature_already_created` here."""
+    a_layer_the_project_lacks, the_layer_it_is_filed_under, feature_id = uuid4(), uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(
+            _a_create_on(a_layer_the_project_lacks, feature_id=feature_id, mutation_number=0)
+        ),
+        layers_the_project_holds={the_layer_it_is_filed_under: AN_ELEMENT_POINT_LAYER},
+        features_the_tenant_holds={
+            feature_id: WhereAFeatureIsFiled(
+                project_id=A_PROJECT, layer_id=the_layer_it_is_filed_under
+            )
+        },
+    )
+
+    assert _the_reasons_given(refusals) == [(0, NO_LAYER_IN_THIS_PROJECT)]
+
+
+def test_a_create_naming_a_held_feature_on_a_served_layer_is_refused_for_its_class() -> None:
+    """ADR-0010 decision 6's addition of 2026-09-24, on the second position: the storage class is
+    the layer's, so it is decided before the feature the operation names, and a served layer takes
+    no operations at all (M2) whatever the tenant already holds.
+
+    **The feature is one the tenant holds elsewhere, so this create fails two rules**, and a rule
+    that asks about the feature before the class answers `feature_already_created` here."""
+    a_served_layer, the_layer_it_is_filed_under, feature_id = uuid4(), uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(_a_create_on(a_served_layer, feature_id=feature_id, mutation_number=0)),
+        layers_the_project_holds={
+            a_served_layer: A_SERVED_POINT_LAYER,
+            the_layer_it_is_filed_under: AN_ELEMENT_POINT_LAYER,
+        },
+        features_the_tenant_holds={
+            feature_id: WhereAFeatureIsFiled(
+                project_id=A_PROJECT, layer_id=the_layer_it_is_filed_under
+            )
+        },
+    )
+
+    assert _the_reasons_given(refusals) == [(0, SERVED_LAYER_TAKES_NO_OPERATIONS)]
+
+
+def test_a_geometry_set_naming_no_held_feature_is_refused_for_its_address_before_its_family() -> (
+    None
+):
+    """ADR-0010 decision 6's addition of 2026-09-24, on the last two positions: the feature before
+    the property whose payload the family check reads, so `no_feature_at_this_address` comes ahead
+    of `geometry_outside_the_layers_family`.
+
+    **A parcel on a point layer, for a feature nobody holds**, so the operation fails both rules and
+    a rule that reads the payload before the address answers with the family."""
     a_point_layer = uuid4()
 
     refusals = the_refusals_this_batch_earns(
         _as_authored(
             _a_geometry_set_on(
-                a_point_layer, carrying={"type": "Polygon"}, feature_id=uuid4(), mutation_number=0
+                a_point_layer, carrying=A_PARCEL, feature_id=uuid4(), mutation_number=0
             )
         ),
         layers_the_project_holds={a_point_layer: AN_ELEMENT_POINT_LAYER},
+        features_the_tenant_holds={},
     )
 
-    assert _the_reasons_given(refusals) == [(0, GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY)]
+    assert _the_reasons_given(refusals) == [(0, NO_FEATURE_AT_THIS_ADDRESS)]
+
+
+def test_a_second_create_of_a_feature_the_batch_already_created_is_refused_as_already_created() -> (
+    None
+):
+    """ADR-0014 decision 7 with ADR-0010 decision 6's addition of 2026-09-24: what the tenant holds
+    includes what the operations before one in the same batch leave, so a create applied earlier in
+    the batch makes a second create of that feature `feature_already_created`, under whatever layer
+    it names.
+
+    **The tenant holds nothing when the batch starts**, so a rule reading only what it was handed
+    admits both creates, and the first create being admitted is the quiet side beside it."""
+    the_layer_it_is_created_in, a_second_layer, feature_id = uuid4(), uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(
+            _a_create_on(the_layer_it_is_created_in, feature_id=feature_id, mutation_number=0),
+            _a_create_on(a_second_layer, feature_id=feature_id, mutation_number=1),
+        ),
+        layers_the_project_holds={
+            the_layer_it_is_created_in: AN_ELEMENT_POINT_LAYER,
+            a_second_layer: AN_ELEMENT_POINT_LAYER,
+        },
+        features_the_tenant_holds={},
+    )
+
+    assert _the_reasons_given(refusals) == [(1, FEATURE_ALREADY_CREATED)]
+
+
+def test_an_operation_naming_a_feature_the_batch_filed_under_another_layer_is_refused() -> None:
+    """ADR-0010 decision 6's addition of 2026-09-24: a create applied earlier in the batch makes a
+    later operation naming that feature at the same address admissible, **while one naming it at
+    another layer is `no_feature_at_this_address`**, because the create filed it under exactly one
+    layer (M2) and the batch's contribution is that filing, not the bare identifier.
+
+    The quiet side, the same address admitted, is
+    `test_an_operation_is_judged_by_the_declarations_of_its_own_layer_and_no_other` above, whose
+    geometry set follows its feature's create in one batch with the tenant holding nothing."""
+    the_layer_it_is_created_in, another_layer, feature_id = uuid4(), uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(
+            _a_create_on(the_layer_it_is_created_in, feature_id=feature_id, mutation_number=0),
+            _a_geometry_set_on(
+                another_layer,
+                carrying=A_POINT_SURVEYED_IN_THE_FIELD,
+                feature_id=feature_id,
+                mutation_number=1,
+            ),
+        ),
+        layers_the_project_holds={
+            the_layer_it_is_created_in: AN_ELEMENT_POINT_LAYER,
+            another_layer: AN_ELEMENT_POINT_LAYER,
+        },
+        features_the_tenant_holds={},
+    )
+
+    assert _the_reasons_given(refusals) == [(1, NO_FEATURE_AT_THIS_ADDRESS)]
+
+
+def test_an_operation_after_a_refused_create_is_refused_for_its_own_address_not_by_cascade() -> (
+    None
+):
+    """ADR-0014 decision 7's addition of 2026-09-24 with ADR-0010 decision 6's of the same date: a
+    create refused earlier in the batch leaves nothing held, so an operation other than a create
+    after it on that feature is `no_feature_at_this_address` **in its own right rather than by
+    cascade**, and nothing is refused for being downstream of a refusal.
+
+    **The geometry set names a layer the project holds**, so its only fault is the feature the
+    refused create never filed, and a rule that cascades gives it the create's reason instead.
+
+    What a refused create leaves for a second create of the same feature is the case after this
+    one."""
+    a_layer_the_project_lacks, a_point_layer, feature_id = uuid4(), uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(
+            _a_create_on(a_layer_the_project_lacks, feature_id=feature_id, mutation_number=0),
+            _a_geometry_set_on(
+                a_point_layer,
+                carrying=A_POINT_SURVEYED_IN_THE_FIELD,
+                feature_id=feature_id,
+                mutation_number=1,
+            ),
+        ),
+        layers_the_project_holds={a_point_layer: AN_ELEMENT_POINT_LAYER},
+        features_the_tenant_holds={},
+    )
+
+    assert _the_reasons_given(refusals) == [
+        (0, NO_LAYER_IN_THIS_PROJECT),
+        (1, NO_FEATURE_AT_THIS_ADDRESS),
+    ]
+
+
+def test_a_create_after_a_refused_create_of_the_same_feature_is_admitted() -> None:
+    """ADR-0010 decision 6's addition of 2026-09-24 as sharpened at that day's pre-dispatch read,
+    with ADR-0014 decision 7's addition: a create refused earlier in the batch leaves nothing held,
+    so a second create of that feature is judged like any create and, nothing being held, is
+    admitted rather than refused `feature_already_created`.
+
+    **The first create names a layer the project lacks and the second one it holds**, so the second
+    has nothing wrong with it but what a rule counting a refused create as a filing would invent,
+    and that rule answers two refusals where the batch earns one."""
+    a_layer_the_project_lacks, a_point_layer, feature_id = uuid4(), uuid4(), uuid4()
+
+    refusals = the_refusals_this_batch_earns(
+        _as_authored(
+            _a_create_on(a_layer_the_project_lacks, feature_id=feature_id, mutation_number=0),
+            _a_create_on(a_point_layer, feature_id=feature_id, mutation_number=1),
+        ),
+        layers_the_project_holds={a_point_layer: AN_ELEMENT_POINT_LAYER},
+        features_the_tenant_holds={},
+    )
+
+    assert _the_reasons_given(refusals) == [(0, NO_LAYER_IN_THIS_PROJECT)]

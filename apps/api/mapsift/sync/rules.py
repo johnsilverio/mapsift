@@ -11,6 +11,7 @@ from mapsift.layers.rules import (
     GeometryKind,
     TheCurrentStateOfAFeature,
     TheDeclarationsOfALayer,
+    WhereAFeatureIsFiled,
     enters_the_operation_queue,
     geometry_is_admissible,
 )
@@ -309,6 +310,7 @@ def the_refusals_this_batch_earns(
     operations: Sequence[ClientHalf],
     *,
     layers_the_project_holds: Mapping[UUID, TheDeclarationsOfALayer],
+    features_the_tenant_holds: Mapping[UUID, WhereAFeatureIsFiled],
 ) -> list[TheRefusalOfAnOperation]:
     """What the server refuses of a batch, one verdict per operation, in the order it was given.
 

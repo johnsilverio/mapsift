@@ -345,12 +345,14 @@ def test_a_batch_the_cursor_has_already_seen_answers_with_the_cursor_it_did_not_
 def test_an_operation_the_server_already_holds_is_answered_as_applied_rather_than_refused(
     alice: Party,
 ) -> None:
-    """T2.3's acceptance as added 2026-08-11, whole: answered as applied rather than refused, **so
-    the flush succeeds and echoes**. The dedup filter lets this one through because it arrived
-    under a mutation number above the cursor, so what meets it is the log's unique key, which is
-    ADR-0004 decision 2's extension exactly: the cursor is the cheap path and the constraint is the
-    correctness backstop. A refusal here is indistinguishable to a client from a real failure, so
-    the retry path C12 exists to make safe becomes the path that breaks.
+    """T2.3's acceptance as added 2026-08-11 and sharpened 2026-09-24: an operation the server
+    already holds is answered with the verdict the log holds for it, here applied, **so the flush
+    succeeds and echoes**. The dedup filter lets this one through because it arrived under a
+    mutation number above the cursor, so what meets it is the log itself, which already holds its
+    identifier: held means that identifier is on the tenant's log, whatever the resend carries
+    (ADR-0010 decision 6's addition of 2026-09-24, M3), and this resend carries a freshly minted
+    feature because the arranger mints one per call. A refusal here is indistinguishable to a client
+    from a real failure, so the retry path C12 exists to make safe becomes the path that breaks.
 
     **The echo is the load-bearing half and the first form of this case dropped it**, which is the
     Spec finding this suite was blocked on. This is the one path where *applied* and *inserted*

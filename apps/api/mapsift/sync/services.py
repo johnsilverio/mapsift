@@ -200,6 +200,7 @@ def _the_refusals_this_flush_decides(
             layers_the_project_holds=the_declarations_of_the_layers_a_project_holds_among(
                 project_id, addressed
             ),
+            features_the_tenant_holds={},
         )
     )
 

@@ -53,7 +53,9 @@ verdict (**MAP-22**); the per-feature version, the applied rule version and the 
 force (**MAP-38**, **OQ-8**, and the third with no owner in the canon), which ADR-0014 decision 3
 says it decides nothing about; the log's `applied_at` column and the nullability paired to the
 verdict (**MAP-53**, whose column this branch does not carry); what a wire-legal geometry payload is
-(**MAP-70**) and what a create addressing an existing feature means (**MAP-68**).
+(**MAP-70**); and the two refusals about the feature an operation names, a create naming a feature
+the tenant already holds and any other operation naming one it does not hold at that address, which
+MAP-68 decided on 2026-09-24 and whose cases are `tests/test_the_feature_an_operation_names.py`.
 """
 
 from http import HTTPStatus
@@ -530,9 +532,11 @@ def test_a_refused_operation_is_kept_on_the_log_as_the_client_authored_it(alice:
     case in this module while the surveyed place it was refused for is gone, which is the
     preserve-not-discard sin wearing a validation costume (C7, M9's own wording).
 
-    The geometry set follows a create for its own feature, because whether an operation addressing a
-    feature no applied operation ever created is refused or applied is what ADR-0014 decision 7
-    deliberately leaves open."""
+    The geometry set follows a create for its own feature, which no longer decides its verdict:
+    naming a layer the project lacks, it is refused for that layer, the first reason in the order
+    ADR-0010 decision 6's addition of 2026-09-24 fixes, ahead of the feature it names. The create
+    keeps the refused operation one on a feature the tenant holds, so the operation retained is a
+    surveyed place moved to the wrong layer rather than a place set on nothing."""
     surveyed, drawn_and_refused = uuid4(), uuid4()
     installation = uuid4()
     browser = a_browser(authenticated_as=alice.user_id)
