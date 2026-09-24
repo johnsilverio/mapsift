@@ -303,6 +303,16 @@ key is a field.
 > about the write, so it waits; a refusal and a drop would still be true, so they stay. *(Found by the Craft
 > axis, which noticed that two cases approved in the same round pin opposite timings and that neither the
 > rule nor either docstring said why.)*
+>
+> **Note (2026-09-24), at the MAP-68 pickup: a resend of an operation the log already holds is a drop, and it
+> is recorded as `flush.deduplicated`.** PRD T2.3 as sharpened that day (MAP-74) answers such an operation with
+> the verdict the log holds and writes nothing for it, which is this paragraph's third category exactly: it
+> asserts that an earlier flush already decided the operation, true whether or not this one commits. It is
+> therefore one record per operation, emitted where it is taken, and it appears in neither `flush.applied` nor
+> `flush.refused`, since this flush applied nothing and refused nothing of it. **Where the held verdict is a
+> refusal, the record carries that refusal's `reason`**, because ADR-0010 decision 6's addition of the same date
+> lists the operation under `refused` and PRD N9 requires every user-visible refusal to have its matching record.
+> No name is added to the closed set.
 
 ### 5. Where each piece lives, under ADR-0007
 
