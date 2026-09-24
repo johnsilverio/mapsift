@@ -214,6 +214,30 @@ is already there.
 > this decision's previous addition was corrected for two days earlier, met a second time in the same task:
 > the record went to the cheapest place rather than to the document that owns the decision.*
 
+> **Note (2026-09-24), at the MAP-68 pickup: what the three questions above now reach, and the one leak this
+> decision refused that is now accepted in a narrower place.** Three consequences of that round's rulings, which
+> live in PRD M9, PRD T2.3 and ADR-0010 decision 6's addition of the same date and are not restated here.
+>
+> **A held operation no longer reaches the write.** The addition of 2026-09-09 records that the canon requires
+> the route to accept a resend of an operation the server holds, and that stands; what changes is that it is
+> answered with the verdict the log holds and is not projected again (MAP-74). Re-projecting it was measured the
+> same day to restore an older geometry, re-file a feature and project a refused operation, so the projection
+> stopped being the log's.
+>
+> **The update set's rule stands and the route no longer reaches its unspoken arm.** With a create naming a held
+> feature refused and a held operation kept from the write, no operation that reaches the write addresses an
+> existing feature while saying nothing of its geometry. The rule is the write's and stays binding for the first
+> catalog member that leaves a column unspoken on an existing feature; a case witnessing it through the route
+> today has no arrangement left, which is a test's question and not this decision's.
+>
+> **The skip of 2026-09-11 is untouched, and the answer it protected can now differ.** The refusals of ADR-0010
+> decision 6's addition of 2026-09-24 read what a tenant holds from this table, where a skipped create leaves
+> nothing, so a tenant whose create collided with another tenant's identifier is answered afterwards as though
+> the feature were absent. The owner accepted that in PRD M9's Provenance and T6.5 on the ground this addition
+> already gives, that the collision is unreachable for an honest client; the flush still never answers `500`
+> for it, and the write still never touches the other tenant's row. MAP-75 closes it by reading what a tenant
+> holds from its own log.
+
 ### 4. The per-feature version is a column on `layers_feature`, and the mechanism is MAP-38's
 
 **Where it lives is this ADR's**, and was from MAP-50's creation. It is a column on the projection row, not a
