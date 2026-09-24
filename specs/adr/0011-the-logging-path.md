@@ -229,7 +229,11 @@ key is a field.
 > record. **`status` is on the two records that answered a client**, `request.refused` and `request.failed`.
 > **`reason` is on `request.refused` alone**, which is the same distinction one paragraph up read from the
 > other end: a failure has no reason to give, so emitting an empty one would be a field pretending a decision
-> happened.
+> happened. *(Corrected 2026-09-24: "alone" stopped being true on 2026-09-17, when ADR-0014 decision 8 put
+> `reason` on `flush.refused`, and this sentence was not amended; since the note of 2026-09-24 below it also
+> rides on a `flush.deduplicated` whose held verdict is a refusal. The rule the sentence states survives
+> unchanged: `reason` rides on a record about a refusal and on no other. Found by the Canon axis at MAP-68's
+> Window A review.)*
 >
 > **The identifier keys emit as the canonical hyphenated lowercase string**, not as an integer, a compact
 > hex form or a nested object. This is a value contract rather than a field contract, and it is here because
