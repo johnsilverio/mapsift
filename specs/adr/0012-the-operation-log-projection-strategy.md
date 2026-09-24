@@ -228,7 +228,14 @@ is already there.
 > feature refused and a held operation kept from the write, no operation that reaches the write addresses an
 > existing feature while saying nothing of its geometry. The rule is the write's and stays binding for the first
 > catalog member that leaves a column unspoken on an existing feature; a case witnessing it through the route
-> today has no arrangement left, which is a test's question and not this decision's.
+> today has no arrangement left, which is a test's question and not this decision's. **The container half of
+> the addition of 2026-09-09 is narrower now than its words**: "an implementation that never updates the layer
+> of a conflicting row is making the opposite mistake" described a route that re-filed a feature, and PRD M9's
+> clause of 2026-09-24 refuses every operation that would. The write keeps setting the container from what it is
+> given, which is right for a catalog member that speaks the container on purpose, and no such member exists
+> (moving a feature is no catalog operation), so that arm owes no case until one does (`specs/testing.md`
+> section 7, unbuilt futures). *(Added the same day, at the Spec axis's review of MAP-68's Window A, which found
+> the arm left unwitnessed by the inversion of the case that pinned the re-filing.)*
 >
 > **The skip of 2026-09-11 is untouched, and the answer it protected can now differ.** The refusals of ADR-0010
 > decision 6's addition of 2026-09-24 read what a tenant holds from this table, where a skipped create leaves
