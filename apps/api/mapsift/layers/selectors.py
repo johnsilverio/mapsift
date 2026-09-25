@@ -11,7 +11,12 @@ from django.contrib.gis.geos import Polygon
 from django.db.models import QuerySet
 
 from mapsift.layers.models import Feature, Layer
-from mapsift.layers.rules import GeometryKind, StorageClass, TheDeclarationsOfALayer
+from mapsift.layers.rules import (
+    GeometryKind,
+    StorageClass,
+    TheDeclarationsOfALayer,
+    WhereAFeatureIsFiled,
+)
 
 
 def features_of_a_layer_intersecting(layer_id: UUID, box: Polygon) -> QuerySet[Feature]:
@@ -48,4 +53,24 @@ def the_declarations_of_the_layers_a_project_holds_among(
         for layer_id, storage_class, geometry_kind in held.values_list(
             "id", "storage_class", "geometry_kind"
         )
+    }
+
+
+def where_the_features_the_tenant_holds_are_filed_among(
+    feature_ids: Collection[UUID],
+) -> dict[UUID, WhereAFeatureIsFiled]:
+    """The project and layer each of the given features the tenant in force holds is filed under,
+    in any of its projects (M2, M9).
+
+    A given feature the tenant does not hold is absent from the mapping rather than refused, and so
+    is one whose identifier another tenant holds, the exception PRD M9's Provenance accepts until
+    MAP-75 reads what a tenant holds from its own log.
+
+    Requires a tenant binding and opens none (ADR-0005 sections 3 and 4). It answers a mapping
+    rather than a queryset, so its rows are read inside the binding that authorised them.
+    """
+    held = Feature.objects.filter(id__in=feature_ids)
+    return {
+        feature_id: WhereAFeatureIsFiled(project_id=project_id, layer_id=layer_id)
+        for feature_id, project_id, layer_id in held.values_list("id", "project_id", "layer_id")
     }

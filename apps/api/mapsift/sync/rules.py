@@ -1,6 +1,6 @@
 """Pure decisions over a batch of operations, taken on plain envelope data (ADR-0007 section 3)."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import pairwise
@@ -73,6 +73,8 @@ class WhyAnOperationWasRefused(StrEnum):
 
     NO_LAYER_IN_THIS_PROJECT = "no_layer_in_this_project"
     SERVED_LAYER_TAKES_NO_OPERATIONS = "served_layer_takes_no_operations"
+    FEATURE_ALREADY_CREATED = "feature_already_created"
+    NO_FEATURE_AT_THIS_ADDRESS = "no_feature_at_this_address"
     GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY = "geometry_outside_the_layers_family"
 
 
@@ -297,6 +299,12 @@ def the_layers_this_batch_addresses(operations: Sequence[ClientHalf]) -> frozens
     return frozenset(the_address_of(operation).layer_id for operation in operations)
 
 
+def the_features_this_batch_addresses(operations: Sequence[ClientHalf]) -> frozenset[UUID]:
+    """Every feature a batch's operations name, read from the operations for the reason
+    `the_layers_this_batch_addresses` gives (M9)."""
+    return frozenset(the_address_of(operation).feature_id for operation in operations)
+
+
 @dataclass(frozen=True, slots=True)
 class TheRefusalOfAnOperation:
     """One operation of a batch the server will not apply, and why (ADR-0014 decision 1)."""
@@ -319,13 +327,21 @@ def the_refusals_this_batch_earns(
     the client can send changes the answer, and refusing the batch would stall the stream
     permanently (ADR-0014 decision 1, I2).
 
-    Each operation is judged on the layer it names and the geometry it carries, both read from the
+    Each operation is judged on the layer, the feature and the geometry it names, all read from the
     operation and never from the state the batch folds to, which is the reason
     `the_layers_this_batch_addresses` gives for itself (ADR-0012 decision 3).
+
+    `features_the_tenant_holds` maps each feature the tenant holds, in any of its projects, to where
+    it is filed, and has to cover every feature the batch names: one absent from it is held nowhere,
+    so an empty mapping says the tenant holds no feature at all. What the operations before one in
+    the batch leave is added to it: an admitted operation leaves its feature filed where it names,
+    and a refused one leaves nothing, so nothing is refused for being downstream of a refusal
+    (ADR-0014 decision 7, ADR-0010 decision 6's addition of 2026-09-24).
     """
+    held = dict(features_the_tenant_holds)
     refusals: list[TheRefusalOfAnOperation] = []
     for operation in operations:
-        reason = the_reason_an_operation_is_refused_for(operation, layers_the_project_holds)
+        reason = the_reason_an_operation_is_refused_for(operation, layers_the_project_holds, held)
         if reason is not None:
             refusals.append(
                 TheRefusalOfAnOperation(
@@ -334,25 +350,55 @@ def the_refusals_this_batch_earns(
                     reason=reason,
                 )
             )
+            continue
+        address = the_address_of(operation)
+        held[address.feature_id] = WhereAFeatureIsFiled(
+            project_id=address.project_id, layer_id=address.layer_id
+        )
     return refusals
 
 
 def the_reason_an_operation_is_refused_for(
-    operation: ClientHalf, layers_the_project_holds: Mapping[UUID, TheDeclarationsOfALayer]
+    operation: ClientHalf,
+    layers_the_project_holds: Mapping[UUID, TheDeclarationsOfALayer],
+    features_the_tenant_holds: Mapping[UUID, WhereAFeatureIsFiled],
 ) -> WhyAnOperationWasRefused | None:
-    """The one reason an operation is refused for, or None where its layer's declarations admit it.
+    """The one reason an operation is refused for, or None where nothing refuses it.
 
     An operation failing more than one rule carries the first in the order ADR-0010 decision 6's
-    addition of 2026-09-23 fixes as contract: the layer held, then its class, then its family.
+    addition of 2026-09-24 fixes as contract, walking M9's target path from the layer to the
+    property: the layer held, its class, the feature it names, then the family of its geometry.
     """
     declarations = layers_the_project_holds.get(the_address_of(operation).layer_id)
     if declarations is None:
         return WhyAnOperationWasRefused.NO_LAYER_IN_THIS_PROJECT
     if not enters_the_operation_queue(declarations.storage_class):
         return WhyAnOperationWasRefused.SERVED_LAYER_TAKES_NO_OPERATIONS
+    refused_for_its_feature = the_reason_an_operation_is_refused_for_its_feature(
+        operation, features_the_tenant_holds
+    )
+    if refused_for_its_feature is not None:
+        return refused_for_its_feature
     if carries_a_geometry_outside_the_family(operation, declarations.geometry_kind):
         return WhyAnOperationWasRefused.GEOMETRY_OUTSIDE_THE_LAYERS_FAMILY
     return None
+
+
+def the_reason_an_operation_is_refused_for_its_feature(
+    operation: ClientHalf, features_the_tenant_holds: Mapping[UUID, WhereAFeatureIsFiled]
+) -> WhyAnOperationWasRefused | None:
+    """Why the feature an operation names refuses it, or None where it admits it (M9, M2, M3).
+
+    A create is refused for a feature the tenant holds anywhere, and every other operation for one
+    the tenant does not hold at exactly the project and layer it names (ADR-0010 decision 6's
+    addition of 2026-09-24).
+    """
+    address = the_address_of(operation)
+    filed = features_the_tenant_holds.get(address.feature_id)
+    if isinstance(operation.root, FeatureCreateOperation):
+        return None if filed is None else WhyAnOperationWasRefused.FEATURE_ALREADY_CREATED
+    named = WhereAFeatureIsFiled(project_id=address.project_id, layer_id=address.layer_id)
+    return None if filed == named else WhyAnOperationWasRefused.NO_FEATURE_AT_THIS_ADDRESS
 
 
 def carries_a_geometry_outside_the_family(operation: ClientHalf, family: GeometryKind) -> bool:
@@ -379,6 +425,48 @@ def the_type_a_geometry_declares(geometry: object) -> str | None:
         return None
     declared = geometry.get("type")
     return declared if isinstance(declared, str) else None
+
+
+def the_operations_the_log_does_not_hold(
+    operations: Sequence[ClientHalf], held: Mapping[UUID, WhyAnOperationWasRefused | None]
+) -> list[ClientHalf]:
+    """The operations of a batch no earlier flush decided, the only ones a flush judges, projects
+    and appends (T2.3 as sharpened 2026-09-24).
+
+    `held` maps each operation the log already holds to the refusal it holds, None for none.
+    """
+    return [operation for operation in operations if operation.root.operation_id not in held]
+
+
+def the_refusals_the_log_already_holds(
+    operations: Sequence[ClientHalf], held: Mapping[UUID, WhyAnOperationWasRefused | None]
+) -> list[TheRefusalOfAnOperation]:
+    """Each operation of a batch the log already holds refused, answered under the mutation number
+    it arrived with and the reason the log holds (ADR-0010 decision 6's addition of 2026-09-24).
+
+    `held` maps each operation the log already holds to the refusal it holds, None for none.
+    """
+    refusals: list[TheRefusalOfAnOperation] = []
+    for operation in operations:
+        reason = held.get(operation.root.operation_id)
+        if reason is None:
+            continue
+        refusals.append(
+            TheRefusalOfAnOperation(
+                operation_id=operation.root.operation_id,
+                mutation_number=the_mutation_number_of(operation),
+                reason=reason,
+            )
+        )
+    return refusals
+
+
+def in_the_order_refusals_are_answered(
+    refusals: Iterable[TheRefusalOfAnOperation],
+) -> tuple[TheRefusalOfAnOperation, ...]:
+    """Refusals in ascending mutation-number order, the order the wire promises (ADR-0010 decision
+    6's addition of 2026-09-17)."""
+    return tuple(sorted(refusals, key=lambda refusal: refusal.mutation_number))
 
 
 def the_operations_no_refusal_names(
