@@ -20,11 +20,12 @@ def the_cursor_of(client_id: UUID, project_id: UUID) -> int | None:
     return None if held is None else held.last_decided_mutation_number
 
 
-def the_refusals_the_log_holds_among(
+def the_verdicts_the_log_holds_among(
     operation_ids: Collection[UUID],
 ) -> dict[UUID, WhyAnOperationWasRefused | None]:
-    """Each of the given operations the tenant's log already holds, mapped to the reason the log
-    refused it for, or to None where the log holds no refusal of it (T2.3, ADR-0014 decision 3).
+    """The verdict the tenant's log holds for each of the given operations it already holds: the
+    reason it refused the operation for, or None where it holds no refusal of it (T2.3, ADR-0014
+    decision 3).
 
     A given operation the log does not hold is absent from the mapping. Held is keyed by the
     identifier alone, whatever project or stream the entry was appended from (M3; ADR-0010
