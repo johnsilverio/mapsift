@@ -290,6 +290,13 @@ def the_mutation_number_of(operation: ClientHalf) -> int:
     return operation.root.mutation_number.root
 
 
+def where_an_operation_names_its_feature(operation: ClientHalf) -> WhereAFeatureIsFiled:
+    """The project and layer an operation names its feature under, which is where a create files
+    it (M9, M2)."""
+    address = the_address_of(operation)
+    return WhereAFeatureIsFiled(project_id=address.project_id, layer_id=address.layer_id)
+
+
 def the_layers_this_batch_addresses(operations: Sequence[ClientHalf]) -> frozenset[UUID]:
     """Every layer a batch's operations name (M2, M9).
 
@@ -312,6 +319,18 @@ class TheRefusalOfAnOperation:
     operation_id: UUID
     mutation_number: int
     reason: WhyAnOperationWasRefused
+
+
+def the_refusal_of(
+    operation: ClientHalf, reason: WhyAnOperationWasRefused
+) -> TheRefusalOfAnOperation:
+    """One operation refused for a reason, named by its identifier and by the mutation number it
+    arrived with (ADR-0014 decisions 1 and 6)."""
+    return TheRefusalOfAnOperation(
+        operation_id=operation.root.operation_id,
+        mutation_number=the_mutation_number_of(operation),
+        reason=reason,
+    )
 
 
 def the_refusals_this_batch_earns(
@@ -338,22 +357,17 @@ def the_refusals_this_batch_earns(
     and a refused one leaves nothing, so nothing is refused for being downstream of a refusal
     (ADR-0014 decision 7, ADR-0010 decision 6's addition of 2026-09-24).
     """
-    held = dict(features_the_tenant_holds)
+    features_held_so_far = dict(features_the_tenant_holds)
     refusals: list[TheRefusalOfAnOperation] = []
     for operation in operations:
-        reason = the_reason_an_operation_is_refused_for(operation, layers_the_project_holds, held)
+        reason = the_reason_an_operation_is_refused_for(
+            operation, layers_the_project_holds, features_held_so_far
+        )
         if reason is not None:
-            refusals.append(
-                TheRefusalOfAnOperation(
-                    operation_id=operation.root.operation_id,
-                    mutation_number=the_mutation_number_of(operation),
-                    reason=reason,
-                )
-            )
+            refusals.append(the_refusal_of(operation, reason))
             continue
-        address = the_address_of(operation)
-        held[address.feature_id] = WhereAFeatureIsFiled(
-            project_id=address.project_id, layer_id=address.layer_id
+        features_held_so_far[the_address_of(operation).feature_id] = (
+            where_an_operation_names_its_feature(operation)
         )
     return refusals
 
@@ -393,11 +407,10 @@ def the_reason_an_operation_is_refused_for_its_feature(
     the tenant does not hold at exactly the project and layer it names (ADR-0010 decision 6's
     addition of 2026-09-24).
     """
-    address = the_address_of(operation)
-    filed = features_the_tenant_holds.get(address.feature_id)
+    filed = features_the_tenant_holds.get(the_address_of(operation).feature_id)
     if isinstance(operation.root, FeatureCreateOperation):
         return None if filed is None else WhyAnOperationWasRefused.FEATURE_ALREADY_CREATED
-    named = WhereAFeatureIsFiled(project_id=address.project_id, layer_id=address.layer_id)
+    named = where_an_operation_names_its_feature(operation)
     return None if filed == named else WhyAnOperationWasRefused.NO_FEATURE_AT_THIS_ADDRESS
 
 
@@ -427,37 +440,48 @@ def the_type_a_geometry_declares(geometry: object) -> str | None:
     return declared if isinstance(declared, str) else None
 
 
+def the_log_already_holds(
+    operation: ClientHalf, verdicts: Mapping[UUID, WhyAnOperationWasRefused | None]
+) -> bool:
+    """Whether the tenant's log already holds one operation, keyed by its identifier whatever the
+    resend carries (M3; ADR-0010 decision 6's addition of 2026-09-24).
+
+    The one boundary both partitions below read, as `this_cursor_has_seen` is for the cursor's.
+    `verdicts` is what `the_verdicts_the_log_holds_among` answers, where an operation held with no
+    refusal maps to None: holding is the key being present and never the value being set.
+    """
+    return operation.root.operation_id in verdicts
+
+
 def the_operations_the_log_does_not_hold(
-    operations: Sequence[ClientHalf], held: Mapping[UUID, WhyAnOperationWasRefused | None]
+    operations: Sequence[ClientHalf], verdicts: Mapping[UUID, WhyAnOperationWasRefused | None]
 ) -> list[ClientHalf]:
     """The operations of a batch no earlier flush decided, the only ones a flush judges, projects
-    and appends (T2.3 as sharpened 2026-09-24).
+    and appends (T2.3 as sharpened 2026-09-24)."""
+    return [operation for operation in operations if not the_log_already_holds(operation, verdicts)]
 
-    `held` maps each operation the log already holds to the refusal it holds, None for none.
-    """
-    return [operation for operation in operations if operation.root.operation_id not in held]
+
+def the_operations_the_log_already_holds(
+    operations: Sequence[ClientHalf], verdicts: Mapping[UUID, WhyAnOperationWasRefused | None]
+) -> list[ClientHalf]:
+    """The operations of a batch an earlier flush decided, answered with the verdict the log holds
+    and written nowhere again (T2.3 as sharpened 2026-09-24)."""
+    return [operation for operation in operations if the_log_already_holds(operation, verdicts)]
 
 
 def the_refusals_the_log_already_holds(
-    operations: Sequence[ClientHalf], held: Mapping[UUID, WhyAnOperationWasRefused | None]
+    held: Sequence[ClientHalf], verdicts: Mapping[UUID, WhyAnOperationWasRefused | None]
 ) -> list[TheRefusalOfAnOperation]:
-    """Each operation of a batch the log already holds refused, answered under the mutation number
-    it arrived with and the reason the log holds (ADR-0010 decision 6's addition of 2026-09-24).
+    """Each held operation the log keeps refused, answered under the mutation number it arrived
+    with and the reason the log holds (ADR-0010 decision 6's addition of 2026-09-24).
 
-    `held` maps each operation the log already holds to the refusal it holds, None for none.
+    Takes the held partition, `the_operations_the_log_already_holds`.
     """
     refusals: list[TheRefusalOfAnOperation] = []
-    for operation in operations:
-        reason = held.get(operation.root.operation_id)
-        if reason is None:
-            continue
-        refusals.append(
-            TheRefusalOfAnOperation(
-                operation_id=operation.root.operation_id,
-                mutation_number=the_mutation_number_of(operation),
-                reason=reason,
-            )
-        )
+    for operation in held:
+        reason = verdicts[operation.root.operation_id]
+        if reason is not None:
+            refusals.append(the_refusal_of(operation, reason))
     return refusals
 
 

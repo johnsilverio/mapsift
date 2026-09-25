@@ -34,6 +34,7 @@ from mapsift.sync.rules import (
     the_one_unbroken_stream_this_batch_carries,
     the_operation_identifiers_in,
     the_operations_no_refusal_names,
+    the_operations_the_log_already_holds,
     the_operations_the_log_does_not_hold,
     the_operations_this_cursor_has_already_seen,
     the_operations_this_cursor_has_not_seen,
@@ -42,7 +43,7 @@ from mapsift.sync.rules import (
     the_refusals_this_batch_earns,
     the_tenant_every_operation_claims,
 )
-from mapsift.sync.selectors import the_cursor_of, the_refusals_the_log_holds_among
+from mapsift.sync.selectors import the_cursor_of, the_verdicts_the_log_holds_among
 
 # ADR-0004 decision 2's RANGE rule as one statement: it creates the row on first use, adds the
 # whole width of the batch to it otherwise, and answers with the top of the range either way.
@@ -101,9 +102,11 @@ def apply_the_flush(operations: list[ClientHalf]) -> WhatTheFlushDecided:
     if not fresh:
         return WhatTheFlushDecided(last_decided, ())
 
-    held = the_refusals_the_log_holds_among(the_operation_identifiers_in(fresh))
-    _record_what_the_log_already_held(fresh, held)
-    undecided = the_operations_the_log_does_not_hold(fresh, held)
+    verdicts = the_verdicts_the_log_holds_among(the_operation_identifiers_in(fresh))
+    held = the_operations_the_log_already_holds(fresh, verdicts)
+    _record_what_the_log_already_held(held, verdicts)
+    undecided = the_operations_the_log_does_not_hold(fresh, verdicts)
+    held_refusals = the_refusals_the_log_already_holds(held, verdicts)
 
     refusals = _the_refusals_this_flush_decides(undecided, stream.project_id)
     applied = the_operations_no_refusal_names(undecided, refusals)
@@ -113,8 +116,8 @@ def apply_the_flush(operations: list[ClientHalf]) -> WhatTheFlushDecided:
     # order is a contention trade ADR-0004 decision 2 settles in its extension of 2026-08-11.
     _advance_the_cursor_of(stream, last_decided)
     if undecided:
-        # Still tolerated though held operations never reach it: a flush that lost a race to
-        # another flush of its own installation meets the winner's entry here (MAP-76).
+        # Tolerating a resend though no held operation reaches here: a concurrent flush can commit
+        # the same operation after this one read the log, and the append meets it (MAP-76).
         append_to_the_operation_log(undecided, tolerating_a_resend=True, refusals=refusals)
     # Not the direct calls these look like they should be: logging is not transactional, so a
     # record written here outlives a rollback, and both of these assert a write (ADR-0011 section
@@ -122,10 +125,7 @@ def apply_the_flush(operations: list[ClientHalf]) -> WhatTheFlushDecided:
     transaction.on_commit(partial(_record_what_this_flush_applied, applied))
     transaction.on_commit(partial(_record_what_this_flush_refused, refusals))
     return WhatTheFlushDecided(
-        last_decided,
-        in_the_order_refusals_are_answered(
-            [*the_refusals_the_log_already_holds(fresh, held), *refusals]
-        ),
+        last_decided, in_the_order_refusals_are_answered([*held_refusals, *refusals])
     )
 
 
@@ -181,7 +181,7 @@ def _record_what_this_cursor_had_already_seen(
 
 
 def _record_what_the_log_already_held(
-    operations: Sequence[ClientHalf], held: Mapping[UUID, WhyAnOperationWasRefused | None]
+    held: Sequence[ClientHalf], verdicts: Mapping[UUID, WhyAnOperationWasRefused | None]
 ) -> None:
     """One drop record per operation an earlier flush already decided, carrying the reason where
     that decision was a refusal the client is shown again (ADR-0011 section 4's note of
@@ -190,12 +190,10 @@ def _record_what_the_log_already_held(
     Emitted where it is taken, like the cursor's drop above: it asserts a decision an earlier flush
     committed, which stays true whether or not this one does.
     """
-    for operation_id in the_operation_identifiers_in(operations):
-        if operation_id not in held:
-            continue
+    for operation_id in the_operation_identifiers_in(held):
         with correlated_by(operation_ids=(operation_id,)):
             record_the_decision(
-                TheDecisionARecordNames.FLUSH_DEDUPLICATED, reason=held[operation_id]
+                TheDecisionARecordNames.FLUSH_DEDUPLICATED, reason=verdicts[operation_id]
             )
 
 
