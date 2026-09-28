@@ -45,7 +45,8 @@ they disagree, **the disk wins and the document is what is stale**, and saying s
 report.
 
 **One measurement in that block is about the block itself.** The live-state injection is only a guarantee
-while it fits: past roughly forty kilobytes the harness hands it over as a file preview, and a preview is a
+while it fits: past roughly thirty kilobytes (a preview measured at 30,003 bytes on 2026-09-18, which the
+`session-handoff` skill carries) the harness hands it over as a file preview, and a preview is a
 pointer the boot can skip, which is the silent failure that is worse than an absent one. If the byte count
 above is in that territory, **say so in your first answer and open the file yourself**, and treat the
 overflow as work: superseded material belongs in `specs/log.md`, and moving it there is the `session-handoff`
