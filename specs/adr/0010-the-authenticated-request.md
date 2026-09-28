@@ -171,7 +171,7 @@ PRD M8 requires the envelope to be self-describing enough to route without infer
 >
 > **The refusal reasons are a closed set of their own, owned in `mapsift/sync/rules.py` beside `WhyAStreamCannotBeContinued`**, on the same footing ADR-0011 section 4 gives that enum: this decision fixes the keys and the shape, and the values live where the rule that produces them lives. `no_layer_in_this_project` is its first member and keeps its spelling, which already names a container rather than a cursor.
 >
-> **What this deliberately does not answer:** how a client surfaces a refused operation to its user, which is PRD T5.2's open resolution surface, and what it does with its own queue entry, which is MAP-15 and MAP-16's.
+> **What this deliberately does not answer:** how a client surfaces a refused operation to its user, which is PRD T5.2's open resolution surface, and what it does with its own queue entry, which is MAP-15 and MAP-16's. *(Pointer moved 2026-09-28: MAP-15's share is **MAP-77**'s, split off at MAP-15's pickup; MAP-16's is unchanged.)*
 
 > **Addition (2026-09-23), at the MAP-66 pickup after MAP-72 merged: the two refusals a layer's declarations make join the operation refusal set, and this is what that set needs from them.** The addition of 2026-09-08 closed on whether these two reach "this closed set", and ADR-0014 decision 2 answered it: they are operation verdicts, not stream refusals, so the `409` set keeps its two cursor reasons. What that decision left to this one is below.
 >
