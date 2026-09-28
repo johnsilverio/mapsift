@@ -202,8 +202,8 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
   - **`tasks/MAP-15-durable-operation-queue.md`** — the first task picked up in milestone 4, the client core: the operation queue in
     `libs/core` made durable behind ADR-0015's record contract, with MAP-17's identity riding in the same
     window pair. The third file here to cover **two** issues, and its pickup **split** an issue as well as
-    batching one: the four client halves earlier rounds had left under MAP-15's name went to it
-    and to **MAP-77**, because together they were not one tracer bullet. Its Evidence points at a measured
+    batching one: the client halves earlier rounds had left under MAP-15's name went to it, to MAP-17,
+    to **MAP-77** and, for M2's, to MAP-16, because together they were not one tracer bullet. Its Evidence points at a measured
     toolchain subsection in `dependencies.md` rather than transcribing it, and its Acceptance scopes M11's
     handle clause to its own crossing because the one existing export already fails it (MAP-78).
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
