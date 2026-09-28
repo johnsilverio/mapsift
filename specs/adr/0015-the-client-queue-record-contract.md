@@ -1,0 +1,88 @@
+# ADR-0015: The client queue's storage interface is a record contract
+
+- **Status:** accepted (2026-09-28)
+- **Deciders:** the owner, at the MAP-15 pickup: the interface's shape, the opaque record value, the JSON crossing of an operation and the tsify version, on one research strand and the canon reads listed under Context, all 2026-09-28
+- **Authority:** derives from `specs/mapsift-foundation.md` v0.19 (I1, I2, I3, I9; section 4's v0.7 decision with its v0.18 and v0.19 revisions; section 5's decision of v0.2; sections 9.6.2, 9.6.4 and 9.6.7) and `specs/PRD.md` v0.16 (T1.1, T1.2, T1.3, M3, M4, M10, M11, M12). Where this ADR and the foundation disagree, the foundation wins and this ADR is the one that is wrong.
+- **Supersedes:** nothing. **Superseded by:** nothing. **Extends:** ADR-0009 section 3, whose tsify pin and crossing form its note of 2026-09-28 moves. It also constrains MAP-18's store ADR, which weighs its candidates against decisions 3 and 4.
+- **Delivers:** the storage interface MAP-15 builds and MAP-17's identity rides on, the adapter shape MAP-19 implements, and the durable state MAP-77 acts on.
+
+---
+
+## Context
+
+The foundation fixes the frame and leaves the shape. Section 5 decides **one client persistence layer behind a narrow storage interface**, with a sync engine that is pure functions over the operation log and a desktop SQLite adapter, if one is built, behind the same interface. Section 9.6.2 puts the queue in the Rust core, which is a layer inside the client and not an orchestrator. Section 9.6.4 isolates that core **from UI and platform** behind a boundary that passes only serializable data. What none of them says is which side of the interface calls the other.
+
+Three shapes were on the table at the pickup, and two fall to the canon before any tradeoff is weighed.
+
+- **A trait the host language implements and hands to the core**, so the core calls a TypeScript or Dart store. PRD M11 names the defect exactly: no **callback into a live object** crosses the boundary. Out.
+- **A trait implemented inside the core**, IndexedDB through `web-sys` on the web target and SQLite on the native one. It keeps the boundary clean and moves the platform into the crate instead, which is the other half of what 9.6.4 forbids and what `.claude/rules/rust-core.md` says in its own words (a thing that needs the browser or the OS belongs in the UI adapter). It would also bind MAP-18's choice into `libs/core` and carry an asynchronous runtime into a library whose decisions are otherwise plain functions.
+- **A record contract**, where the core holds no store at all, which is what this ADR decides.
+
+The sync-or-async question MAP-15's pickup was asked to settle belongs to the first two shapes and does not arise in the third.
+
+**What was read for this decision:** foundation sections 4 (the v0.7 decision, its v0.18 sharpening of the flush domain and its v0.19 revision), 5, 9.6.2, 9.6.4 and 9.6.7; PRD T1.1, T1.2, T1.3, M3, M4, M10's Requirement, M11 and M12; ADR-0006 decision 3 and ADR-0009 sections 3, 5 and 6; `.claude/rules/rust-core.md`; and `libs/core/src/envelope.rs` and `boundary.rs`.
+
+## What was researched
+
+One research strand on 2026-09-28, each item reported as a measurement or a reading. The measurements are transcribed in `specs/dependencies.md` section 2 under that date; what follows is what bears on this decision.
+
+- **Precedent, read.** A core that holds no store and hands its state back to the host is the shape of Automerge (`save` and `load`, docs.rs 0.12.0), of Loro (`export` and `import`, 1.16.2, whose documentation leaves storage to the user) and of samod-core 0.14.0, the Rust automerge-repo, which is sans-IO for storage and emits one-key put, load and delete tasks for the host to run (its README warns against production use). **None of them returns a unit that must be written atomically.** automerge-repo's adapter interface has no batch and no transaction and stays safe through content-addressed keys and each process deleting only what it loaded. The engines that do need a multi-record unit get it from a store transaction inside a trait adapter: matrix-sdk-crypto's IndexedDB store opens one read-write transaction across every store a change set touches, and yrs-kvstore is implemented on the store's own transaction. libsignal bridges its store traits to host callbacks, the shape M11 excludes. 1Password's core owns its database on native platforms (its first-party post of 2021-08-12), and how its browser side persists was not found. **Decision 3 therefore has no direct precedent in this shape.** That is an absence rather than a counterexample: this queue's writes are neither idempotent nor content-addressed, which is what lets the others do without the unit.
+- **IndexedDB, read** (W3C IndexedDB 3.0 Editor's Draft, 13 August 2025). A transaction's changes are all written or none are, and `complete` fires only after they were written, which is why it, and not a request's `success`, is the confirmation. A transaction commits once no request is outstanding, so every record of one transition is requested within one task. The `durability` hint is `default`, `relaxed` or `strict`. `default` has behaved as relaxed in Chrome since 121 and as non-durable in Firefox since 40, so `complete` means "handed to the operating system" in all three engines unless strict is asked for, and Firefox's strict is, on its bug tracker's description, no stronger than its default.
+- **OPFS, read** (WHATWG File System Living Standard, 15 March 2026). The synchronous access handle is dedicated-worker only, takes an exclusive lock and makes no two writes atomic, and `flush()` may be a no-op on some file systems. `createWritable()` is expected to replace one file atomically on close, with no durability stated.
+- **A confirmed write is not a retained one, read.** WebKit evicts whole origins least recently used, and caps script-writable storage at seven days without user interaction outside a home-screen app.
+- **The toolchain, measured.** The web target mints an identifier only with `uuid`'s `js` feature, which ADR-0006 decision 3 had recorded from the documentation. tsify 0.5.6 leaks on a failed input conversion and, after enough failures, leaves the instance answering every call with a runtime error, while 0.5.8's `Ts<T>` does neither, which is ADR-0009 section 3's note of this date. And the outermost type's serializer settings govern everything nested inside it, so a generated type can misdescribe a nested runtime value, which is decision 6.
+
+## Decision
+
+### 1. The core holds no store; the interface is the records the queue is made of
+
+Every transition that changes the queue's durable state **returns the records the platform must write or remove**, and opening a queue **takes every record the platform holds, in any order**. The platform layer (the web client, the desktop shell, the mobile app) performs every read and every write; nothing that performs I/O, and no callback, crosses into the core.
+
+**The opened queue's state lives in the core's own instance, and no handle to it crosses.** The functions the platform calls take and return data only, so no queue object appears in a boundary signature, which is M11's Acceptance applied to this crossing; and the bookkeeping of which record belongs to which stream is written once, in the core, rather than once per platform, which is 9.6.2's reason for having a core at all.
+
+The same rule holds one level down, inside the core. The queue's logic is a decision in the sense of `specs/testing.md` section 3, so randomness and the clock reach it as arguments rather than being reached for. Identifier generation stays in the core as ADR-0006 decision 3 requires, in the layer that crosses the boundary rather than in the queue's rules.
+
+### 2. What the records hold
+
+One **installation record** carries the clientID, minted once for a store that holds none (M4, ADR-0006). Per **flush domain**, one tenant and one project (foundation section 4, v0.18; M4; M10), a **stream record** carries the next mutation number, and each queued operation is an **entry record** keyed by its domain and its mutation number. A stream is numbered from zero and contiguously, and no stream spans two domains.
+
+**The next number lives on the stream record, not only in the entries.** Entries leave the queue's pending set once the server decides them (what happens to a decided entry is MAP-77's), and a number derived from the entries that remain would restart at zero after a full acknowledgement. The server would then deduplicate every new operation as one it had already decided, which is silent loss under C12.
+
+### 3. The records one transition returns are one atomic unit
+
+A store behind the interface writes all of them or none of them. This is the requirement MAP-18 weighs its candidates against, and a store that cannot meet it is not a candidate.
+
+Both halves of a torn write break an invariant. An entry written without its stream record lets a reopened queue issue that number again, so two operations share one number and the server deduplicates the second as the first (C12). A stream record written without its entry burns a number, which the server reads as a gap and asks back (M10), and the client holds nothing to send, so the stream stalls (I2).
+
+### 4. An operation is offered for flush only after its records are confirmed written
+
+The confirmation is an **input** the platform gives the core, never an assumption the core makes, and it is what C1's "commits locally before any network round-trip" means for this queue. Showing the edit before the confirmation is T1.1's and MAP-16's, and this decision does not touch it.
+
+The failure this closes is concrete. If the server applies mutation number N and the local write of N then fails, the reopened queue still holds N as its next number and gives it to the following edit, which the server deduplicates as the operation it already decided.
+
+**What it closes and what it does not, read against the web stores.** On IndexedDB the confirmation is the transaction's `complete` event, which under the default durability hint means the write reached the operating system rather than the disk. That survives a force-close, which is T1.2's case, and it does not survive a power loss or an operating-system crash, after which the failure above can still occur. Whether the queue's transactions ask for strict durability, and what that buys per engine, is MAP-18's to decide.
+
+### 5. Every record carries the version of the contract it was written under, and one the core cannot read fails the open
+
+A record the core cannot read makes opening the queue fail with a **typed error**. It never yields a queue with that entry missing, because T1.2 promises that closing the app never loses unsynced work, and an application update is exactly the moment a record written by an older core meets a newer one. That is foundation 9.6.7's temporal skew in its local form. How a record is upcast is the versioning mechanism OQ-15 leaves open; this decision fixes only that the version is on every record and that an unreadable one is refused rather than skipped.
+
+### 6. A record's value is opaque to the platform, an operation crosses as JSON, and what crosses is generated
+
+A record crosses as a **key and a value, both strings**. The core builds the key, serializes the value as JSON through `serde_json` (already a dependency) and parses it back; the platform stores the pair, returns it on open, and **never reads the value**. The crossing types are Rust definitions generated to TypeScript through tsify into the wasm-pack pkg, in the crossing form ADR-0009 section 3's note of 2026-09-28 names, and the Dart half waits on ADR-0009 section 6's trigger.
+
+**An operation crosses the same way.** It enters the queue as JSON, and the operations the queue offers for flush leave it as the JSON of their client halves (M8), which the core writes and parses. A platform still composes an operation with the envelope's generated TypeScript types, so ADR-0009 section 4's single shape is untouched; what changes is only that the object is serialized before it crosses rather than converted by the glue.
+
+**Why opaque rather than typed.** Measured on the toolchain, the outermost type's serializer settings govern everything nested inside it, so a typed record carrying an envelope reached JavaScript as a `Map` with `undefined` where its generated type says `null`: the generated type would misdescribe the stored value of every record. An opaque value also puts decision 5's parse inside the core, where it can answer with a typed error, rather than in the ABI conversion; it reduces an adapter's one obligation, returning exactly what it was given, to a comparison of strings; and it leaves an adapter nothing it could decide about the queue, because it cannot read it. For an operation the measurement bites harder: a client half handed to JavaScript through the generated types arrives as a `Map`, and a `JSON.stringify` of that `Map` is `{}`, so a flush built from it would send empty operations with no error anywhere. JSON rather than a binary form because a record is small, a store inspector shows it legibly, and the core already carries the serializer.
+
+---
+
+## Consequences
+
+- **MAP-15 and MAP-17 are testable with no fake at all.** The records are data, so a reopen in a test is the records a transition returned, handed back.
+- **MAP-18 inherits two stated requirements**, decisions 3 and 4, rather than a preference: an atomic write of one transition's records, and a confirmation whose meaning it states per engine, since no durability hint is uniform across a power loss on the three engines read. PRD N11 pins no browser versions yet, so the floor it weighs against is itself unpinned. It also inherits the retention reading above, which bears on the maximum offline window M4 leaves open.
+- **MAP-19 is an adapter that decides nothing about the queue.** It writes records, reads them back and calls the core. **It is also the only place decision 3 can be witnessed**, since a platform adapter writing the records one at a time breaks C12 behind a green core suite.
+- **MAP-77 inherits the stream record** and acts on it.
+- **The nested-settings trap cannot reach the queue's crossing**, because what crosses is flat or serialized. It can still reach any other tsify type a later task crosses as an object, which ADR-0009 section 3's note of this date records.
+- **Every edit crosses the boundary more than once**: the edit in, the records out, the confirmation in. The count is per edit, never per vertex, so it is not what PRD T3.6's crossing budget measures.
+- **The desktop SQLite adapter T1.2 names, if it is built, is one more implementation of decisions 3 and 6**, with no second sync surface.
+- **What this does not decide:** the web store (MAP-18); the geometry encoding inside an entry (MAP-33), which the queue carries as the envelope types it; what happens to a decided entry (MAP-77); protection of the store on the device (OQ-17); and desktop project-scoped offline (OQ-9).

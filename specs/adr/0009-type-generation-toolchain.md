@@ -44,6 +44,19 @@ The Rust side emits the schema with **schemars**, pinned explicitly to the 2020-
 > `.d.ts` rather than a second copy of the shape. The cost on record: the reference is spelled by hand, so
 > a rename of the Rust type breaks at use sites only, never in the `.d.ts`.
 
+> **Changed (2026-09-28, at the MAP-15 pickup, owner's ruling).** tsify moves from 0.5.6 to **0.5.8**, and
+> a crossing signature takes and returns **`Ts<T>`** (`Vec<Ts<T>>` for a sequence, which the crate
+> supports where `Ts<Vec<T>>` it does not) rather than a type deriving `into_wasm_abi` and
+> `from_wasm_abi`, which 0.5.7 deprecated. The reason is measured rather than preferred: on 0.5.6 a
+> malformed input throws from inside the ABI conversion, leaks, and after about eleven thousand failures
+> leaves the instance answering every call, valid ones included, with a runtime error, while 0.5.8's
+> wrapper fails with an ordinary error and no growth (`specs/dependencies.md` section 2, the subsection of
+> that date). The same measurement found that **the outermost type's serializer settings govern everything
+> nested inside it**, so a generated type can misdescribe the runtime value of a nested one; ADR-0015
+> decision 6 is how the queue's records avoid it, and any later crossing of a nested type, the envelope
+> above all, owes a check that its runtime value is what its `.d.ts` says. This section's exit path does
+> not fire: the tagged-union output still passes the check of section 5.
+
 ### 4. The single-TypeScript-shape rule
 
 The envelope's TypeScript type is the core-generated one. The OpenAPI-to-TypeScript direction (M12's other generator) references that type wherever the API surface carries an envelope and never redeclares it. A second TypeScript declaration of a core-contract type, generated or hand-written, is a defect under M12's no-hand-written-duplicate rule.

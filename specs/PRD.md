@@ -454,7 +454,7 @@ The offline-first spine: an element edit is local and durable before the network
 #### T1.2 Persistent operation queue behind one storage interface
 - **Requirement:** every offline edit is appended to a local operation queue that survives an app or tab restart, behind one storage interface; closing the app never loses unsynced work, and the sync engine is platform-agnostic (pure functions over the operation log) with the store behind the interface.
 - **Basis:** I1, foundation section 4, foundation section 5; C1.
-- **Provenance:** closed v0.1, one persistence layer behind a storage interface fixed v0.2.
+- **Provenance:** closed v0.1, one persistence layer behind a storage interface fixed v0.2; **the interface's shape decided 2026-09-28 by ADR-0015**, a record contract in which the core holds no store and returns the records the platform writes.
 - **Acceptance:** edits made offline, then the app force-closed and reopened, are still present and still flush on reconnect; a desktop SQLite adapter, if built, sits behind the same interface with no second sync surface.
 
 #### T1.3 Client-generated collision-safe identity

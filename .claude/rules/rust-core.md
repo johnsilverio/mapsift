@@ -17,7 +17,7 @@ operation queue, optimistic apply, optimistic conflict detection, and client-sid
 **never runs on the server**. There is no PyO3 (foundation 9.6.6, revised v0.6). Authoritative geometry runs
 in PostGIS; authoritative conflict resolution runs in the Python server. What happens here is a preview.
 
-**Version note.** Nothing is pinned. The boundary tooling (wasm-bindgen, the Typeshare-class generator, the
+**Version note.** Only the lockfile pins, never this file. The boundary tooling (wasm-bindgen, the Typeshare-class generator, the
 Flutter FFI bridge) is fast-moving and each choice walks the external-dependency gate into
 `specs/dependencies.md`, the dependency survey, which now exists and is the place to check. Do not pick one from memory.
 
@@ -39,6 +39,10 @@ from memory; `cargo add` writes what the registry actually resolves.
   the payload.
 - DON'T hand-write a type that also exists on the other side. Types cross by generation from the Rust types,
   the same discipline the backend uses with OpenAPI (M12).
+- DO cross an exported signature with tsify's `Ts<T>` (`Vec<Ts<T>>` for a sequence), never with
+  `into_wasm_abi` and `from_wasm_abi`, whose failure path leaked and killed the instance on 0.5.6. The
+  outermost type's serializer settings govern everything nested inside it, so a nested type's runtime value
+  can differ from its `.d.ts` (ADR-0009 section 3, note of 2026-09-28).
 - MapLibre consumes GeoJSON at the very edge, so that conversion belongs to the UI adapter, never to the core
   contract. Do not let the renderer's format leak into the portable layer.
 
@@ -79,6 +83,11 @@ from memory; `cargo add` writes what the registry actually resolves.
   queue.
 - The queue is append-only and persistent; the sync engine is pure functions over the operation log, with the
   store behind one narrow storage interface. One sync engine, never two sync surfaces.
+- That interface is **ADR-0015's record contract**. The core holds no store and no callback: a transition
+  returns the records the platform writes, a queue opens from every record the platform holds, and a
+  record's value is JSON the platform stores and never reads. DON'T reach for the clock or for randomness
+  inside the queue's logic; they arrive as arguments, and minting lives in the layer that crosses the
+  boundary.
 
 ## Rust hygiene
 
@@ -87,7 +96,10 @@ from memory; `cargo add` writes what the registry actually resolves.
 - DON'T use `unsafe` without a documented, reviewed reason (the FFI edge is the only expected place).
 - DO keep `cargo clippy` and `cargo fmt --check` clean; CI blocks on both (ADR-0001 section 6).
 - DO keep the crate free of platform assumptions. If something needs the browser or the OS, it belongs in the
-  UI adapter, not here.
+  UI adapter, not here. **The one sanctioned reach is identifier randomness**, which ADR-0006 decision 3
+  puts in the core through `uuid`'s `js` feature and `getrandom`. The clock is not sanctioned: on wasm32,
+  `chrono`'s `Utc::now()` compiles and panics without `wasmbind` (`specs/dependencies.md` section 2,
+  2026-09-28).
 
 ## Tests
 
