@@ -199,6 +199,13 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     measures what the suite already authors against the new rules with a **non-behavioural instrument**
     rather than a grep. Its pickup carries a recommendation of the orchestrator's reversed within the hour
     and the one exception to T6.5 the owner accepted in consequence, owned by MAP-75.
+  - **`tasks/MAP-15-durable-operation-queue.md`** — the first task picked up in milestone 4, the client core: the operation queue in
+    `libs/core` made durable behind ADR-0015's record contract, with MAP-17's identity riding in the same
+    window pair. The third file here to cover **two** issues, and its pickup **split** an issue as well as
+    batching one: the four client halves earlier rounds had left under MAP-15's name went to it
+    and to **MAP-77**, because together they were not one tracer bullet. Its Evidence points at a measured
+    toolchain subsection in `dependencies.md` rather than transcribing it, and its Acceptance scopes M11's
+    handle clause to its own crossing because the one existing export already fails it (MAP-78).
 - **`spikes/`** — the plan for each risk spike: the question it answers, the harness, the pass/fail exit criteria,
   and what it delivers. Spike code is throwaway; what survives is the ADR and the numbers. On disk:
   - **`spikes/SP-1-postgres-ordered-sync.md`** — **closed 2026-07-31.** Answered foundation OQ-10 and the
@@ -361,3 +368,11 @@ A bare "section N" always means the foundation unless it is written as "PRD sect
     ElectricSQL all advance past a refused mutation and **none of them keeps it**, so the retention is
     Mapsift's own and stricter than the pattern the foundation cites. Extends ADR-0010 decision 6 (whose third
     reason it moves out of the stream set), ADR-0004 decision 4, ADR-0011 section 4 and ADR-0012 decision 3.
+  - **`adr/0015-the-client-queue-record-contract.md`** — the client queue's storage interface, and the
+    first ADR whose subject is the client's own durable state: the core holds no store, no callback and no handle, each
+    transition returns the records the platform writes, and a queue opens from every record the platform
+    holds. A record's value, an operation and a pending operation all cross as JSON the core writes and
+    parses, **decided on a measurement** that a generated type can misdescribe a nested runtime value, a client
+    half arriving as a `Map` that serializes to `{}`. It states two requirements the web store must meet
+    (an atomic unit per transition, a confirmation before an operation may leave) and says what the second
+    does not survive under the browsers' default durability. Moves ADR-0009 section 3's tsify pin to 0.5.8.
