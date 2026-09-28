@@ -215,7 +215,9 @@ Hort C-equivalents). Breaking one is a regression, not a tradeoff. CI and review
   compiles to both WASM and a native FFI library from one source, and no UI object or live handle crosses the
   boundary.
 - **C12, idempotency and partial-failure recovery (foundation I9, section 4).** Every operation carries a
-  per-client monotonic mutation number; the server tracks the per-client last-**decided** number (what it
+  per-client monotonic mutation number, contiguous within one **flush domain** (one tenant and one project,
+  so an installation working in two projects holds two streams; foundation v0.18, PRD M4 and M10); the
+  server tracks the per-client last-**decided** number in that domain (what it
   applied **and** what it refused, revised foundation v0.19; ADR-0014) and ignores any
   operation at or below it (dedup), so a resent flush is idempotent and a refused operation never stalls the
   operations behind it in an append-only stream. The server echoes the per-client
@@ -284,7 +286,7 @@ rules) is deferred to the PRD and is NOT pre-decided here.
   and presence only; the sync protocol uses versioning, gap detection, and resync, and never relies on
   at-most-once delivery. Do NOT put authoritative document state in the Channels tier.
 - **Operations are idempotent and authored.** Every queued operation carries a per-client monotonic mutation
-  number (the server dedups by per-client last-decided, making resends idempotent, distinct from the
+  number, one stream per flush domain (C12) (the server dedups by per-client last-decided, making resends idempotent, distinct from the
   per-feature version that orders and detects conflict) and an author stamped at creation (authorization is
   validated server-side at flush; an unauthorized offline op is flagged, not silently applied or dropped).
   **A refusal about what a client authored is a verdict on that one operation, never on the batch** (ADR-0014):
