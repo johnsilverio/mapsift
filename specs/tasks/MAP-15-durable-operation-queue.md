@@ -87,7 +87,7 @@ dispatched; items 7, 8 and 9 reached their documents after this file's first com
 9. **The opened queue's state lives in the core's instance and no handle crosses**, rather than the
    platform handing every record over on every call: ADR-0015 decision 1, 2026-09-29.
 
-**Written by the orchestrator and put to the owner with the go for Window A, rather than closed by a ruling:**
+**Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
 pre-dispatch read found the envelope's field ownership undecided; three additions made after the second
 read, each derived rather than chosen, namely decision 4's sentence that a record read back on open is
