@@ -3,7 +3,7 @@
 ## Trace
 
 **Requirements:** PRD **T1.2** (MAP-15's); **T1.3** and **M3** (MAP-17's); **M4** (the clientID, and a store
-with none being a new installation); **M9**'s Requirement for the address an operation carries; **M10**'s
+with none being a new installation); **M9**'s Requirement for the address an operation carries and the closed catalog it belongs to; **M10**'s
 Requirement and Shape for the mutation-number axis, whose first value zero is in the Shape; **M11** and
 **M12** for what crosses the boundary and how its types reach TypeScript.
 
@@ -38,8 +38,8 @@ platform needs before it composes an operation, and the queue is reachable acros
   ADR-0015 decision 2 names the stream record it acts on.
 - **The optimistic preview**, and showing the edit before any network call. **MAP-16** and T1.1.
 - **The client half of M2's served-versus-element clause**, which MAP-66's spec parked on MAP-15 and MAP-19.
-  The queue carries the operations it is given and knows no layer's storage class (ADR-0015 decision 7), so
-  this task's share of that pointer moves to **MAP-16**, whose working copy knows its layers; MAP-19 keeps
+  The queue carries the operations it is given, and nothing ADR-0015 decision 7 lists as reaching it names a
+  layer's storage class, so this task's share of that pointer moves to **MAP-16**, whose working copy knows its layers; MAP-19 keeps
   its own.
 - **A real store, a real restart and the wire.** **MAP-18** chooses the web store, **MAP-19** writes the
   adapter, proves the force-close and sends what the queue offers, and **MAP-20** is the surface that produces
@@ -57,45 +57,52 @@ platform needs before it composes an operation, and the queue is reachable acros
 
 ## Boundary decisions the owner closed
 
-All on **2026-09-28**, each written into the document that owns it before this file existed.
+On **2026-09-28** unless dated otherwise, each written into the document that owns it before this file existed.
 
 1. **The storage interface is a record contract**, the core holding no store and no callback: ADR-0015 by
    ruling, with its decisions 2 to 5, which the orchestrator wrote from that ruling and the canon, ratified.
 2. **A record's value is opaque to the platform**, a JSON string the core writes and parses, and **an
    operation crosses the same way**, in and out: ADR-0015 decision 6.
 3. **tsify moves to 0.5.8 and a crossing signature uses `Ts<T>`**: ADR-0009 section 3's note of 2026-09-28.
-   The bump goes through the toolchain (ADR-0002) and lands with the first signature spelled with `Ts<T>`;
-   the `uuid` feature change of `specs/dependencies.md` section 2 lands with the first body that mints.
+   The bump goes through the toolchain (ADR-0002). Which window makes it, and which makes the `getrandom`
+   change of ADR-0015 decision 7, follows from the `test` skill's rule that Window A writes the minimum
+   surface its tests need to compile.
 4. **The client halves earlier rounds left under MAP-15's name are split.** They are minting the clientID
-   (MAP-12, MAP-46), which is MAP-17's and batched here; persisting the queue (MAP-12, MAP-46, MAP-68,
-   MAP-72), which is this task's; the four that concern a flush response, namely advancing from the echo
-   (MAP-12, MAP-46, and MAP-43's "client half of the axis"), the typed resend (MAP-13), reacting to either
-   refusal (MAP-46) and the refused entry (ADR-0014, ADR-0010, MAP-66), which are **MAP-77**'s; and M2's
+   (MAP-12, MAP-13, MAP-46), which is MAP-17's and batched here; persisting the queue (MAP-12, MAP-13,
+   MAP-46, MAP-68, MAP-72), which is this task's; the four that concern a flush response, namely advancing
+   from the echo (MAP-12, MAP-13, MAP-46, and MAP-43's "client half of the axis"), the typed resend (MAP-13),
+   reacting to either refusal (MAP-13, MAP-46) and the refused entry (ADR-0014, ADR-0010, MAP-66), which are **MAP-77**'s; and M2's
    served-versus-element half (MAP-66), routed above. The preview those same sources name stays MAP-16's. The
-   dated notes in ADR-0014's Consequences and ADR-0010 decision 6 move the two ADR pointers; the task specs
-   named are closed rounds and keep their text as history.
+   three dated notes, two in ADR-0014's Consequences and one in ADR-0010 decision 6, move the pointers in both
+   ADRs; the task specs named are closed rounds and keep their text as history.
 5. **MAP-17 rides with MAP-15** as one window pair and one pull request (`specs/testing.md` section 1.2).
 6. **The queue crosses the WASM boundary in this task**, so MAP-19 is an adapter that decides nothing:
    ADR-0015 decision 6 and Consequences.
 7. **The task runs in the main checkout, alone**, and MAP-76 waits rather than running as a parallel lane
    (`specs/log.md`, 2026-09-28).
+8. **The two build-time versions the queue stamps have values**, 1 for every catalog member's schema and 0
+   for a runtime with no conflict rule: PRD M10's Shape, 2026-09-29.
+9. **The opened queue's state lives in the core's instance and no handle crosses**, rather than the
+   platform handing every record over on every call: ADR-0015 decision 1, 2026-09-29.
 
 **Written by the orchestrator and put to the owner with the go for Window A, rather than closed by a ruling:**
-ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's
-pre-dispatch read found the envelope's field ownership undecided; and the routing of M2's client half to
-MAP-16 in Out of scope. **Recorded rather than decided:** ADR-0015 decision 1's rule that the opened queue's
-state lives in the core's instance and no handle crosses, which is M11's Acceptance applied; and the
-correction to `CLAUDE.md` C12 and PRD T2.3, which now point at the flush domain.
+ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
+pre-dispatch read found the envelope's field ownership undecided; three sentences added after the second
+read, each derived rather than chosen, namely decision 4's that a record read back on open is confirmed,
+decision 6's that an operation the core cannot parse is refused at the append, and decision 6's that a
+refusal crosses as a value because a thrown error is in no generated signature and M12 leaves no boundary
+value untyped; and the routing of M2's client half to MAP-16 in Out of scope. **Recorded rather than
+decided:** the correction to `CLAUDE.md` C12 and PRD T2.3, which now point at the flush domain.
 
 ## Evidence handed over
 
 **The toolchain's behaviour at the boundary is measured, and it lives in `specs/dependencies.md` section 2**
 under "Crossing the boundary with tsify and minting with uuid, measured 2026-09-28". It is not restated here.
-Three of its facts shape this task and are named so the window opens that subsection rather than
-rediscovering them: the web target mints only with `uuid`'s `v4` feature and a source of randomness, `js`
-being the route measured end to end, and the lock changes with it; the pinned tsify 0.5.6 leaks on a failed
-input conversion and 0.5.8's `Ts<T>` does not; and the outermost type's serializer settings govern
-everything nested inside it.
+Four of its facts shape this task and are named so the window opens that subsection rather than
+rediscovering them: the route that mints without a panic, and the lock change it brings, measured in its
+addition of 2026-09-29; the pinned tsify 0.5.6 leaking on a failed input conversion where 0.5.8's `Ts<T>`
+does not; the outermost type's serializer settings governing everything nested inside it; and a thrown error
+appearing in no generated TypeScript signature.
 
 **What the tree carries, read 2026-09-28 on this branch unless marked.**
 
