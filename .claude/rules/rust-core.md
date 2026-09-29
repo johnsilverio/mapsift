@@ -97,7 +97,8 @@ from memory; `cargo add` writes what the registry actually resolves.
 - DO keep `cargo clippy` and `cargo fmt --check` clean; CI blocks on both (ADR-0001 section 6).
 - DO keep the crate free of platform assumptions. If something needs the browser or the OS, it belongs in the
   UI adapter, not here. **The one sanctioned reach is identifier randomness**, which ADR-0006 decision 3
-  puts in the core through `uuid`'s `js` feature and `getrandom`. The clock is not sanctioned: on wasm32,
+  puts in the core through `getrandom`, by the route ADR-0015 decision 7 names rather than `Uuid::new_v4`,
+  which panics when randomness is refused. The clock is not sanctioned: on wasm32,
   `chrono`'s `Utc::now()` compiles and panics without `wasmbind` (`specs/dependencies.md` section 2,
   2026-09-28).
 

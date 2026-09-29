@@ -72,6 +72,8 @@ Random keys scatter inserts across the index, and at a scale where that index no
 
 Generation lives in the Rust core (`libs/core`), so one implementation serves web, desktop and mobile (C11, 9.6.4). The `uuid` crate documents that **WebAssembly needs its `js` feature** in addition to the version feature, which is a build-configuration cost the random variant pays for randomness alone; the time-ordered variant would additionally depend on the host clock reaching into the core, which is the same clock this ADR just declined to trust. *(Documentary, from the crate's own documentation as read on 2026-08-04, rather than measured here.)*
 
+> **Changed (2026-09-29, at the MAP-15 pickup).** The route is measured now, and it is not the `js` feature. With the browser's randomness refused, `Uuid::new_v4` under `js` panics, which the Rust rule forbids on a recoverable path, so the core fills the bytes with `getrandom` (0.4, with its `wasm_js` feature on the web target) and builds the identifier with `uuid`'s `Builder::from_random_bytes`, which needs no `uuid` feature and returns the refusal typed. The variant this decision chose is unchanged: the result is a random v4 identifier. ADR-0015 decision 7 carries the route and `specs/dependencies.md` section 2 the measurement.
+
 The server **never** generates an identifier for an object a client can create offline, so no tenant-owned table carries a database-side default such as `gen_random_uuid()`; a default there would quietly make the server the allocator the moment a code path forgot to send one (M3). Server-generated defaults remain available only for rows the server alone owns.
 
 ### 4. What the migration and the tests inherit
