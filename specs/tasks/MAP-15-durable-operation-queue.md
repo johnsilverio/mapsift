@@ -35,7 +35,7 @@ platform needs before it composes an operation, and the queue is reachable acros
 
 - **What the queue does with a flush response**: the echoed cursor, the typed resend, reacting to either
   refusal, and what becomes of an entry once the server has decided it. **MAP-77**, split off at this pickup;
-  ADR-0015 decision 2 names the stream record it acts on.
+  ADR-0015 decision 2 names the stream record, and its Consequences give it to MAP-77 to act on.
 - **The optimistic preview**, and showing the edit before any network call. **MAP-16** and T1.1.
 - **The client half of M2's served-versus-element clause**, which MAP-66's spec parked on MAP-15 and MAP-19.
   The queue carries the operations it is given, and nothing ADR-0015 decision 7 lists as reaching it names a
@@ -52,8 +52,9 @@ platform needs before it composes an operation, and the queue is reachable acros
 - **The existing export's live handle.** `geodesicDistance` returns a class with `free()`, which M11's
   Acceptance forbids; that is **MAP-78**, and this task neither fixes it nor lets it decide a case.
 - **The Dart half of the generated contract and any FFI binding**, on ADR-0009 section 6's trigger.
-- **How a record written by an older core is upcast** (OQ-15). ADR-0015 decision 5 fixes only that the
-  version is on every record and that an unreadable record is refused.
+- **How a record written by an older core is upcast** (OQ-15). ADR-0015 decision 5 fixes the version's
+  name, place and type on every kind of record and that an unreadable record is refused, and leaves the
+  upcast open.
 - **Protection of the store on the device** (OQ-17).
 
 ## Boundary decisions the owner closed
@@ -87,7 +88,8 @@ window they bind.
 8. **The two build-time versions the queue stamps have values**, 1 for every catalog member's schema and 0
    for a runtime with no conflict rule: PRD M10's Shape, 2026-09-29.
 9. **The opened queue's state lives in the core's instance and no handle crosses**, rather than the
-   platform handing every record over on every call: ADR-0015 decision 1, 2026-09-29.
+   platform handing every record over on every call: the owner's ruling of 2026-09-29, written into
+   ADR-0015 decision 1 with the stateless alternative's refusal; the sentence itself predates this file.
 10. **The gaps Window A and its review found are closed**, 2026-10-14: a second open replaces the held queue
     and a transition before any open is refused (ADR-0015 decision 1); a store with records but no
     installation record is refused (decision 2); a stream is offered up to its first unconfirmed operation,
@@ -96,8 +98,9 @@ window they bind.
     its own (decision 7).
 11. **Three behaviours a case fixed where the canon was silent are ratified**, 2026-10-14: opening an empty
     store answers with exactly one record (ADR-0015 decision 2), `contract_version` is a number (decision 5)
-    and minting needs no open queue (decision 7); and how many offers a stream's confirmed prefix crosses in
-    is left to the batch bound of PRD N10 (decision 4).
+    and minting needs no open queue (decision 7). Recorded beside them as a reading rather than a ruling:
+    how many offers a stream's confirmed prefix crosses in is left to the batch bound of PRD N10
+    (decision 4).
 
 **Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
@@ -126,17 +129,20 @@ appearing in no generated TypeScript signature.
   decision 7 does not change, and since `39f1aaa` (2026-10-14) it declares `tsify` 0.5.8 and `getrandom` 0.4
   with `wasm_js`; the lock moved `tsify` and `tsify-macros` to 0.5.8 and gained `getrandom` 0.4.3, `libc`
   0.2.190 and `r-efi` 6.0.0, and `just lint`, `just typecheck` and `just contracts` exited 0 on it. That first run went over a stale
-  `pkg` served from the shared cargo target volume (`specs/log.md`, trap of 2026-10-14); re-run at the
+  `pkg`, most likely served from the shared cargo target volume, a mechanism inferred rather than measured
+  (`specs/log.md`, trap of 2026-10-14); re-run at the
   correction round's review over a `pkg` built from the tree, all three exited 0 again.
-- **No exported function crosses a tsify type today.** The envelope types derive `Tsify` as declarations only,
-  and the one export returns a `#[wasm_bindgen]` struct (`libs/core/src/boundary.rs`,
-  `libs/core/pkg/mapsift_core.d.ts`). This task publishes the first tsify crossing.
+- **The crossing is published as stubs and this task fills it.** Before this task no exported function
+  crossed a tsify type, the one export returning a `#[wasm_bindgen]` struct (read 2026-09-28). Since
+  `fc10deb` (2026-10-14) `libs/core/src/boundary.rs` declares the five crossing exports with `todo!()`
+  bodies, and the generated `.d.ts` declares them beside `geodesicDistance`.
 - **A web test that executes the WASM module runs in `just check` by instantiating the module from its
-  bytes in the ordinary `test` target**, measured 2026-10-14 by the correction round's review on a copy of
-  the tree: an `import` of `mapsift_core_bg.wasm` `with { loader: 'binary' }` followed by `initSync` gives
-  each `aFreshCore()` a module and a memory of its own, and a throwing `crypto.getRandomValues` reaches the
-  core, because the glue calls it on each mint (`pkg/mapsift_core.js`). Window A had reported the route on
-  2026-09-29 from a build lost with the scratchpad, which is why this line once called it unrepeatable. **A `*.browser.spec.ts`
+  bytes in the ordinary `test` target.** The route is the committed boundary spec's own (`initSync` from
+  an `import` of `mapsift_core_bg.wasm` `with { loader: 'binary' }`, one module and one memory per
+  `aFreshCore()`), measured 2026-10-14 by the correction round's review on a copy of the tree. That a
+  throwing `crypto.getRandomValues` reaches the core was measured on a copy carrying a mint
+  implementation; the generated glue calls it only once minting is implemented, so the tree's `pkg` does
+  not show the call yet. **A `*.browser.spec.ts`
   runs nowhere today**, read in the tree: `angular.json`'s
   `test-browser` target has no browser provider installed (`package.json` carries `vitest` and `jsdom` and
   no browser), and the existing port, `wasm-mapsift-core.ts`, never initializes the module, so the one
