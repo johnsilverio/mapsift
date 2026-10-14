@@ -42,6 +42,14 @@ bootstrap superuser, which carries `rolsuper` and `rolbypassrls`: the wall goes 
 fails for the wrong reason. `test_the_suite_runs_as_a_role_the_wall_applies_to` catches it and a run narrowed
 to another module never reaches it.
 
+**A fifth line was added 2026-10-14, and the contamination it closes ran in the other direction.** An axis
+of MAP-15's first review built its scratch copy of the core through the `core` service, the artifacts landed
+in the shared `mapsift_core-target` volume, and the orchestrator's own gate run over the tree two weeks later
+served a `pkg` built from that copy, so `just typecheck` and `just contracts` reported green over a `.d.ts` the
+tree's source never produced. The pkg and its timing were measured; the mechanism, cargo's modification-time
+fingerprint accepting artifacts newer than the tree's sources, is inferred. The `specs/log.md` trap of
+2026-10-14 carries it, and ADR-0002 section 5 owes the clause.
+
 ---
 
 ## Axis 1: Canon
@@ -72,6 +80,12 @@ from an env file **you wrote for the run**, or export it in your shell and pass 
 passthrough; neither env file this repository ships carries that key, so `-e DATABASE_URL` alone silently
 leaves you on the shared database. Never write it inline as `-e DATABASE_URL=postgresql://user:password@...`,
 which puts a credential on the command line and is refused (ADR-0002 section 5, amended 2026-08-26).
+
+A copy of `libs/core` built through the `core` service shares the `mapsift_core-target` volume, which stays
+mounted at `/workspace/libs/core/target` whatever you mount over the source, so its artifacts reach the
+tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported functions the tree's source did
+not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
+pointed inside your scratch copy.
 
 **Your question, and only yours:** does this diff violate something the ecosystem decided? This axis reads
 **law**. A finding here blocks a merge.
@@ -132,6 +146,12 @@ from an env file **you wrote for the run**, or export it in your shell and pass 
 passthrough; neither env file this repository ships carries that key, so `-e DATABASE_URL` alone silently
 leaves you on the shared database. Never write it inline as `-e DATABASE_URL=postgresql://user:password@...`,
 which puts a credential on the command line and is refused (ADR-0002 section 5, amended 2026-08-26).
+
+A copy of `libs/core` built through the `core` service shares the `mapsift_core-target` volume, which stays
+mounted at `/workspace/libs/core/target` whatever you mount over the source, so its artifacts reach the
+tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported functions the tree's source did
+not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
+pointed inside your scratch copy.
 
 **Your question, and only yours:** does the diff satisfy the requirement's acceptance criterion? Quote the
 criterion line for every finding.
@@ -195,6 +215,12 @@ from an env file **you wrote for the run**, or export it in your shell and pass 
 passthrough; neither env file this repository ships carries that key, so `-e DATABASE_URL` alone silently
 leaves you on the shared database. Never write it inline as `-e DATABASE_URL=postgresql://user:password@...`,
 which puts a credential on the command line and is refused (ADR-0002 section 5, amended 2026-08-26).
+
+A copy of `libs/core` built through the `core` service shares the `mapsift_core-target` volume, which stays
+mounted at `/workspace/libs/core/target` whatever you mount over the source, so its artifacts reach the
+tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported functions the tree's source did
+not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
+pointed inside your scratch copy.
 
 **Your question, and only yours:** judgement calls, and they are labelled as such. **Everything you raise is
 advisory**, and a documented decision in this repository always wins over this axis. Skip anything the

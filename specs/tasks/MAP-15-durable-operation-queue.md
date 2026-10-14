@@ -121,8 +121,9 @@ appearing in no generated TypeScript signature.
 - `libs/core/Cargo.toml` declares `uuid` with `features = ["serde"]`, which the mint route of ADR-0015
   decision 7 does not change, and since `39f1aaa` (2026-10-14) it declares `tsify` 0.5.8 and `getrandom` 0.4
   with `wasm_js`; the lock moved `tsify` and `tsify-macros` to 0.5.8 and gained `getrandom` 0.4.3, `libc`
-  0.2.190 and `r-efi` 6.0.0, and `just lint`, `just typecheck` and `just contracts` exited 0 on it (measured
-  2026-10-14).
+  0.2.190 and `r-efi` 6.0.0, and `just lint`, `just typecheck` and `just contracts` exited 0 on it. That first run went over a stale
+  `pkg` served from the shared cargo target volume (`specs/log.md`, trap of 2026-10-14); re-run at the
+  correction round's review over a `pkg` built from the tree, all three exited 0 again.
 - **No exported function crosses a tsify type today.** The envelope types derive `Tsify` as declarations only,
   and the one export returns a `#[wasm_bindgen]` struct (`libs/core/src/boundary.rs`,
   `libs/core/pkg/mapsift_core.d.ts`). This task publishes the first tsify crossing.
