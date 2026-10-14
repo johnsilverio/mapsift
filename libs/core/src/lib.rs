@@ -10,3 +10,4 @@ pub mod catalog;
 pub mod envelope;
 pub mod granularity;
 pub mod metric;
+pub mod queue;
