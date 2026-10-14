@@ -86,6 +86,12 @@ dispatched; items 7, 8 and 9 reached their documents after this file's first com
    for a runtime with no conflict rule: PRD M10's Shape, 2026-09-29.
 9. **The opened queue's state lives in the core's instance and no handle crosses**, rather than the
    platform handing every record over on every call: ADR-0015 decision 1, 2026-09-29.
+10. **The gaps Window A and its review found are closed**, 2026-10-14: a second open replaces the held queue
+    and a transition before any open is refused (ADR-0015 decision 1); a store with records but no
+    installation record is refused (decision 2); a stream is offered up to its first unconfirmed operation,
+    and a failed write stops the writes after it and is recovered by reopening (decision 4); the version is
+    named `contract_version` on every kind of record (decision 5); and the platform's part stays a type of
+    its own (decision 7).
 
 **Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
@@ -115,11 +121,15 @@ appearing in no generated TypeScript signature.
 - **No exported function crosses a tsify type today.** The envelope types derive `Tsify` as declarations only,
   and the one export returns a `#[wasm_bindgen]` struct (`libs/core/src/boundary.rs`,
   `libs/core/pkg/mapsift_core.d.ts`). This task publishes the first tsify crossing.
-- **A web test that needs the WASM module to execute does not run in `just check`**: `angular.json` excludes
-  `**/*.browser.spec.ts` from the web project's `test` target and includes it only in a separate
-  `test-browser` target, which neither the `justfile` nor `.github/workflows/ci.yml` invokes. The type-level
-  contract specs beside it, `apps/web/src/app/core/operation-envelope.spec.ts` and
-  `operation-catalog.spec.ts`, do run, since they compile against the generated `.d.ts`.
+- **A web test that executes the WASM module runs in `just check` when it instantiates the module from its
+  bytes in the ordinary `test` target**, measured by Window A on 2026-09-29: an `import` of
+  `mapsift_core_bg.wasm` `with { loader: 'binary' }` followed by `initSync` needs no configuration change and
+  passes lint, and a throwing `crypto.getRandomValues` stubbed there reaches `getrandom::fill` as an error,
+  because the glue reads it on every call. **A `*.browser.spec.ts` runs nowhere today**, and this line
+  said only that the gate does not invoke it until that measurement corrected it: `angular.json`'s
+  `test-browser` target has no browser provider installed (`package.json` carries `vitest` and `jsdom` and
+  no browser), and the existing port, `wasm-mapsift-core.ts`, never initializes the module, so the one
+  browser spec on disk could not pass as written (MAP-19's, and MAP-78's for the handle).
 - **The baseline, measured**: `just check` at `98ea71b` exited 0 with 385 Python, 31 Rust and 12 Angular
   cases passing. A first run the same day reported 303 errors reading `failed to resolve host 'db'`, because
   the database container had stopped two days earlier and `just check` passes `--no-deps`; starting `db`
@@ -161,3 +171,6 @@ appearing in no generated TypeScript signature.
   returns form its unit. That a store writes the unit atomically is MAP-19's to witness against a real store.
 - **ADR-0015 decision 4's residual has no runtime anywhere yet**: whether a confirmation survives a power loss
   is a property of the store MAP-18 chooses.
+- **ADR-0015 decision 4's failed-write rule has two halves and only the core's has a runtime here**: what a
+  stream offers past an unconfirmed operation, and the reopen that replaces the held queue. Writing one
+  unit at a time and stopping after a failure is the adapter's, MAP-19's.
