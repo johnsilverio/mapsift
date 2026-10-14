@@ -50,6 +50,10 @@ tree's source never produced. The pkg and its timing were measured; the mechanis
 fingerprint accepting artifacts newer than the tree's sources, is inferred. The `specs/log.md` trap of
 2026-10-14 carries it, and ADR-0002 section 5 owes the clause.
 
+**The same line gained a second sentence the same day**, because the Spec axis of MAP-15's second review
+copied the whole working tree into the scratchpad, `infra/.env` and `apps/api/.env` with it, the fourth
+occurrence of the trap of 2026-09-23 and the first in an axis whose prompt did not forbid it.
+
 ---
 
 ## Axis 1: Canon
@@ -85,7 +89,9 @@ A copy of `libs/core` built through the `core` service shares the `mapsift_core-
 mounted at `/workspace/libs/core/target` whatever you mount over the source, so its artifacts reach the
 tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported functions the tree's source did
 not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
-pointed inside your scratch copy.
+pointed inside your scratch copy. A copy of the repository is made from what git tracks (`git ls-files`, or an
+`rsync` that excludes `.env`), never with the untracked `.env` files, which carry the development database
+password and were found in an axis's scratch copy again on 2026-10-14.
 
 **Your question, and only yours:** does this diff violate something the ecosystem decided? This axis reads
 **law**. A finding here blocks a merge.
@@ -151,7 +157,9 @@ A copy of `libs/core` built through the `core` service shares the `mapsift_core-
 mounted at `/workspace/libs/core/target` whatever you mount over the source, so its artifacts reach the
 tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported functions the tree's source did
 not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
-pointed inside your scratch copy.
+pointed inside your scratch copy. A copy of the repository is made from what git tracks (`git ls-files`, or an
+`rsync` that excludes `.env`), never with the untracked `.env` files, which carry the development database
+password and were found in an axis's scratch copy again on 2026-10-14.
 
 **Your question, and only yours:** does the diff satisfy the requirement's acceptance criterion? Quote the
 criterion line for every finding.
@@ -220,7 +228,9 @@ A copy of `libs/core` built through the `core` service shares the `mapsift_core-
 mounted at `/workspace/libs/core/target` whatever you mount over the source, so its artifacts reach the
 tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported functions the tree's source did
 not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
-pointed inside your scratch copy.
+pointed inside your scratch copy. A copy of the repository is made from what git tracks (`git ls-files`, or an
+`rsync` that excludes `.env`), never with the untracked `.env` files, which carry the development database
+password and were found in an axis's scratch copy again on 2026-10-14.
 
 **Your question, and only yours:** judgement calls, and they are labelled as such. **Everything you raise is
 advisory**, and a documented decision in this repository always wins over this axis. Skip anything the

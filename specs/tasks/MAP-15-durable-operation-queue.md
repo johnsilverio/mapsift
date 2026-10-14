@@ -127,12 +127,12 @@ appearing in no generated TypeScript signature.
 - **No exported function crosses a tsify type today.** The envelope types derive `Tsify` as declarations only,
   and the one export returns a `#[wasm_bindgen]` struct (`libs/core/src/boundary.rs`,
   `libs/core/pkg/mapsift_core.d.ts`). This task publishes the first tsify crossing.
-- **A web test that executes the WASM module can run in `just check` by instantiating the module from its
-  bytes in the ordinary `test` target. This is a report, not a measurement anyone can repeat today:**
-  Window A reported on 2026-09-29, from a build lost with the scratchpad on 2026-10-14, that an `import` of
-  `mapsift_core_bg.wasm` `with { loader: 'binary' }` followed by `initSync` needed no configuration change
-  and passed lint, and that a throwing `crypto.getRandomValues` stubbed there reached `getrandom::fill` as an
-  error. Nothing in the tree reproduces it until the boundary half exists again. **A `*.browser.spec.ts`
+- **A web test that executes the WASM module runs in `just check` by instantiating the module from its
+  bytes in the ordinary `test` target**, measured 2026-10-14 by the correction round's review on a copy of
+  the tree: an `import` of `mapsift_core_bg.wasm` `with { loader: 'binary' }` followed by `initSync` gives
+  each `aFreshCore()` a module and a memory of its own, and a throwing `crypto.getRandomValues` reaches the
+  core, because the glue calls it on each mint (`pkg/mapsift_core.js`). Window A had reported the route on
+  2026-09-29 from a build lost with the scratchpad, which is why this line once called it unrepeatable. **A `*.browser.spec.ts`
   runs nowhere today**, read in the tree: `angular.json`'s
   `test-browser` target has no browser provider installed (`package.json` carries `vitest` and `jsdom` and
   no browser), and the existing port, `wasm-mapsift-core.ts`, never initializes the module, so the one
