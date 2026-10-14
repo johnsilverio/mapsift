@@ -60,8 +60,8 @@ platform needs before it composes an operation, and the queue is reachable acros
 
 On **2026-09-28** unless dated otherwise, each written into the document that owns it before the window it
 binds was dispatched. Items 7, 8 and 9 reached their documents after this file's first commit, at its
-pre-dispatch reads and before Window A; item 10 reached ADR-0015 after Window A's review and before its
-correction round.
+pre-dispatch reads and before Window A; items 10 and 11 reached ADR-0015 after Window A's reviews and before the
+window they bind.
 
 1. **The storage interface is a record contract**, the core holding no store and no callback: ADR-0015 by
    ruling, with its decisions 2 to 5, which the orchestrator wrote from that ruling and the canon, ratified.
@@ -94,6 +94,10 @@ correction round.
     and a failed write stops the writes after it and is recovered by reopening (decision 4); the version is
     named `contract_version` on every kind of record (decision 5); and the platform's part stays a type of
     its own (decision 7).
+11. **Three behaviours a case fixed where the canon was silent are ratified**, 2026-10-14: opening an empty
+    store answers with exactly one record (ADR-0015 decision 2), `contract_version` is a number (decision 5)
+    and minting needs no open queue (decision 7); and how many offers a stream's confirmed prefix crosses in
+    is left to the batch bound of PRD N10 (decision 4).
 
 **Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
