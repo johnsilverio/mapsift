@@ -2,8 +2,8 @@
 
 ## Trace
 
-**Requirements:** PRD **T1.2** (MAP-15's); **T1.3** and **M3** (MAP-17's); **M4** (the clientID, and a store
-with none being a new installation); **M9**'s Requirement for the address an operation carries and the closed catalog it belongs to; **M10**'s
+**Requirements:** PRD **T1.2** (MAP-15's); **T1.3** and **M3** (MAP-17's); **M4** (the clientID, persisted locally,
+stable across restarts and new on a reinstall; which store is a new installation is ADR-0015 decision 2's); **M9**'s Requirement for the address an operation carries and the closed catalog it belongs to; **M10**'s
 Requirement and Shape for the mutation-number axis, whose first value zero is in the Shape; **M11** and
 **M12** for what crosses the boundary and how its types reach TypeScript.
 
@@ -43,8 +43,9 @@ platform needs before it composes an operation, and the queue is reachable acros
   its own.
 - **A real store, a real restart and the wire.** **MAP-18** chooses the web store, **MAP-19** writes the
   adapter, proves the force-close and sends what the queue offers, and **MAP-20** is the surface that produces
-  an element. The web client's own port onto the core, `apps/web/src/app/core/mapsift-core.ts`, is MAP-19's
-  to extend.
+  an element. The web client's port onto the core is MAP-19's to extend, both its interface,
+  `apps/web/src/app/core/mapsift-core.ts`, and its WASM implementation, `wasm-mapsift-core.ts`; this
+  task's web-side cases reach the generated module directly and change neither.
 - **Composing the platform's part of an operation**, the part ADR-0015 decision 7 gives the platform. What
   the queue receives it carries as given; the session material's proof is OQ-18's and MAP-37's.
 - **The geometry encoding** inside an entry (MAP-33). The queue carries the operation as the envelope types it.
@@ -57,17 +58,18 @@ platform needs before it composes an operation, and the queue is reachable acros
 
 ## Boundary decisions the owner closed
 
-On **2026-09-28** unless dated otherwise, each written into the document that owns it before any window was
-dispatched; items 7, 8 and 9 reached their documents after this file's first commit, at its pre-dispatch reads.
+On **2026-09-28** unless dated otherwise, each written into the document that owns it before the window it
+binds was dispatched. Items 7, 8 and 9 reached their documents after this file's first commit, at its
+pre-dispatch reads and before Window A; item 10 reached ADR-0015 after Window A's review and before its
+correction round.
 
 1. **The storage interface is a record contract**, the core holding no store and no callback: ADR-0015 by
    ruling, with its decisions 2 to 5, which the orchestrator wrote from that ruling and the canon, ratified.
 2. **A record's value is opaque to the platform**, a JSON string the core writes and parses, and **an
    operation crosses the same way**, in and out: ADR-0015 decision 6.
 3. **tsify moves to 0.5.8 and a crossing signature uses `Ts<T>`**: ADR-0009 section 3's note of 2026-09-28.
-   The bump goes through the toolchain (ADR-0002). Which window makes it, and which makes the `getrandom`
-   change of ADR-0015 decision 7, follows from the `test` skill's rule that Window A writes the minimum
-   surface its tests need to compile.
+   The permission classifier refused that bump to Window A on 2026-09-29, so the owner took it, and the
+   `getrandom` change of ADR-0015 decision 7 with it, on 2026-10-14 (`39f1aaa`); no window owes either.
 4. **The client halves earlier rounds left under MAP-15's name are split.** They are minting the clientID
    (MAP-12, MAP-13, MAP-46), which is MAP-17's and batched here; persisting the queue (MAP-12, MAP-13,
    MAP-46, MAP-68, MAP-72), which is this task's; the four that concern a flush response, namely advancing
@@ -100,7 +102,8 @@ read, each derived rather than chosen, namely decision 4's sentence that a recor
 confirmed, decision 6's that an operation the core cannot parse is refused at the append, and decision 6's
 paragraph that a refusal crosses as a value because a thrown error is in no generated signature and M12
 leaves no boundary value untyped, which binds every refusal of decisions 5, 6 and 7, the unreadable record
-and the refused randomness included; and the routing of M2's client half to MAP-16 in Out of scope. **Recorded rather than
+and the refused randomness included; and the routing of M2's client half to MAP-16 in Out of scope. The list of decisions whose refusals
+cross as values grew to decisions 1, 2, 5, 6 and 7 on 2026-10-14, with item 10. **Recorded rather than
 decided:** the correction to `CLAUDE.md` C12 and PRD T2.3, which now point at the flush domain.
 
 ## Evidence handed over
@@ -115,18 +118,21 @@ appearing in no generated TypeScript signature.
 
 **What the tree carries, read 2026-09-28 on this branch unless marked.**
 
-- `libs/core/Cargo.toml` declares `uuid` with `features = ["serde"]`, and `libs/core/Cargo.lock` carries **no
-  `getrandom` at all** (`grep -c getrandom` returns 0). A lockfile records no features, so the feature set is
-  the manifest's plus the crate's defaults.
+- `libs/core/Cargo.toml` declares `uuid` with `features = ["serde"]`, which the mint route of ADR-0015
+  decision 7 does not change, and since `39f1aaa` (2026-10-14) it declares `tsify` 0.5.8 and `getrandom` 0.4
+  with `wasm_js`; the lock moved `tsify` and `tsify-macros` to 0.5.8 and gained `getrandom` 0.4.3, `libc`
+  0.2.190 and `r-efi` 6.0.0, and `just lint`, `just typecheck` and `just contracts` exited 0 on it (measured
+  2026-10-14).
 - **No exported function crosses a tsify type today.** The envelope types derive `Tsify` as declarations only,
   and the one export returns a `#[wasm_bindgen]` struct (`libs/core/src/boundary.rs`,
   `libs/core/pkg/mapsift_core.d.ts`). This task publishes the first tsify crossing.
-- **A web test that executes the WASM module runs in `just check` when it instantiates the module from its
-  bytes in the ordinary `test` target**, measured by Window A on 2026-09-29: an `import` of
-  `mapsift_core_bg.wasm` `with { loader: 'binary' }` followed by `initSync` needs no configuration change and
-  passes lint, and a throwing `crypto.getRandomValues` stubbed there reaches `getrandom::fill` as an error,
-  because the glue reads it on every call. **A `*.browser.spec.ts` runs nowhere today**, and this line
-  said only that the gate does not invoke it until that measurement corrected it: `angular.json`'s
+- **A web test that executes the WASM module can run in `just check` by instantiating the module from its
+  bytes in the ordinary `test` target. This is a report, not a measurement anyone can repeat today:**
+  Window A reported on 2026-09-29, from a build lost with the scratchpad on 2026-10-14, that an `import` of
+  `mapsift_core_bg.wasm` `with { loader: 'binary' }` followed by `initSync` needed no configuration change
+  and passed lint, and that a throwing `crypto.getRandomValues` stubbed there reached `getrandom::fill` as an
+  error. Nothing in the tree reproduces it until the boundary half exists again. **A `*.browser.spec.ts`
+  runs nowhere today**, read in the tree: `angular.json`'s
   `test-browser` target has no browser provider installed (`package.json` carries `vitest` and `jsdom` and
   no browser), and the existing port, `wasm-mapsift-core.ts`, never initializes the module, so the one
   browser spec on disk could not pass as written (MAP-19's, and MAP-78's for the handle).
@@ -142,8 +148,8 @@ appearing in no generated TypeScript signature.
 - **T1.2's first clause, and C1's test with it, is split: the reopen has a runtime here and the restart does
   not.** The records a transition returned, handed back to open a queue, are the whole of the store in this
   task; a real store surviving a real force-close is MAP-19's. "Still flush on reconnect" is, here, the queue
-  offering, for each flush domain in mutation-number order, the pending operations whose records are
-  confirmed written (ADR-0015 decision 4); sending them is MAP-19's.
+  offering, for each flush domain in mutation-number order, its confirmed operations up to the first one
+  that is not confirmed (ADR-0015 decision 4 with its addition of 2026-10-14); sending them is MAP-19's.
 - **T1.2's second clause, the desktop SQLite adapter, has no runtime.** It is held by ADR-0015 decisions 3
   and 6, and nothing is built for it.
 - **M3's "two clients creating features offline sync with no collision", which T1.3's Acceptance words as
@@ -173,4 +179,6 @@ appearing in no generated TypeScript signature.
   is a property of the store MAP-18 chooses.
 - **ADR-0015 decision 4's failed-write rule has two halves and only the core's has a runtime here**: what a
   stream offers past an unconfirmed operation, and the reopen that replaces the held queue. Writing one
-  unit at a time and stopping after a failure is the adapter's, MAP-19's.
+  unit at a time, stopping after a failure and telling the user which edits were not recorded are the
+  platform's, MAP-19's and the surface's; the core reports nothing about what was lost, and its reopened
+  queue simply holds what the store held.
