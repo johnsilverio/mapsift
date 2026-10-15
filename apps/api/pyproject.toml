@@ -15,7 +15,7 @@ dependencies = [
 dev = [
     # The generator and the formatter it is told to call are pinned exactly and moved together,
     # because their output is a committed artifact the `--check` gate diffs (ADR-0009 section 2).
-    "datamodel-code-generator==0.72.1",
+    "datamodel-code-generator==0.81.0",
     "django-stubs[compatible-mypy]>=6.0.7",
     "import-linter>=2.13",
     "pytest>=9.1.1",
