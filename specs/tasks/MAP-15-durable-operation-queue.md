@@ -62,7 +62,7 @@ platform needs before it composes an operation, and the queue is reachable acros
 On **2026-09-28** unless dated otherwise, each written into the document that owns it before the window it
 binds was dispatched. Items 7, 8 and 9 reached their documents after this file's first commit, at its
 pre-dispatch reads and before Window A; items 10 and 11 reached ADR-0015 after Window A's reviews and before the
-window they bind.
+window they bind; item 12 reached it after Window B's review and before the rounds it binds.
 
 1. **The storage interface is a record contract**, the core holding no store and no callback: ADR-0015 by
    ruling, with its decisions 2 to 5, which the orchestrator wrote from that ruling and the canon, ratified.
@@ -101,6 +101,13 @@ window they bind.
     and minting needs no open queue (decision 7). Recorded beside them as a reading rather than a ruling:
     how many offers a stream's confirmed prefix crosses in is left to the batch bound of PRD N10
     (decision 4).
+12. **Two behaviours Window B chose where no case reached are ratified, and its review sets two rounds**,
+    2026-10-19: a refused open leaves the instance holding no queue (ADR-0015 decision 1), and a value
+    crossing into the open as no record at all is refused as unreadable with an empty key (decision 5), each
+    owed a case by a test-only round of Window A; then a refactor round of Window B types the queue's
+    mutation number as `MutationNumber` (PRD M10's Shape), for which `envelope.rs` may gain on that type
+    only the derives and a successor, with the emitted schema and the `.d.ts` unchanged. Declined: a trap
+    comment on the queue's holder, replaced by ADR-0015's Consequences line on a native binding's holder.
 
 **Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
@@ -135,7 +142,9 @@ appearing in no generated TypeScript signature.
 - **The crossing is published as stubs and this task fills it.** Before this task no exported function
   crossed a tsify type, the one export returning a `#[wasm_bindgen]` struct (read 2026-09-28). Since
   `fc10deb` (2026-10-14) `libs/core/src/boundary.rs` declares the five crossing exports with `todo!()`
-  bodies, and the generated `.d.ts` declares them beside `geodesicDistance`.
+  bodies, and the generated `.d.ts` declares them beside `geodesicDistance`. Window B filled them on
+  2026-10-19, and the release `mapsift_core_bg.wasm` went from 46,924 to 297,164 bytes (117,249 under
+  `gzip -9`), the stubs having compiled the serializer away; no PRD requirement budgets that size.
 - **A web test that executes the WASM module runs in `just check` by instantiating the module from its
   bytes in the ordinary `test` target.** The route is the committed boundary spec's own (`initSync` from
   an `import` of `mapsift_core_bg.wasm` `with { loader: 'binary' }`, one module and one memory per

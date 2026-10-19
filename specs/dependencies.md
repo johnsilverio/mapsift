@@ -414,6 +414,7 @@ The ratified toolchain for the envelope contract. **ADR-0009 is the decision; th
 - **One crossing costs about thirty calls from wasm into JS per record** under serde-wasm-bindgen: 300, 3,000 and 30,000 import calls for 10, 100 and 1,000 records. Time was not measured.
 - **`tsify` is declared with `features = ["js"]` and without `default-features = false`**, so its `json` feature is on too and `gloo-utils` compiles for nothing; the `js` path wins by cfg. Recorded, not changed.
 - **`chrono` with the current features cannot call `Utc::now()`** (E0599), and with `now` but without `wasmbind` it compiles for wasm32 and panics at runtime.
+- **Added 2026-10-19, measured by MAP-15's Window B against chrono 0.4.45: a `DateTime<Utc>` keeps the instant it parses and not the text.** An operation whose `created_at` crossed into the queue as `2026-10-14T10:00:00.000Z`, the form `Date.toISOString()` writes, was offered back as `2026-10-14T10:00:00Z`. The cause is the envelope's type (M8), not the queue, and no committed fixture carries a fraction, so no case sees it; anything that compares the claimed creation time (T5.3) as text rather than as an instant meets it, MAP-19's adapter first.
 
 ### The geometry engine, and why PRD M13's tolerance is structural
 
