@@ -1,12 +1,14 @@
 //! The serializable boundary to the UI. Data only, never a live reference (C11, M11).
 
+use std::cell::RefCell;
+
 use serde::Serialize;
 use tsify::{Ts, Tsify};
 use uuid::Uuid;
 use wasm_bindgen::prelude::*;
 
 use crate::metric::{self, Metric, MetricUnit};
-use crate::queue::{FlushOffer, QueueRecord, QueueRefusal};
+use crate::queue::{FlushOffer, OperationQueue, QueueRecord, QueueRefusal};
 
 /// A measurement as it crosses to the UI.
 #[wasm_bindgen(getter_with_clone)]
@@ -142,36 +144,111 @@ pub enum MintOutcome {
 /// decisions 1 and 2).
 #[wasm_bindgen(js_name = openQueue)]
 pub fn open_queue(records: Vec<Ts<QueueRecord>>) -> Ts<OpenOutcome> {
-    let _ = records;
-    todo!()
+    let (opened, outcome) = match open_or_install(&records) {
+        Ok((queue, records)) => (Some(queue), OpenOutcome::Opened { records }),
+        Err(refusal) => (None, OpenOutcome::Refused { refusal }),
+    };
+    OPENED_QUEUE.set(opened);
+    crossing(&outcome)
 }
 
 /// Appends the operation the platform authored, handed over as its JSON (ADR-0015 decisions 6
 /// and 7).
 #[wasm_bindgen(js_name = appendOperation)]
 pub fn append_operation(operation: String) -> Ts<AppendOutcome> {
-    let _ = operation;
-    todo!()
+    let appended = with_opened_queue(|queue| {
+        let operation_id = mint().map_err(AppendRefusal::Mint)?;
+        queue
+            .append(&operation, operation_id)
+            .map_err(AppendRefusal::Queue)
+    })
+    .map_err(AppendRefusal::Unopened)
+    .flatten();
+    let outcome = match appended {
+        Ok(records) => AppendOutcome::Appended { records },
+        Err(refusal) => AppendOutcome::Refused { refusal },
+    };
+    crossing(&outcome)
 }
 
 /// Takes the platform's word that its store wrote the records under these keys (ADR-0015
 /// decision 4).
 #[wasm_bindgen(js_name = confirmWritten)]
 pub fn confirm_written(keys: Vec<String>) -> Ts<ConfirmOutcome> {
-    let _ = keys;
-    todo!()
+    let outcome = match with_opened_queue(|queue| queue.confirm_written(&keys)) {
+        Ok(()) => ConfirmOutcome::Confirmed,
+        Err(refusal) => ConfirmOutcome::Refused { refusal },
+    };
+    crossing(&outcome)
 }
 
 /// Per flush domain, the confirmed operations up to the first one that is not confirmed, in
 /// mutation-number order (ADR-0015 decision 4).
 #[wasm_bindgen(js_name = offeredForFlush)]
 pub fn offered_for_flush() -> Ts<OfferOutcome> {
-    todo!()
+    let outcome = match with_opened_queue(|queue| queue.offered_for_flush()) {
+        Ok(offers) => OfferOutcome::Offered { offers },
+        Err(refusal) => OfferOutcome::Refused { refusal },
+    };
+    crossing(&outcome)
 }
 
 /// Mints an identifier the platform needs before it composes an operation, a new feature's above
 /// all, from the generator the queue mints with (T1.3, ADR-0015 decision 7).
 #[wasm_bindgen(js_name = mintIdentifier)]
 pub fn mint_identifier() -> Ts<MintOutcome> {
-    todo!()
+    let outcome = match mint() {
+        Ok(identifier) => MintOutcome::Minted { identifier },
+        Err(refusal) => MintOutcome::Refused { refusal },
+    };
+    crossing(&outcome)
+}
+
+thread_local! {
+    static OPENED_QUEUE: RefCell<Option<OperationQueue>> = const { RefCell::new(None) };
+}
+
+fn with_opened_queue<T>(
+    transition: impl FnOnce(&mut OperationQueue) -> T,
+) -> Result<T, UnopenedRefusal> {
+    OPENED_QUEUE.with_borrow_mut(|opened| {
+        opened
+            .as_mut()
+            .map(transition)
+            .ok_or(UnopenedRefusal::NoQueueOpen)
+    })
+}
+
+fn open_or_install(
+    records: &[Ts<QueueRecord>],
+) -> Result<(OperationQueue, Vec<QueueRecord>), OpenRefusal> {
+    if records.is_empty() {
+        let client_id = mint().map_err(OpenRefusal::Mint)?;
+        return Ok(OperationQueue::install(client_id));
+    }
+    let records = records
+        .iter()
+        .map(record_from_the_platform)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(OpenRefusal::Queue)?;
+    let queue = OperationQueue::open(records).map_err(OpenRefusal::Queue)?;
+    Ok((queue, Vec::new()))
+}
+
+/// The record as the platform handed it over. One that is not a `QueueRecord` at all has no key
+/// the core can read, so its refusal names the empty key.
+fn record_from_the_platform(record: &Ts<QueueRecord>) -> Result<QueueRecord, QueueRefusal> {
+    record
+        .to_rust()
+        .map_err(|_| QueueRefusal::UnreadableRecord { key: String::new() })
+}
+
+fn mint() -> Result<Uuid, MintRefusal> {
+    let mut random_bytes = [0; 16];
+    getrandom::fill(&mut random_bytes).map_err(|_| MintRefusal::RandomnessUnavailable)?;
+    Ok(uuid::Builder::from_random_bytes(random_bytes).into_uuid())
+}
+
+fn crossing<T: Tsify + Serialize>(outcome: &T) -> Ts<T> {
+    Ts::from_rust(outcome).expect("an outcome of strings, numbers and tags converts to JS")
 }
