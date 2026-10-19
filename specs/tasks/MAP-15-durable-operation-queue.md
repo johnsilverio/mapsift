@@ -102,12 +102,16 @@ window they bind; item 12 reached it after Window B's review and before the roun
     how many offers a stream's confirmed prefix crosses in is left to the batch bound of PRD N10
     (decision 4).
 12. **Two behaviours Window B chose where no case reached are ratified, and its review sets two rounds**,
-    2026-10-19: a refused open leaves the instance holding no queue (ADR-0015 decision 1), and a value
-    crossing into the open as no record at all is refused as unreadable with an empty key (decision 5), each
-    owed a case by a test-only round of Window A; then a refactor round of Window B types the queue's
-    mutation number as `MutationNumber` (PRD M10's Shape), for which `envelope.rs` may gain on that type
-    only the derives and a successor, with the emitted schema and the `.d.ts` unchanged. Declined: a trap
-    comment on the queue's holder, replaced by ADR-0015's Consequences line on a native binding's holder.
+    2026-10-19: a refused open leaves the instance holding no queue (ADR-0015 decision 1), and a value the
+    crossing cannot convert into a record is refused as unreadable with an empty key (decision 5). First a
+    test-only round of Window A owes each a case, **born green** against the implementation committed as
+    `b51517f` and red against a mutant the window names precisely enough for the orchestrator to build and
+    run, the shape `specs/tasks/MAP-43-two-connection-harness.md` established. Then a refactor round of
+    Window B takes five of Craft's six advisories, enumerated in `specs/log.md`'s decision of this date, the
+    first typing the queue's mutation number as `MutationNumber` (PRD M10's Shape), for which `envelope.rs`
+    may gain on that type only the derives and a successor, with the emitted schema and the `.d.ts`
+    unchanged. Declined: a trap comment on the queue's holder, replaced by ADR-0015's Consequences line on a
+    native binding's holder.
 
 **Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
@@ -139,25 +143,27 @@ appearing in no generated TypeScript signature.
   `pkg`, most likely served from the shared cargo target volume, a mechanism inferred rather than measured
   (`specs/log.md`, trap of 2026-10-14); re-run at the
   correction round's review over a `pkg` built from the tree, all three exited 0 again.
-- **The crossing is published as stubs and this task fills it.** Before this task no exported function
-  crossed a tsify type, the one export returning a `#[wasm_bindgen]` struct (read 2026-09-28). Since
-  `fc10deb` (2026-10-14) `libs/core/src/boundary.rs` declares the five crossing exports with `todo!()`
-  bodies, and the generated `.d.ts` declares them beside `geodesicDistance`. Window B filled them on
-  2026-10-19, and the release `mapsift_core_bg.wasm` went from 46,924 to 297,164 bytes (117,249 under
-  `gzip -9`), the stubs having compiled the serializer away; no PRD requirement budgets that size.
+- **The crossing was published as stubs and Window B filled it.** Before this task no exported function
+  crossed a tsify type, the one export returning a `#[wasm_bindgen]` struct (read 2026-09-28). `fc10deb`
+  (2026-10-14) declared the five crossing exports with `todo!()` bodies beside `geodesicDistance`, and
+  `b51517f` (2026-10-19) filled them. The release `mapsift_core_bg.wasm` went from 46,924 bytes, built
+  2026-10-14 from the stubs, to 297,164 (117,249 under `gzip -9`), measured 2026-10-19; that the stubs had
+  let the serializer be compiled away is inferred, not measured. No PRD requirement budgets that size.
 - **A web test that executes the WASM module runs in `just check` by instantiating the module from its
   bytes in the ordinary `test` target.** The route is the committed boundary spec's own (`initSync` from
   an `import` of `mapsift_core_bg.wasm` `with { loader: 'binary' }`, one module and one memory per
   `aFreshCore()`), measured 2026-10-14 by the correction round's review on a copy of the tree. That a
   throwing `crypto.getRandomValues` reaches the core was measured on a copy carrying a mint
-  implementation; the generated glue calls it only once minting is implemented, so the tree's `pkg` does
-  not show the call yet. **A `*.browser.spec.ts`
+  implementation, and since `b51517f` implemented minting the tree's own glue calls it
+  (`pkg/mapsift_core.js`, read 2026-10-19). **A `*.browser.spec.ts`
   runs nowhere today**, read in the tree: `angular.json`'s
   `test-browser` target has no browser provider installed (`package.json` carries `vitest` and `jsdom` and
   no browser), and the existing port, `wasm-mapsift-core.ts`, never initializes the module, so the one
   browser spec on disk could not pass as written (MAP-19's, and MAP-78's for the handle).
-- **The baseline, measured**: `just check` at `98ea71b` exited 0 with 385 Python, 31 Rust and 12 Angular
-  cases passing. A first run the same day reported 303 errors reading `failed to resolve host 'db'`, because
+- **The baseline after Window B, measured 2026-10-19 by the orchestrator over the content committed as
+  `b51517f`:** `just check` exited 0 with 385 Python, 58 Rust and 33 web cases passing, and 3 in `libs/ui`.
+- **The baseline before this task, measured**: `just check` at `98ea71b` exited 0 with 385 Python, 31 Rust
+  and 12 Angular cases passing. A first run the same day reported 303 errors reading `failed to resolve host 'db'`, because
   the database container had stopped two days earlier and `just check` passes `--no-deps`; starting `db`
   alone cleared it.
 
