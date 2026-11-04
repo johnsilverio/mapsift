@@ -108,9 +108,11 @@ window they bind; item 12 reached it after Window B's review and before the roun
     `b51517f` and red against a mutant the window names precisely enough for the orchestrator to build and
     run, the shape `specs/tasks/MAP-43-two-connection-harness.md` established. Then a refactor round of
     Window B takes five of Craft's six advisories, enumerated in `specs/log.md`'s decision of this date, the
-    first typing the queue's mutation number as `MutationNumber` (PRD M10's Shape), for which `envelope.rs`
-    may gain on that type only the derives and a successor, with the emitted schema and the `.d.ts`
-    unchanged. Declined: a trap comment on the queue's holder, replaced by ADR-0015's Consequences line on a
+    first typing the queue's mutation number as `MutationNumber` (PRD M10's Shape) wherever the queue holds
+    or passes one, in `queue.rs` and `queue/record.rs` both, with every record's key and value unchanged.
+    For that, `envelope.rs` may gain on the type only the derives the typing forces and a successor, with
+    the emitted schema and the `.d.ts` unchanged (sharpened 2026-11-04 at the read before the round).
+    Declined: a trap comment on the queue's holder, replaced by ADR-0015's Consequences line on a
     native binding's holder. **The test-only round delivered three cases** (2026-11-04): one for each
     behaviour, and a third for decision 1's clause "until an open succeeds", which the round's review
     measured unwitnessed. Each is born green and turned red only by its named mutants, which the
@@ -133,7 +135,7 @@ decided:** the correction to `CLAUDE.md` C12 and PRD T2.3, which now point at th
 under "Crossing the boundary with tsify and minting with uuid, measured 2026-09-28". It is not restated here.
 Four of its facts shape this task and are named so the window opens that subsection rather than
 rediscovering them: the route that mints without a panic, and the lock change it brings, measured in its
-addition of 2026-09-29; the pinned tsify 0.5.6 leaking on a failed input conversion where 0.5.8's `Ts<T>`
+addition of 2026-09-29; the tsify 0.5.6 then pinned leaking on a failed input conversion where 0.5.8's `Ts<T>`
 does not; the outermost type's serializer settings governing everything nested inside it; and a thrown error
 appearing in no generated TypeScript signature.
 
@@ -169,7 +171,9 @@ appearing in no generated TypeScript signature.
 - **The baseline after Window B, measured 2026-10-19 by the orchestrator over the content committed as
   `b51517f`:** `just check` exited 0 with 385 Python, 58 Rust and 33 web cases passing, and 3 in `libs/ui`.
 - **The baseline before this task, measured**: `just check` at `98ea71b` exited 0 with 385 Python, 31 Rust
-  and 12 Angular cases passing. A first run the same day reported 303 errors reading `failed to resolve host 'db'`, because
+  and 12 Angular cases passing: by a static count at `98ea71b` read 2026-11-04, 9 in `apps/web` that its
+  `test` target runs (two more sit in the browser spec, which runs nowhere) and 3 in `libs/ui`, so the
+  later baselines' web counts compare against 9. A first run the same day reported 303 errors reading `failed to resolve host 'db'`, because
   the database container had stopped two days earlier and `just check` passes `--no-deps`; starting `db`
   alone cleared it.
 
@@ -193,6 +197,17 @@ appearing in no generated TypeScript signature.
 - **M3's "an identifier is unchanged by a resend" has its reopen half here**: a queue opened from its records
   offers each operation under the identifier it was appended with. A resend after a flush response is
   MAP-77's.
+- **M3's "no code path derives meaning, order, or authority from an identifier's content" has its order
+  half here** (added 2026-11-04, when the read before the refactor round found the clause missing from this
+  delta). Within a flush domain the queue offers by mutation number and never by identifier, which two
+  cases already witness: a mutant ordering a stream's offer by operation identifier, built and run by the
+  orchestrator that day, is killed by
+  `a_flush_domain_numbers_its_operations_from_zero_in_the_order_they_were_appended` and by
+  `a_reopened_stream_of_eleven_operations_is_offered_in_mutation_number_order`. Across flush domains the
+  offers come in the byte order of the domains' identifiers, which is no ordering authority and which
+  ADR-0015 decision 4's addition of 2026-11-04 keeps out of the contract. Meaning and authority have no
+  runtime here: the queue uses an identifier only to compare, to key and to write a record's key, a reading
+  of `queue.rs` and `boundary.rs`.
 - **M3's "an identifier belonging to a deleted feature is never assigned to a new one" has no runtime here.**
   ADR-0006 decision 4 lists it among the rules that can be asserted, and it belongs where a feature can be
   deleted, which no catalog member does yet; the queue deletes nothing and reassigns nothing.
