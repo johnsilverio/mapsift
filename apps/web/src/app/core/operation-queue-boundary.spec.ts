@@ -77,6 +77,14 @@ function opened(outcome: OpenOutcome): QueueRecord[] {
   return outcome.records;
 }
 
+function refusedToOpen(outcome: OpenOutcome): void {
+  if (outcome.outcome === 'opened') {
+    throw new Error(
+      `the queue was expected to be refused, and opened with ${outcome.records.length} records`,
+    );
+  }
+}
+
 function appended(outcome: AppendOutcome): QueueRecord[] {
   if (outcome.outcome === 'refused') {
     throw new Error(
@@ -304,6 +312,23 @@ describe('the operation queue across the WASM boundary', () => {
     });
   });
 
+  it('refuses a record handed back with its value parsed rather than as its string as unreadable, with an empty key (ADR-0015 decision 5)', async () => {
+    const before = await aFreshCore();
+    const installation = theInstallationRecord(opened(before.openQueue([])));
+    const theValueParsed: unknown = JSON.parse(installation.value);
+    const handedBackParsed = { key: installation.key, value: theValueParsed };
+    const restarted = await aFreshCore();
+
+    // @ts-expect-error the generated type admits a string value only (ADR-0015 decision 6), and
+    // JavaScript hands the crossing whatever a store gave back, which is the case pinned here.
+    const outcome = restarted.openQueue([handedBackParsed]);
+
+    expect(outcome).toStrictEqual({
+      outcome: 'refused',
+      refusal: { reason: 'unreadable_record', key: '' },
+    });
+  });
+
   it('refuses an operation outside the closed catalog as a value (M9, ADR-0015 decision 6)', async () => {
     const core = await aFreshCore();
     openFrom(core, new Map());
@@ -342,6 +367,36 @@ describe('the operation queue across the WASM boundary', () => {
     const outcome = core.offeredForFlush();
 
     expect(outcome).toStrictEqual({ outcome: 'refused', refusal: { reason: 'no_queue_open' } });
+  });
+
+  it('refuses an append after a refused reopen as before any queue is open, rather than numbering on in the queue it held (ADR-0015 decision 1)', async () => {
+    const core = await aFreshCore();
+    const store: Store = new Map();
+    const installation = theInstallationRecord(opened(core.openQueue([])));
+    persist(core, store, [installation]);
+    recordTheEdit(core, store, aFeatureCreated(FEATURE_ONE));
+    appendWithAFailedWrite(core, aFeatureCreated(FEATURE_TWO));
+    store.set(installation.key, 'a value no core ever wrote');
+    refusedToOpen(core.openQueue(held(store)));
+
+    const outcome = core.appendOperation(JSON.stringify(aFeatureCreated(FEATURE_THREE)));
+
+    expect(outcome).toStrictEqual({ outcome: 'refused', refusal: { reason: 'no_queue_open' } });
+  });
+
+  it('holds a queue again once an open succeeds after a refused one, offering what the store held (ADR-0015 decision 1)', async () => {
+    const core = await aFreshCore();
+    const store: Store = new Map();
+    const installation = theInstallationRecord(opened(core.openQueue([])));
+    persist(core, store, [installation]);
+    recordTheEdit(core, store, aFeatureCreated(FEATURE_ONE));
+    store.set(installation.key, 'a value no core ever wrote');
+    refusedToOpen(core.openQueue(held(store)));
+    store.set(installation.key, installation.value);
+
+    openFrom(core, store);
+
+    expect(featuresAndNumbersOffered(core)).toStrictEqual([[FEATURE_ONE, 0]]);
   });
 
   it('refuses to open a store holding no record while randomness is refused, rather than minting a clientID without it (ADR-0015 decision 7)', async () => {
