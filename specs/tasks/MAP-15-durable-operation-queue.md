@@ -111,7 +111,10 @@ window they bind; item 12 reached it after Window B's review and before the roun
     first typing the queue's mutation number as `MutationNumber` (PRD M10's Shape), for which `envelope.rs`
     may gain on that type only the derives and a successor, with the emitted schema and the `.d.ts`
     unchanged. Declined: a trap comment on the queue's holder, replaced by ADR-0015's Consequences line on a
-    native binding's holder.
+    native binding's holder. **The test-only round delivered three cases** (2026-11-04): one for each
+    behaviour, and a third for decision 1's clause "until an open succeeds", which the round's review
+    measured unwitnessed. Each is born green and turned red only by its named mutants, which the
+    orchestrator ran.
 
 **Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
@@ -160,6 +163,9 @@ appearing in no generated TypeScript signature.
   `test-browser` target has no browser provider installed (`package.json` carries `vitest` and `jsdom` and
   no browser), and the existing port, `wasm-mapsift-core.ts`, never initializes the module, so the one
   browser spec on disk could not pass as written (MAP-19's, and MAP-78's for the handle).
+- **The baseline after the test-only round, measured 2026-11-04 by the orchestrator over the round's tree,
+  whose production files are `b51517f`'s:** `just check` exited 0 with 385 Python, 58 Rust and 36 web
+  cases passing (22 of them boundary cases), and 3 in `libs/ui`.
 - **The baseline after Window B, measured 2026-10-19 by the orchestrator over the content committed as
   `b51517f`:** `just check` exited 0 with 385 Python, 58 Rust and 33 web cases passing, and 3 in `libs/ui`.
 - **The baseline before this task, measured**: `just check` at `98ea71b` exited 0 with 385 Python, 31 Rust
