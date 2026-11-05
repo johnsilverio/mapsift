@@ -54,6 +54,13 @@ fingerprint accepting artifacts newer than the tree's sources, is inferred. The 
 copied the whole working tree into the scratchpad, `infra/.env` and `apps/api/.env` with it, the fourth
 occurrence of the trap of 2026-09-23 and the first in an axis whose prompt did not forbid it.
 
+**A sixth line was added 2026-11-04, and it closes the collision between axes.** Two axes of MAP-15's
+refactor review each copied the tree into `head/` and `tree/` at the scratchpad's root, the same two names,
+and built over each other's sources between about 16:41 and 16:49. The Spec axis re-ran from copies of its
+own and the verdict stood, but only because four independent measurements of the same bytes agreed. The
+scratchpad is shared by every agent a session dispatches, which the `specs/log.md` trap of 2026-09-23 had
+recorded for windows; until this date no axis prompt said where a copy goes.
+
 ---
 
 ## Axis 1: Canon
@@ -91,7 +98,11 @@ tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported fun
 not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
 pointed inside your scratch copy. A copy of the repository is made from what git tracks (`git ls-files`, or an
 `rsync` that excludes `.env`), never with the untracked `.env` files, which carry the development database
-password and were found in an axis's scratch copy again on 2026-10-14.
+password and were found in an axis's scratch copy again on 2026-10-14. Every copy and every file you write
+goes under a directory of your own that you create inside the session scratchpad, named for your axis and
+the round (for example `canon-map15-refactor/`), never at the scratchpad's root, which every agent of the
+session shares: on 2026-11-04 two axes of one review copied the tree into the same `head/` and `tree/` there
+and built over each other's sources.
 
 **Your question, and only yours:** does this diff violate something the ecosystem decided? This axis reads
 **law**. A finding here blocks a merge.
@@ -159,7 +170,11 @@ tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported fun
 not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
 pointed inside your scratch copy. A copy of the repository is made from what git tracks (`git ls-files`, or an
 `rsync` that excludes `.env`), never with the untracked `.env` files, which carry the development database
-password and were found in an axis's scratch copy again on 2026-10-14.
+password and were found in an axis's scratch copy again on 2026-10-14. Every copy and every file you write
+goes under a directory of your own that you create inside the session scratchpad, named for your axis and
+the round (for example `canon-map15-refactor/`), never at the scratchpad's root, which every agent of the
+session shares: on 2026-11-04 two axes of one review copied the tree into the same `head/` and `tree/` there
+and built over each other's sources.
 
 **Your question, and only yours:** does the diff satisfy the requirement's acceptance criterion? Quote the
 criterion line for every finding.
@@ -230,7 +245,11 @@ tree's own next build: measured 2026-10-14, a `pkg` built by `just` exported fun
 not declare. Build any copy with `docker run` and a target directory of its own, or with `CARGO_TARGET_DIR`
 pointed inside your scratch copy. A copy of the repository is made from what git tracks (`git ls-files`, or an
 `rsync` that excludes `.env`), never with the untracked `.env` files, which carry the development database
-password and were found in an axis's scratch copy again on 2026-10-14.
+password and were found in an axis's scratch copy again on 2026-10-14. Every copy and every file you write
+goes under a directory of your own that you create inside the session scratchpad, named for your axis and
+the round (for example `canon-map15-refactor/`), never at the scratchpad's root, which every agent of the
+session shares: on 2026-11-04 two axes of one review copied the tree into the same `head/` and `tree/` there
+and built over each other's sources.
 
 **Your question, and only yours:** judgement calls, and they are labelled as such. **Everything you raise is
 advisory**, and a documented decision in this repository always wins over this axis. Skip anything the

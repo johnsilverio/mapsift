@@ -117,6 +117,15 @@ window they bind; item 12 reached it after Window B's review and before the roun
     behaviour, and a third for decision 1's clause "until an open succeeds", which the round's review
     measured unwitnessed. Each is born green and turned red only by its named mutants, which the
     orchestrator ran.
+13. **The refactor round is in, as `212e776`, and its review sets one more test-only round**, 2026-11-04.
+    Every persistence case reads back what the same build wrote, so a format changed on the writing and the
+    reading side at once passes them all: the review's Craft axis renamed `next_mutation_number` and the
+    `stream/` and `entry/` key prefixes, and all 58 Rust cases stayed green. ADR-0015 decision 5 makes the
+    format a contract, because an application update is when a record an older core wrote meets a newer one.
+    A test-only round of Window A owes a case opening a store written under `contract_version` 1 as literal
+    text, born green against `212e776` and red against that mutant, which the orchestrator builds and runs.
+    Recorded beside it as a reading and not built: a stream record at `u64::MAX`, which ADR-0015's
+    Consequences line of this date keeps out of this task.
 
 **Written by the orchestrator and ratified by the owner on 2026-09-29 with the go for Window A:**
 ADR-0015 decision 7, what the queue stamps and what the platform supplies, written after this file's first
@@ -165,6 +174,10 @@ appearing in no generated TypeScript signature.
   `test-browser` target has no browser provider installed (`package.json` carries `vitest` and `jsdom` and
   no browser), and the existing port, `wasm-mapsift-core.ts`, never initializes the module, so the one
   browser spec on disk could not pass as written (MAP-19's, and MAP-78's for the handle).
+- **The baseline after the refactor round, measured 2026-11-04 by the orchestrator over the content
+  committed as `212e776`:** `just check` exited 0 with the same counts as the line below, and the release
+  `mapsift_core_bg.wasm` grew from 297,164 bytes to 297,281, of which the longer panic message accounts
+  for 12; the rest was not measured.
 - **The baseline after the test-only round, measured 2026-11-04 by the orchestrator over the round's tree,
   whose production files are `b51517f`'s:** `just check` exited 0 with 385 Python, 58 Rust and 36 web
   cases passing (22 of them boundary cases), and 3 in `libs/ui`.
