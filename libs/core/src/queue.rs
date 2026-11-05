@@ -83,7 +83,7 @@ pub enum QueueRefusal {
 pub struct OperationQueue {
     client_id: Uuid,
     streams: BTreeMap<FlushDomain, Stream>,
-    unconfirmed: HashMap<String, (FlushDomain, u64)>,
+    unconfirmed: HashMap<String, (FlushDomain, MutationNumber)>,
 }
 
 impl OperationQueue {
@@ -123,7 +123,7 @@ impl OperationQueue {
                 RecordContent::Entry(half) => {
                     let stream = streams.entry(FlushDomain::of(&half.operation)).or_default();
                     stream.entries.insert(
-                        half.mutation_number.0,
+                        half.mutation_number,
                         Entry {
                             half,
                             confirmed: true,
@@ -151,7 +151,7 @@ impl OperationQueue {
         let domain = FlushDomain::of(&authored.operation);
         let stream = self.streams.entry(domain).or_default();
         let mutation_number = stream.next_mutation_number;
-        stream.next_mutation_number += 1;
+        stream.next_mutation_number = mutation_number.successor();
         let half = authored.stamped(operation_id, self.client_id, mutation_number);
         let entry = entry_record(&half);
         self.unconfirmed
@@ -172,8 +172,10 @@ impl OperationQueue {
     /// Takes the platform's word that its store wrote the records under these keys (ADR-0015
     /// decision 4).
     pub fn confirm_written(&mut self, keys: &[String]) {
-        for (domain, mutation_number) in keys.iter().filter_map(|key| self.unconfirmed.remove(key))
-        {
+        for key in keys {
+            let Some((domain, mutation_number)) = self.unconfirmed.remove(key) else {
+                continue;
+            };
             let entry = self
                 .streams
                 .get_mut(&domain)
@@ -197,7 +199,12 @@ impl OperationQueue {
 const CONFLICT_RULE_VERSION: ConflictRuleVersion = ConflictRuleVersion(0);
 
 impl AuthoredOperation {
-    fn stamped(self, operation_id: Uuid, client_id: Uuid, mutation_number: u64) -> ClientHalf {
+    fn stamped(
+        self,
+        operation_id: Uuid,
+        client_id: Uuid,
+        mutation_number: MutationNumber,
+    ) -> ClientHalf {
         let Self {
             operation,
             author_session_material,
@@ -207,7 +214,7 @@ impl AuthoredOperation {
         ClientHalf {
             operation_id,
             client_id,
-            mutation_number: MutationNumber(mutation_number),
+            mutation_number,
             operation_schema_version: operation_schema_version_of(&operation),
             conflict_rule_version: CONFLICT_RULE_VERSION,
             operation,
@@ -263,8 +270,8 @@ impl FlushDomain {
 
 #[derive(Default)]
 struct Stream {
-    next_mutation_number: u64,
-    entries: BTreeMap<u64, Entry>,
+    next_mutation_number: MutationNumber,
+    entries: BTreeMap<MutationNumber, Entry>,
 }
 
 impl Stream {

@@ -16,8 +16,28 @@ use uuid::Uuid;
 use crate::catalog::Operation;
 
 /// The per-client monotonic axis the server dedups a resent flush by (C12).
-#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    Tsify,
+)]
 pub struct MutationNumber(pub u64);
+
+impl MutationNumber {
+    /// The number after this one, which keeps a stream contiguous (M10).
+    pub(crate) fn successor(self) -> Self {
+        Self(self.0 + 1)
+    }
+}
 
 /// The build-time axis, one per operation type, that drives upcasting (T9.3).
 #[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Tsify)]

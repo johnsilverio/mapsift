@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{FlushDomain, QueueRecord, QueueRefusal, to_json};
-use crate::envelope::ClientHalf;
+use crate::envelope::{ClientHalf, MutationNumber};
 
 /// The version of the record contract this core writes and the only one it reads.
 const CONTRACT_VERSION: u32 = 1;
@@ -19,7 +19,7 @@ pub(super) enum RecordContent<Half> {
     Stream {
         tenant_id: Uuid,
         project_id: Uuid,
-        next_mutation_number: u64,
+        next_mutation_number: MutationNumber,
     },
     Entry(Half),
 }
@@ -32,14 +32,17 @@ struct RecordValue<Half> {
 }
 
 pub(super) fn installation_record(client_id: Uuid) -> QueueRecord {
-    written(
+    record_to_write(
         "installation".to_owned(),
         RecordContent::Installation { client_id },
     )
 }
 
-pub(super) fn stream_record(domain: FlushDomain, next_mutation_number: u64) -> QueueRecord {
-    written(
+pub(super) fn stream_record(
+    domain: FlushDomain,
+    next_mutation_number: MutationNumber,
+) -> QueueRecord {
+    record_to_write(
         format!("stream/{}/{}", domain.tenant_id, domain.project_id),
         RecordContent::Stream {
             tenant_id: domain.tenant_id,
@@ -51,7 +54,7 @@ pub(super) fn stream_record(domain: FlushDomain, next_mutation_number: u64) -> Q
 
 pub(super) fn entry_record(half: &ClientHalf) -> QueueRecord {
     let domain = FlushDomain::of(&half.operation);
-    written(
+    record_to_write(
         format!(
             "entry/{}/{}/{}",
             domain.tenant_id, domain.project_id, half.mutation_number.0
@@ -71,7 +74,7 @@ pub(super) fn read_record(record: &QueueRecord) -> Result<RecordContent<ClientHa
         })
 }
 
-fn written(key: String, content: RecordContent<&ClientHalf>) -> QueueRecord {
+fn record_to_write(key: String, content: RecordContent<&ClientHalf>) -> QueueRecord {
     QueueRecord {
         key,
         value: to_json(&RecordValue {

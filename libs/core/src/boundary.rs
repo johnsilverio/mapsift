@@ -145,7 +145,12 @@ pub enum MintOutcome {
 #[wasm_bindgen(js_name = openQueue)]
 pub fn open_queue(records: Vec<Ts<QueueRecord>>) -> Ts<OpenOutcome> {
     let (opened, outcome) = match open_or_install(&records) {
-        Ok((queue, records)) => (Some(queue), OpenOutcome::Opened { records }),
+        Ok((queue, records_to_write)) => (
+            Some(queue),
+            OpenOutcome::Opened {
+                records: records_to_write,
+            },
+        ),
         Err(refusal) => (None, OpenOutcome::Refused { refusal }),
     };
     OPENED_QUEUE.set(opened);
@@ -220,18 +225,18 @@ fn with_opened_queue<T>(
 }
 
 fn open_or_install(
-    records: &[Ts<QueueRecord>],
+    held_records: &[Ts<QueueRecord>],
 ) -> Result<(OperationQueue, Vec<QueueRecord>), OpenRefusal> {
-    if records.is_empty() {
+    if held_records.is_empty() {
         let client_id = mint().map_err(OpenRefusal::Mint)?;
         return Ok(OperationQueue::install(client_id));
     }
-    let records = records
+    let held_records = held_records
         .iter()
         .map(record_from_the_platform)
         .collect::<Result<Vec<_>, _>>()
         .map_err(OpenRefusal::Queue)?;
-    let queue = OperationQueue::open(records).map_err(OpenRefusal::Queue)?;
+    let queue = OperationQueue::open(held_records).map_err(OpenRefusal::Queue)?;
     Ok((queue, Vec::new()))
 }
 
@@ -250,5 +255,6 @@ fn mint() -> Result<Uuid, MintRefusal> {
 }
 
 fn crossing<T: Tsify + Serialize>(outcome: &T) -> Ts<T> {
-    Ts::from_rust(outcome).expect("an outcome of strings, numbers and tags converts to JS")
+    Ts::from_rust(outcome)
+        .expect("an outcome holds only strings and tags, which always convert to JS")
 }
